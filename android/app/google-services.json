@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "765748924876",
+    "project_id": "hosta-5d808",
+    "storage_bucket": "hosta-5d808.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:765748924876:android:dbde87ee959e6fc6830d69",
+        "android_client_info": {
+          "package_name": "com.zorrowtech.hostamanagers"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKc_Eb_IcJGZQU2KEv6JD0WsqkWUcpl-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
