@@ -35,13 +35,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final storedUserId = prefs.getString('userId');
-      
+
       if (mounted) {
         setState(() {
           userId = storedUserId;
         });
       }
-      
+
       if (userId != null && userId!.isNotEmpty) {
         await _loadUserData();
       } else {
@@ -62,7 +62,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     try {
       setState(() => isLoading = true);
       final response = await ApiService().getAUser(userId!);
-      
+
       if (mounted) {
         setState(() {
           userData = response.data['data'] ?? {};
@@ -81,7 +81,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   void _setupSocketListener() {
     try {
       const String serverUrl = 'https://www.zorrowtek.in';
-      
+
       socket = IO.io(serverUrl, <String, dynamic>{
         'transports': ['websocket', 'polling'],
         'autoConnect': true,
@@ -100,7 +100,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       socket!.on('profile', (data) {
         print('📡 Profile update received: $data');
         final profileUserId = data['userId']?.toString();
-        
+
         if (profileUserId == userId) {
           _refreshUserData();
         }
@@ -141,9 +141,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   // picture: { imageUrl: { type: String }, public_id: { type: String } }
   String? _getProfileImage() {
     final picture = userData['picture'];
-    
+
     if (picture == null) return null;
-    
+
     // Handle the case where picture is a Map with imageUrl field
     if (picture is Map) {
       // Check if imageUrl exists in the picture map
@@ -153,29 +153,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           return imageUrl;
         }
       }
-      
+
       // Also check if picture itself is a string (fallback)
       if (picture['url'] is String) {
         return picture['url'] as String;
       }
     }
-    
+
     // If picture is directly a string (fallback for backward compatibility)
     if (picture is String && picture.isNotEmpty) {
       return picture;
     }
-    
+
     return null;
   }
 
   void _navigateToViewProfile() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Profile(
-        ),
-      ),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (context) => Profile()));
   }
 
   // Logout function moved to SettingsPage
@@ -189,24 +183,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   void _showAboutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const About(),
-    );
+    showDialog(context: context, builder: (context) => const About());
   }
 
   void _showContactDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const Contact(),
-    );
+    showDialog(context: context, builder: (context) => const Contact());
   }
 
   void _showPrivacyDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const Privacy(),
-    );
+    showDialog(context: context, builder: (context) => const Privacy());
   }
 
   // Logout confirmation dialog removed from ProfilePage
@@ -222,15 +207,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     String? profileImageUrl = _getProfileImage();
     print("📸 Profile image URL: $profileImageUrl"); // Debug print
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Profile',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true, // This centers the title
         backgroundColor: const Color(0xFF28A745),
@@ -279,7 +261,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                   color: Colors.white,
                                   width: 4,
                                 ),
-                                color: Colors.white, // Background color for fallback
+                                color: Colors
+                                    .white, // Background color for fallback
                               ),
                               child: ClipOval(
                                 child: profileImageUrl != null
@@ -288,28 +271,36 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                         fit: BoxFit.cover,
                                         width: 120,
                                         height: 120,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          print("❌ Error loading image: $error");
-                                          return Container(
-                                            color: Colors.grey[200],
-                                            child: const Icon(
-                                              Icons.person,
-                                              size: 60,
-                                              color: Color(0xFF28A745),
-                                            ),
-                                          );
-                                        },
-                                        loadingBuilder: (context, child, loadingProgress) {
-                                          if (loadingProgress == null) return child;
-                                          return Container(
-                                            color: Colors.grey[200],
-                                            child: const Center(
-                                              child: CircularProgressIndicator(
-                                                color: Color(0xFF28A745),
-                                              ),
-                                            ),
-                                          );
-                                        },
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              print(
+                                                "❌ Error loading image: $error",
+                                              );
+                                              return Container(
+                                                color: Colors.grey[200],
+                                                child: const Icon(
+                                                  Icons.person,
+                                                  size: 60,
+                                                  color: Color(0xFF28A745),
+                                                ),
+                                              );
+                                            },
+                                        loadingBuilder:
+                                            (context, child, loadingProgress) {
+                                              if (loadingProgress == null)
+                                                return child;
+                                              return Container(
+                                                color: Colors.grey[200],
+                                                child: const Center(
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: Color(
+                                                          0xFF28A745,
+                                                        ),
+                                                      ),
+                                                ),
+                                              );
+                                            },
                                       )
                                     : Container(
                                         color: Colors.grey[200],
@@ -325,7 +316,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           const SizedBox(height: 16),
                           // User Name
                           Text(
-                            _getSafeString(userData['name'], defaultValue: 'User Name'),
+                            _getSafeString(
+                              userData['name'],
+                              defaultValue: 'User Name',
+                            ),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 24,
@@ -335,37 +329,42 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           const SizedBox(height: 8),
                           // User Email
                           Text(
-                            _getSafeString(userData['email'], defaultValue: 'email@example.com'),
+                            _getSafeString(
+                              userData['email'],
+                              defaultValue: 'email@example.com',
+                            ),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                             ),
                           ),
                           const SizedBox(height: 20),
-                          // View Profile Button
-                          ElevatedButton.icon(
-                            onPressed: _navigateToViewProfile,
-                            icon: const Icon(Icons.person, size: 18),
-                            label: const Text('View Full Profile'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF28A745),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
+                          //
+                          //View Profile Button
+                          if (userId != null && userId!.isNotEmpty)
+                            ElevatedButton.icon(
+                              onPressed: _navigateToViewProfile,
+                              icon: const Icon(Icons.person, size: 18),
+                              label: const Text('View Full Profile'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF28A745),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
                               ),
                             ),
-                          ),
                           const SizedBox(height: 30),
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Profile Options (Contact Information removed)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -384,7 +383,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          
+
                           // Settings Card
                           Card(
                             elevation: 2,
@@ -416,9 +415,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               ],
                             ),
                           ),
-                          
+
                           const SizedBox(height: 20),
-                          
+
                           // Support Section
                           const Align(
                             alignment: Alignment.centerLeft,
@@ -432,7 +431,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          
+
                           // Support Card
                           Card(
                             elevation: 2,
@@ -450,14 +449,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               ],
                             ),
                           ),
-                          
+
                           const SizedBox(height: 20),
-                          
+
                           // Logout Button Removed from Profile Page
                           // Logout functionality is now in Settings page
-                          
                           const SizedBox(height: 20),
-                          
+
                           // App Version
                           Text(
                             'Version 1.0.0',
@@ -466,7 +464,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               fontSize: 12,
                             ),
                           ),
-                          
+
                           const SizedBox(height: 20),
                         ],
                       ),
@@ -493,18 +491,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ),
         child: Icon(icon, color: const Color(0xFF28A745)),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         subtitle,
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 13,
-        ),
+        style: TextStyle(color: Colors.grey[600], fontSize: 13),
       ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
