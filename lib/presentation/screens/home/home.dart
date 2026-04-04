@@ -428,21 +428,27 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     });
   }
 
-  Future<void> _checkLocationStatus() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    LocationPermission permission = await Geolocator.checkPermission();
-    
-    setState(() {
-      locationIssue = !serviceEnabled || 
-                      permission == LocationPermission.denied || 
-                      permission == LocationPermission.deniedForever;
-      hasLocationPermission = serviceEnabled && 
-                              permission != LocationPermission.denied && 
-                              permission != LocationPermission.deniedForever;
-    });
-    
-    print("📍 Location Status - Service: $serviceEnabled, Permission: $permission, Issue: $locationIssue");
+Future<void> _checkLocationStatus() async {
+  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  LocationPermission permission = await Geolocator.checkPermission();
+
+  // If permission denied, try requesting again (optional but useful)
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
   }
+
+  setState(() {
+    locationIssue = !serviceEnabled ||
+        permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever;
+
+    hasLocationPermission = serviceEnabled &&
+        permission != LocationPermission.denied &&
+        permission != LocationPermission.deniedForever;
+  });
+
+  print("📍 Updated Location Status → Service: $serviceEnabled, Permission: $permission");
+}
 
   Future<void> _refreshLocationAndData() async {
     if (!mounted) return;
@@ -639,12 +645,12 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
   void _openSettings() async {
     await Geolocator.openLocationSettings();
     // Wait a bit for settings to close and then recheck location status
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        _checkLocationStatus();
-        _refreshLocationAndData();
-      }
-    });
+    // Future.delayed(const Duration(milliseconds: 500), () {
+    //   if (mounted) {
+    //     _checkLocationStatus();
+    //     _refreshLocationAndData();
+    //   }
+    // });
   }
 
   @override
