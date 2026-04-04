@@ -2,8 +2,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/firebase_msg.dart';
-import 'package:hosta/pages/bottomnav.dart';
+import 'package:hosta/presentation/widgets/bottomnav.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:hosta/presentation/screens/home/home.dart';
 
 
 
