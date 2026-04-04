@@ -370,7 +370,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
 import '../../../services/api_service.dart';
-import '../hospital_types/hospitaltypes.dart';
+import '../hospital/hospitaltypes.dart';
 import '../ambulance/ambulance.dart';
 import '../blood/blood.dart';
 import '../speciality/specialties.dart';

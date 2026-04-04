@@ -645,34 +645,65 @@ class _BloodState extends State<Blood> {
           List<String> filteredDistricts = getFilteredDistricts(tempCountry, tempState);
           List<String> filteredPlaces = getFilteredPlaces(tempCountry, tempState, tempDistrict);
 
-          return SizedBox(
-             height: MediaQuery.of(context).size.height * 0.85,
-            child: Padding(
-             padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              MediaQuery.of(context).viewInsets.bottom + 16,
-            ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Center(
-                      child: Text(
-                        "Select Location",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+          return Padding(
+           padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Center(
+                    child: Text(
+                      "Select Location",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-            
-                    // Country Dropdown (Always shown)
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+          
+                  // Country Dropdown (Always shown)
+                  DropdownButtonFormField<String>(
+                    value: tempCountry.isEmpty ? null : tempCountry,
+                    decoration: const InputDecoration(
+                      labelText: "Country *",
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text("Select Country", style: TextStyle(color: Colors.grey)),
+                      ),
+                      ...countries.map((country) {
+                        return DropdownMenuItem(
+                          value: country,
+                          child: Text(country),
+                        );
+                      }).toList(),
+                    ],
+                    onChanged: (value) {
+                      setModalState(() {
+                        tempCountry = value ?? '';
+                        tempState = '';
+                        tempDistrict = '';
+                        tempPlace = '';
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+          
+                  // State Dropdown (Only shown when country is selected)
+                  if (tempCountry.isNotEmpty) ...[
                     DropdownButtonFormField<String>(
-                      value: tempCountry.isEmpty ? null : tempCountry,
+                      value: tempState.isEmpty ? null : tempState,
                       decoration: const InputDecoration(
-                        labelText: "Country *",
+                        labelText: "State *",
                         border: OutlineInputBorder(),
                         filled: true,
                         fillColor: Colors.white,
@@ -680,155 +711,123 @@ class _BloodState extends State<Blood> {
                       items: [
                         const DropdownMenuItem(
                           value: '',
-                          child: Text("Select Country", style: TextStyle(color: Colors.grey)),
+                          child: Text("Select State", style: TextStyle(color: Colors.grey)),
                         ),
-                        ...countries.map((country) {
+                        ...filteredStates.map((state) {
                           return DropdownMenuItem(
-                            value: country,
-                            child: Text(country),
+                            value: state,
+                            child: Text(state),
                           );
                         }).toList(),
                       ],
                       onChanged: (value) {
                         setModalState(() {
-                          tempCountry = value ?? '';
-                          tempState = '';
+                          tempState = value ?? '';
                           tempDistrict = '';
                           tempPlace = '';
                         });
                       },
                     ),
                     const SizedBox(height: 16),
-            
-                    // State Dropdown (Only shown when country is selected)
-                    if (tempCountry.isNotEmpty) ...[
-                      DropdownButtonFormField<String>(
-                        value: tempState.isEmpty ? null : tempState,
-                        decoration: const InputDecoration(
-                          labelText: "State *",
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text("Select State", style: TextStyle(color: Colors.grey)),
-                          ),
-                          ...filteredStates.map((state) {
-                            return DropdownMenuItem(
-                              value: state,
-                              child: Text(state),
-                            );
-                          }).toList(),
-                        ],
-                        onChanged: (value) {
-                          setModalState(() {
-                            tempState = value ?? '';
-                            tempDistrict = '';
-                            tempPlace = '';
-                          });
-                        },
+                  ],
+          
+                  // District Dropdown (Only shown when state is selected)
+                  if (tempCountry.isNotEmpty && tempState.isNotEmpty) ...[
+                    DropdownButtonFormField<String>(
+                      value: tempDistrict.isEmpty ? null : tempDistrict,
+                      decoration: const InputDecoration(
+                        labelText: "District *",
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
-                      const SizedBox(height: 16),
-                    ],
-            
-                    // District Dropdown (Only shown when state is selected)
-                    if (tempCountry.isNotEmpty && tempState.isNotEmpty) ...[
-                      DropdownButtonFormField<String>(
-                        value: tempDistrict.isEmpty ? null : tempDistrict,
-                        decoration: const InputDecoration(
-                          labelText: "District *",
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
+                      items: [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text("Select District", style: TextStyle(color: Colors.grey)),
                         ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text("Select District", style: TextStyle(color: Colors.grey)),
-                          ),
-                          ...filteredDistricts.map((district) {
-                            return DropdownMenuItem(
-                              value: district,
-                              child: Text(district),
-                            );
-                          }).toList(),
-                        ],
-                        onChanged: (value) {
-                          setModalState(() {
-                            tempDistrict = value ?? '';
-                            tempPlace = '';
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-            
-                    // Place Dropdown (Only shown when district is selected)
-                    if (tempCountry.isNotEmpty && tempState.isNotEmpty && tempDistrict.isNotEmpty) ...[
-                      DropdownButtonFormField<String>(
-                        value: tempPlace.isEmpty ? null : tempPlace,
-                        decoration: const InputDecoration(
-                          labelText: "Place",
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text("Select Place", style: TextStyle(color: Colors.grey)),
-                          ),
-                          ...filteredPlaces.map((place) {
-                            return DropdownMenuItem(
-                              value: place,
-                              child: Text(place),
-                            );
-                          }).toList(),
-                        ],
-                        onChanged: (value) {
-                          setModalState(() {
-                            tempPlace = value ?? '';
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-            
-                    const SizedBox(height: 24),
-            
-                    // Apply Filter Button
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          selectedCountry = tempCountry;
-                          selectedState = tempState;
-                          selectedDistrict = tempDistrict;
-                          selectedPlace = tempPlace;
+                        ...filteredDistricts.map((district) {
+                          return DropdownMenuItem(
+                            value: district,
+                            child: Text(district),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setModalState(() {
+                          tempDistrict = value ?? '';
+                          tempPlace = '';
                         });
-                        Navigator.pop(context);
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+          
+                  // Place Dropdown (Only shown when district is selected)
+                  if (tempCountry.isNotEmpty && tempState.isNotEmpty && tempDistrict.isNotEmpty) ...[
+                    DropdownButtonFormField<String>(
+                    isExpanded: true,
+                      value: tempPlace.isEmpty ? null : tempPlace,
+                      decoration: const InputDecoration(
+                        labelText: "Place",
+                        border: OutlineInputBorder(),
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
-                      child: const Text(
-                        "Apply Filter",
-                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      items: [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text("Select Place", style: TextStyle(color: Colors.grey)),
+                        ),
+                        ...filteredPlaces.map((place) {
+                          return DropdownMenuItem(
+                            value: place,
+                            
+                            child: Text(place),
+                          );
+                        }).toList(),
+                      ],
+                      onChanged: (value) {
+                        setModalState(() {
+                          tempPlace = value ?? '';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+          
+                  const SizedBox(height: 24),
+          
+                  // Apply Filter Button
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        selectedCountry = tempCountry;
+                        selectedState = tempState;
+                        selectedDistrict = tempDistrict;
+                        selectedPlace = tempPlace;
+                      });
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+                    child: const Text(
+                      "Apply Filter",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
             ),
           );
         });
-      },
+      }, 
     );
   }
 }

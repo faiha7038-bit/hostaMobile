@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hosta/presentation/screens/hospital_details/hospital_details.dart';
+import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/api_service.dart';
