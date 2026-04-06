@@ -245,6 +245,19 @@ Future<Response> getAllCarousel({
   Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
     return await _dio.post('/api/users/password', data: data);
   }
+  
+//   // ================= PHARMACY =================
+
+// // GET all pharmacies
+// Future<Response> getPharmacies() async {
+//   return await _dio.get('/api/pharmacy'); 
+//   // 🔥 change if your backend route is different
+// }
+
+// // CREATE pharmacy order
+// Future<Response> createPharmacyOrder(Map<String, dynamic> data) async {
+//   return await _dio.post('/api/pharmacy/order', data: data);
+// }
 
 }
 

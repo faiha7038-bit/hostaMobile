@@ -311,7 +311,7 @@ class _BloodState extends State<Blood> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(color: Colors.red),
+            CircularProgressIndicator(color:  Colors.red),
             SizedBox(height: 16),
             Text(
               "Loading donors...",
@@ -535,7 +535,8 @@ class _BloodState extends State<Blood> {
   Widget _buildDonorCard(Map<String, dynamic> donor) {
     final user = donor['userId'] ?? {};
     final address = donor['address'] ?? {};
-    final bloodColor = Colors.red.shade700;
+    final bloodColor = Colors.red;
+    //.shade700;
     
     // Calculate age from date of birth
     final dateOfBirth = donor['dateOfBirth']?.toString() ?? '';

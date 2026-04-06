@@ -366,6 +366,7 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:hosta/presentation/screens/pharmacy/medicine_reminder.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
@@ -390,6 +391,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
     {"name": "Specialties", "icon": Icons.category_outlined, "page": const Specialties()},
     {"name": "Ambulance", "icon": Icons.local_taxi_outlined, "page": const Ambulance()},
     {"name": "Blood", "icon": Icons.bloodtype_outlined, "page": const Blood()},
+    {"name": "Medicine", "icon": Icons.local_pharmacy, "page": const PillReminder()},
   ];
 
   List<String> carouselImages = [];
@@ -832,9 +834,10 @@ Future<void> _checkLocationStatus() async {
                       const SizedBox(height: 14),
                       // Third row: 1 item (centered)
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _buildCard(products[4], (screenWidth - 48) / 2, screenHeight * 0.14, context),
+                          _buildCard(products[5], (screenWidth - 48) / 2, screenHeight * 0.14, context),
                         ],
                       ),
                       const SizedBox(height: 20),

@@ -223,7 +223,9 @@ class _SigninState extends State<Signin> {
 
             if (otpController.text.length == 6 &&
                 !isVerifying &&
-                !isOtpFilled) {
+                !isOtpFilled &&
+                otpError == null) {
+               
               isOtpFilled = true;
               Future.delayed(const Duration(milliseconds: 800), () {
                 if (mounted && !isVerifying) {
