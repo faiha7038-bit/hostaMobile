@@ -25,14 +25,18 @@ class _SignupState extends State<Signup> {
 
   final ApiService _apiService = ApiService();
 
-  Future<void> _submit() async {
+  // ✅ NEW FUNCTION (fix lag)
+  Future<void> _handleSubmit() async {
     if (nameController.text.trim().isEmpty ||
         emailController.text.trim().isEmpty ||
         phoneController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty ||
         confirmController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields"), backgroundColor: Colors.red,),
+        const SnackBar(
+          content: Text("Please fill all fields"),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -46,11 +50,24 @@ class _SignupState extends State<Signup> {
 
     if (!acceptPolicy) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please accept the privacy policy"), backgroundColor: Colors.green,),
+        const SnackBar(
+          content: Text("Please accept the privacy policy"),
+          backgroundColor: Colors.green,
+        ),
       );
       return;
     }
 
+    setState(() => isLoading = true);
+
+    // 🔥 THIS LINE FIXES LAG
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    await _submit();
+  }
+
+  // ✅ CLEANED SUBMIT
+  Future<void> _submit() async {
     final payload = {
       "name": nameController.text.trim(),
       "email": emailController.text.trim(),
@@ -59,38 +76,38 @@ class _SignupState extends State<Signup> {
     };
 
     try {
-      setState(() => isLoading = true);
       final response = await _apiService.signupUser(payload);
+
       setState(() => isLoading = false);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registration successful"), backgroundColor: Colors.green,),
+          const SnackBar(
+            content: Text("Registration successful"),
+            backgroundColor: Colors.green,
+          ),
         );
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const Signin()),
         );
-      } 
-      
-    } 
-      on DioException catch (dioError) {
+      }
+    } on DioException catch (dioError) {
+      setState(() => isLoading = false); // 🔥 FIXED
 
-  String errorMessage = "Something went wrong";
+      String errorMessage = "Something went wrong";
 
-  if (dioError.response != null) {
-    try {
-      errorMessage = dioError.response?.data['message'] ?? errorMessage;
-    } catch (_) {}
-  }
+      if (dioError.response != null) {
+        try {
+          errorMessage = dioError.response?.data['message'] ?? errorMessage;
+        } catch (_) {}
+      }
 
-  showTopSnackBar(context, errorMessage, isError: true);
-
-}
-    
-    
-    catch (e) {
+      showTopSnackBar(context, errorMessage, isError: true);
+    } catch (e) {
       setState(() => isLoading = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
@@ -111,12 +128,9 @@ class _SignupState extends State<Signup> {
             fontSize: 20,
           ),
         ),
-        centerTitle: true, // Added this line to center the title
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new, // Your preferred icon
-            color: Colors.white, // White color for the icon
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -126,7 +140,6 @@ class _SignupState extends State<Signup> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Full Name
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(
@@ -139,7 +152,6 @@ class _SignupState extends State<Signup> {
               ),
               const SizedBox(height: 16),
 
-              // Email
               TextField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -153,7 +165,6 @@ class _SignupState extends State<Signup> {
               ),
               const SizedBox(height: 16),
 
-              // Phone Number
               TextField(
                 controller: phoneController,
                 keyboardType: TextInputType.phone,
@@ -167,7 +178,6 @@ class _SignupState extends State<Signup> {
               ),
               const SizedBox(height: 16),
 
-              // Password
               TextField(
                 controller: passwordController,
                 obscureText: obscurePassword,
@@ -188,7 +198,6 @@ class _SignupState extends State<Signup> {
               ),
               const SizedBox(height: 16),
 
-              // Confirm Password
               TextField(
                 controller: confirmController,
                 obscureText: obscureConfirm,
@@ -209,29 +218,25 @@ class _SignupState extends State<Signup> {
               ),
               const SizedBox(height: 16),
 
-              // Privacy Policy checkbox
               Row(
                 children: [
                   Checkbox(
                     value: acceptPolicy,
                     onChanged: (val) => setState(() => acceptPolicy = val!),
                   ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: const Text.rich(
-                        TextSpan(
-                          text: "I accept the ",
-                          children: [
-                            TextSpan(
-                              text: "Privacy Policy",
-                              style: TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w500,
-                              ),
+                  const Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        text: "I accept the ",
+                        children: [
+                          TextSpan(
+                            text: "Privacy Policy",
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -239,9 +244,9 @@ class _SignupState extends State<Signup> {
               ),
               const SizedBox(height: 20),
 
-              // Submit Button
+              // ✅ FIXED BUTTON
               ElevatedButton(
-                onPressed: isLoading ? null : _submit,
+                onPressed: isLoading ? null : _handleSubmit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   minimumSize: const Size(double.infinity, 50),
@@ -250,15 +255,22 @@ class _SignupState extends State<Signup> {
                   ),
                 ),
                 child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text(
                         "Submit",
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
               ),
+
               const SizedBox(height: 16),
 
-              // Already have an account?
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -285,4 +297,3 @@ class _SignupState extends State<Signup> {
     );
   }
 }
-
