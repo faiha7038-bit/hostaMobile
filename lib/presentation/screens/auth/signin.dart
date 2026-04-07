@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/common/top_snackbar.dart';
@@ -71,6 +73,8 @@ class _SigninState extends State<Signin> {
       setState(() => isSendingOtp = true);
 
       final response = await _apiService.loginUser({"phone": phone});
+    log("status:${response.statusCode}");
+    log("Data:${response.data}");
 
       setState(() => isSendingOtp = false);
 
@@ -543,13 +547,13 @@ class _SigninState extends State<Signin> {
   );
         }
 
-        // if (mounted) {
-        //   Navigator.pushAndRemoveUntil(
-        //     context,
-        //     MaterialPageRoute(builder: (context) => const Bottomnav()),
-        //     (route) => false,
-        //   );
-        // }
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const Bottomnav()),
+            (route) => false,
+          );
+        }
       } else {
         onError(response.data["message"] ?? "Invalid OTP. Please try again.");
       }
