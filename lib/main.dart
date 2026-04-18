@@ -1,21 +1,24 @@
+import 'package:alarm/alarm.dart' show Alarm;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/firebase_msg.dart';
+import 'package:hosta/presentation/screens/pharmacy/medicine_reminder.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:hosta/presentation/screens/home/home.dart';
-
-
-
+//import 'package:hosta/presentation/screens/home/home.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+   WidgetsFlutterBinding.ensureInitialized(); // ✅ required
+  //await AlarmService.init();  
+  await Alarm.init();
+  runApp(MyApp());               // ✅ your line
+  //runApp(const ReminderScreen());  
+  // WidgetsFlutterBinding.ensureInitialized();
+  //   await AlarmService.init();
   await Firebase.initializeApp();
 
   FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-
 
   // Request permission FIRST
   NotificationSettings settings = await messaging.requestPermission(
@@ -148,3 +151,4 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+

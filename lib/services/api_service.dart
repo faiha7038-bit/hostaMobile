@@ -182,7 +182,12 @@ Future<Response> getAllCarousel({
   // GET Ambulances
   Future<Response> getAllAmbulances() async {
     return await _dio.get('/api/ambulance');
+    
   }
+  //  GET MY AMBULANCE 
+Future<Response> getMyAmbulance(String userId) async {
+  return await _dio.get('/api/ambulance/user/$userId');
+}
 
   // GET Notifications
   Future<Response> getAllNotificationRead(String id) async {
@@ -258,6 +263,9 @@ Future<Response> getAllCarousel({
 // Future<Response> createPharmacyOrder(Map<String, dynamic> data) async {
 //   return await _dio.post('/api/pharmacy/order', data: data);
 // }
+Future<Response> getAmbulance(String userId) async {
+  return await _dio.get('/api/ambulance/user/$userId');
+}
 
 }
 
