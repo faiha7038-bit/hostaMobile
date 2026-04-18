@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:hosta/presentation/screens/donate/donate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
@@ -42,15 +41,15 @@ class _ProfileState extends State<Profile> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final storedUserId = prefs.getString('userId');
-      
+
       if (mounted) {
         setState(() {
           userId = storedUserId;
         });
       }
-      
+
       print("📱 Loaded user ID for profile: $userId");
-      
+
       if (userId != null && userId!.isNotEmpty) {
         await _loadProfile();
       } else {
@@ -78,7 +77,7 @@ class _ProfileState extends State<Profile> {
     try {
       // Always load user data
       final userRes = await _apiService.getAUser(userId!);
-      
+
       // Try to load donor data, but handle 404 gracefully
       dynamic donorRes;
       try {
@@ -86,8 +85,11 @@ class _ProfileState extends State<Profile> {
         print("✅ Donor data found for user");
       } catch (e) {
         // Check if it's a 404 error (donor not found) - this is normal for non-donors
-        if (e.toString().contains('404') || e.toString().contains('Client error')) {
-          print("ℹ️ No donor record found for user (this is normal for non-donors)");
+        if (e.toString().contains('404') ||
+            e.toString().contains('Client error')) {
+          print(
+            "ℹ️ No donor record found for user (this is normal for non-donors)",
+          );
           donorRes = null;
         } else {
           // Re-throw if it's a different error
@@ -98,7 +100,7 @@ class _ProfileState extends State<Profile> {
 
       setState(() {
         userData = userRes.data?['data'] ?? userRes.data ?? {};
-        
+
         // Handle donor data based on the response
         if (donorRes == null) {
           donorData = null; // No donor record exists
@@ -119,16 +121,16 @@ class _ProfileState extends State<Profile> {
         phoneController.text = originalPhone!;
       });
 
-      print("✅ Profile loaded successfully");
-      print("🩸 Donor data exists: ${donorData != null}");
+      // print("✅ Profile loaded successfully");
+      // print("🩸 Donor data exists: ${donorData != null}");
       if (donorData != null) {
-        print("🩸 Donor data: $donorData");
+        // print("🩸 Donor data: $donorData");
       }
     } catch (e) {
-      print("❌ Error loading profile: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading profile: $e')),
-      );
+      // print("❌ Error loading profile: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
     } finally {
       setState(() => isLoading = false);
     }
@@ -153,33 +155,33 @@ class _ProfileState extends State<Profile> {
 
   Future<void> _saveProfile() async {
     if (userId == null || userId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User ID not found")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("User ID not found")));
       return;
     }
 
-    if (nameController.text.trim().isEmpty || 
-        emailController.text.trim().isEmpty || 
+    if (nameController.text.trim().isEmpty ||
+        emailController.text.trim().isEmpty ||
         phoneController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
       return;
     }
 
     try {
       setState(() => isSaving = true);
-      
+
       final payload = {
         "name": nameController.text.trim(),
         "email": emailController.text.trim(),
         "phone": phoneController.text.trim(),
       };
-      
+
       // Use the new method that handles image upload
       await _apiService.updateUserWithImage(userId!, payload, imageFile);
-      
+
       // Update original values
       originalName = nameController.text;
       originalEmail = emailController.text;
@@ -192,36 +194,30 @@ class _ProfileState extends State<Profile> {
         isEditing = false;
         isSaving = false;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile updated successfully"), backgroundColor: Colors.green,),
+        const SnackBar(
+          content: Text("Profile updated successfully"),
+          backgroundColor: Colors.green,
+        ),
       );
-      
+
       // Reload to get updated data
       _loadProfile();
-      
-    } 
-    on DioException catch (dioError) {
+    } on DioException catch (dioError) {
+      String errorMessage = "Something went wrong";
 
-  String errorMessage = "Something went wrong";
-
-  if (dioError.response != null) {
-    try {
-      errorMessage = dioError.response?.data['message'] ?? errorMessage;
-    } catch (_) {}
-  }
-
-
-} 
-    
-    
-    
-    catch (e) {
+      if (dioError.response != null) {
+        try {
+          errorMessage = dioError.response?.data['message'] ?? errorMessage;
+        } catch (_) {}
+      }
+    } catch (e) {
       setState(() => isSaving = false);
       print("❌ Error saving profile: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error saving profile: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error saving profile: $e")));
     }
   }
 
@@ -235,7 +231,7 @@ class _ProfileState extends State<Profile> {
         maxHeight: 800,
         imageQuality: 80,
       );
-      
+
       if (pickedFile != null) {
         setState(() {
           imageFile = File(pickedFile.path);
@@ -244,43 +240,45 @@ class _ProfileState extends State<Profile> {
       }
     } catch (e) {
       print("❌ Error picking image: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
     }
   }
 
-  void _showDeleteConfirmation() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Delete Donor Record"),
-          content: const Text("Are you sure you want to delete your donor record? This action cannot be undone."),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Cancel",
-                style: TextStyle(color: Colors.black),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _deleteDonor();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text("Delete"),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // void _showDeleteConfirmation() {
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         title: const Text("Delete Donor Record"),
+  //         content: const Text(
+  //           "Are you sure you want to delete your donor record? This action cannot be undone.",
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             child: const Text(
+  //               "Cancel",
+  //               style: TextStyle(color: Colors.black),
+  //             ),
+  //           ),
+  //           ElevatedButton(
+  //             onPressed: () {
+  //               Navigator.pop(context);
+  //               _deleteDonor();
+  //             },
+  //             style: ElevatedButton.styleFrom(
+  //               backgroundColor: Colors.red,
+  //               foregroundColor: Colors.white,
+  //             ),
+  //             child: const Text("Delete"),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   Future<void> _deleteDonor() async {
     try {
@@ -290,34 +288,30 @@ class _ProfileState extends State<Profile> {
       }
 
       await _apiService.deleteDonor(donorId);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Donor record deleted successfully"), backgroundColor: Colors.green,),
+        const SnackBar(
+          content: Text("Donor record deleted successfully"),
+          backgroundColor: Colors.green,
+        ),
       );
-      
+
       setState(() => donorData = null);
-final prefs = await SharedPreferences.getInstance();
-await prefs.remove('bloodId');
-      
-    } 
-     on DioException catch (dioError) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('bloodId');
+    } on DioException catch (dioError) {
+      String errorMessage = "Something went wrong";
 
-  String errorMessage = "Something went wrong";
-
-  if (dioError.response != null) {
-    try {
-      errorMessage = dioError.response?.data['message'] ?? errorMessage;
-    } catch (_) {}
-  }
-
-
-} 
-    
-    catch (e) {
+      if (dioError.response != null) {
+        try {
+          errorMessage = dioError.response?.data['message'] ?? errorMessage;
+        } catch (_) {}
+      }
+    } catch (e) {
       print("❌ Error deleting donor: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error deleting donor: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error deleting donor: $e")));
     }
   }
 
@@ -361,159 +355,209 @@ await prefs.remove('bloodId');
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Text(
-                  "Profile Information",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                const Spacer(),
-                if (!isEditing)
-                  ElevatedButton.icon(
-                    onPressed: _enableEditing,
-                    icon: const Icon(Icons.edit, size: 18, color: Colors.white),
-                    label: const Text("Edit", style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: const Text(
+                      "Profile Information",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
-                if (isEditing) ...[
-                  TextButton(
-                    onPressed: _cancelEditing,
-                    child: const Text("Cancel", style: TextStyle(color: Colors.red)),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: isSaving ? null : _saveProfile,
-                    icon: isSaving 
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.save, size: 18, color: Colors.white),
-                    label: Text(
-                      isSaving ? "Saving..." : "Save", 
-                      style: const TextStyle(color: Colors.white)
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    ),
+
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      if (!isEditing)
+                        ElevatedButton.icon(
+                          onPressed: _enableEditing,
+                          icon: const Icon(
+                            Icons.edit,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          label: const Text(
+                            "Edit",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                          ),
+                        ),
+
+                      if (isEditing) ...[
+                        TextButton(
+                          onPressed: _cancelEditing,
+                          child: const Text(
+                            "Cancel",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: isSaving ? null : _saveProfile,
+                          icon: isSaving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.save,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                          label: Text(
+                            isSaving ? "Saving..." : "Save",
+                            selectionColor: Colors.white,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
-              ],
-            ),
-            const SizedBox(height: 20),
-            
-            Stack(
-              children: [
-                GestureDetector(
-                  onTap: isEditing ? _pickImage : null,
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey.shade200,
-                    child: _buildProfileImage(),
-                  ),
-                ),
-                if (isEditing)
-                  Positioned(
-                    bottom: 0,
-                    right: 4,
+              ),
+              const SizedBox(height: 20),
+
+              Stack(
+                children: [
+                  GestureDetector(
+                    onTap: isEditing ? _pickImage : null,
                     child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Colors.green,
-                      child: const Icon(Icons.edit, color: Colors.white, size: 18),
+                      radius: 50,
+                      backgroundColor: Colors.grey.shade200,
+                      child: _buildProfileImage(),
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            
-            TextField(
-              controller: nameController,
-              style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w500),
-              decoration: InputDecoration(
-                labelText: "Name",
-                labelStyle: const TextStyle(color: Colors.grey),
-                prefixIcon: const Icon(Icons.person, color: Colors.green),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade400),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.green, width: 2),
-                ),
-                filled: true,
-                fillColor: isEditing ? Colors.grey.shade50 : Colors.grey.shade100,
+                  if (isEditing)
+                    Positioned(
+                      bottom: 0,
+                      right: 4,
+                      child: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.green,
+                        child: const Icon(
+                          Icons.edit,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              enabled: isEditing,
-            ),
-            const SizedBox(height: 16),
-            
-            TextField(
-              controller: emailController,
-              style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w500),
-              decoration: InputDecoration(
-                labelText: "Email",
-                labelStyle: const TextStyle(color: Colors.grey),
-                prefixIcon: const Icon(Icons.email, color: Colors.green),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.grey),
+              const SizedBox(height: 20),
+
+              TextField(
+                controller: nameController,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade400),
+                decoration: InputDecoration(
+                  labelText: "Name",
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  prefixIcon: const Icon(Icons.person, color: Colors.green),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.grey),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.green, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: isEditing
+                      ? Colors.grey.shade50
+                      : Colors.grey.shade100,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.green, width: 2),
-                ),
-                filled: true,
-                fillColor: isEditing ? Colors.grey.shade50 : Colors.grey.shade100,
+                enabled: isEditing,
               ),
-              enabled: isEditing,
-            ),
-            const SizedBox(height: 16),
-            
-            TextField(
-              controller: phoneController,
-              style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w500),
-              decoration: InputDecoration(
-                labelText: "Phone Number",
-                labelStyle: const TextStyle(color: Colors.grey),
-                prefixIcon: const Icon(Icons.phone, color: Colors.green),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.grey),
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: emailController,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade400),
+                decoration: InputDecoration(
+                  labelText: "Email",
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  prefixIcon: const Icon(Icons.email, color: Colors.green),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.grey),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.green, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: isEditing
+                      ? Colors.grey.shade50
+                      : Colors.grey.shade100,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Colors.green, width: 2),
-                ),
-                filled: true,
-                fillColor: isEditing ? Colors.grey.shade50 : Colors.grey.shade100,
+                enabled: isEditing,
               ),
-              keyboardType: TextInputType.phone,
-              enabled: isEditing,
-            ),
-          ],
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: phoneController,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  labelText: "Phone Number",
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  prefixIcon: const Icon(Icons.phone, color: Colors.green),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.grey),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey.shade400),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.green, width: 2),
+                  ),
+                  filled: true,
+                  fillColor: isEditing
+                      ? Colors.grey.shade50
+                      : Colors.grey.shade100,
+                ),
+                keyboardType: TextInputType.phone,
+                enabled: isEditing,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -535,15 +579,15 @@ await prefs.remove('bloodId');
         ),
       );
     }
-    
+
     // Show existing profile image from server
     final pictureData = userData?['picture'];
     String? profileImageUrl;
-    
+
     if (pictureData is Map<String, dynamic>) {
       profileImageUrl = pictureData['imageUrl']?.toString();
     }
-    
+
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
       return ClipOval(
         child: Image.network(
@@ -562,175 +606,175 @@ await prefs.remove('bloodId');
         ),
       );
     }
-    
+
     // Default avatar
     return const Icon(Icons.person, size: 60, color: Colors.grey);
   }
 
-  Widget _buildDonorSection() {
-    if (userId == null || userId!.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  // Widget _buildDonorSection() {
+  //   if (userId == null || userId!.isEmpty) {
+  //     return const SizedBox.shrink();
+  //   }
 
-    // Check if donor data exists and has meaningful content
-    if (donorData == null) {
-      return _buildNoDonorSection();
-    }
+  //   // Check if donor data exists and has meaningful content
+  //   if (donorData == null) {
+  //     return _buildNoDonorSection();
+  //   }
 
-    // Check if donor data is empty or doesn't contain meaningful information
-    if (donorData!.isEmpty) {
-      return _buildNoDonorSection();
-    }
+  //   // Check if donor data is empty or doesn't contain meaningful information
+  //   if (donorData!.isEmpty) {
+  //     return _buildNoDonorSection();
+  //   }
 
-    final address = donorData?['address'] ?? {};
-    
-    final hasBloodGroup = donorData?['bloodGroup'] != null && 
-                         donorData!['bloodGroup'].toString().isNotEmpty;
-    
-    final hasAddressData = address.isNotEmpty && 
-        ((address['country'] != null && address['country']!.toString().isNotEmpty) || 
-         (address['state'] != null && address['state']!.toString().isNotEmpty) || 
-         (address['district'] != null && address['district']!.toString().isNotEmpty));
+  //   final address = donorData?['address'] ?? {};
 
-    if (!hasBloodGroup && !hasAddressData) {
-      return _buildNoDonorSection();
-    }
+  //   final hasBloodGroup = donorData?['bloodGroup'] != null &&
+  //                        donorData!['bloodGroup'].toString().isNotEmpty;
 
-    return Card(
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  "Blood Donation Details",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: _showDeleteConfirmation,
-                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 24),
-                  tooltip: "Delete donor record",
-                ),
-              ],
-            ),
-            const Divider(),
-            
-            if (hasBloodGroup)
-              _buildDonorDetail("Blood Group", _safeToString(donorData?['bloodGroup'])),
-            
-            if (donorData?['dateOfBirth'] != null && donorData!['dateOfBirth'].toString().isNotEmpty)
-              _buildDonorDetail(
-                "Date of Birth", 
-                _safeToString(donorData?['dateOfBirth'])?.split('T').first ?? '-'
-              ),
-            
-            if (hasAddressData) ...[
-              const SizedBox(height: 8),
-              const Text(
-                "Address:",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
-              ),
-              
-              if (address['country'] != null && address['country']!.toString().isNotEmpty)
-                _buildDonorDetail("Country", _safeToString(address['country'])),
-              
-              if (address['state'] != null && address['state']!.toString().isNotEmpty)
-                _buildDonorDetail("State", _safeToString(address['state'])),
-              
-              if (address['district'] != null && address['district']!.toString().isNotEmpty)
-                _buildDonorDetail("District", _safeToString(address['district'])),
-              
-              if (address['place'] != null && address['place']!.toString().isNotEmpty)
-                _buildDonorDetail("Place", _safeToString(address['place'])),
-              
-              if (address['pincode'] != null && address['pincode']!.toString().isNotEmpty)
-                _buildDonorDetail("Pincode", _safeToString(address['pincode'])),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
+  //   final hasAddressData = address.isNotEmpty &&
+  //       ((address['country'] != null && address['country']!.toString().isNotEmpty) ||
+  //        (address['state'] != null && address['state']!.toString().isNotEmpty) ||
+  //        (address['district'] != null && address['district']!.toString().isNotEmpty));
 
-  Widget _buildNoDonorSection() {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const Icon(Icons.bloodtype_outlined, size: 60, color: Colors.grey),
-            const SizedBox(height: 12),
-            const Text(
-              "No Donor Profile Found",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "You haven't registered as a blood donor yet.",
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to donor registration page
-                Navigator.push(context, MaterialPageRoute(builder: (context) => Donate()));
-              },
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text("Register as Donor"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  //   if (!hasBloodGroup && !hasAddressData) {
+  //     return _buildNoDonorSection();
+  //   }
 
-  Widget _buildDonorDetail(String label, String? value) {
-    final displayValue = value ?? '-';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              "$label: ",
-              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87, fontSize: 15),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              displayValue,
-              style: const TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w500),
-              overflow: TextOverflow.visible,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  //   return Card(
+  //     margin: const EdgeInsets.all(16),
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //     elevation: 2,
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(16),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           Row(
+  //             children: [
+  //               const Text(
+  //                 "Blood Donation Details",
+  //                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+  //               ),
+  //               const Spacer(),
+  //               IconButton(
+  //                 onPressed: _showDeleteConfirmation,
+  //                 icon: const Icon(Icons.delete_outline, color: Colors.red, size: 24),
+  //                 tooltip: "Delete donor record",
+  //               ),
+  //             ],
+  //           ),
+  //           const Divider(),
+
+  //           if (hasBloodGroup)
+  //             _buildDonorDetail("Blood Group", _safeToString(donorData?['bloodGroup'])),
+
+  //           if (donorData?['dateOfBirth'] != null && donorData!['dateOfBirth'].toString().isNotEmpty)
+  //             _buildDonorDetail(
+  //               "Date of Birth",
+  //               _safeToString(donorData?['dateOfBirth'])?.split('T').first ?? '-'
+  //             ),
+
+  //           if (hasAddressData) ...[
+  //             const SizedBox(height: 8),
+  //             const Text(
+  //               "Address:",
+  //               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+  //             ),
+
+  //             if (address['country'] != null && address['country']!.toString().isNotEmpty)
+  //               _buildDonorDetail("Country", _safeToString(address['country'])),
+
+  //             if (address['state'] != null && address['state']!.toString().isNotEmpty)
+  //               _buildDonorDetail("State", _safeToString(address['state'])),
+
+  //             if (address['district'] != null && address['district']!.toString().isNotEmpty)
+  //               _buildDonorDetail("District", _safeToString(address['district'])),
+
+  //             if (address['place'] != null && address['place']!.toString().isNotEmpty)
+  //               _buildDonorDetail("Place", _safeToString(address['place'])),
+
+  //             if (address['pincode'] != null && address['pincode']!.toString().isNotEmpty)
+  //               _buildDonorDetail("Pincode", _safeToString(address['pincode'])),
+  //           ],
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  // Widget _buildNoDonorSection() {
+  //   return Card(
+  //     margin: const EdgeInsets.all(16),
+  //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //     elevation: 2,
+  //     child: Padding(
+  //       padding: const EdgeInsets.all(20),
+  //       child: Column(
+  //         children: [
+  //           const Icon(Icons.bloodtype_outlined, size: 60, color: Colors.grey),
+  //           const SizedBox(height: 12),
+  //           const Text(
+  //             "No Donor Profile Found",
+  //             style: TextStyle(
+  //               fontSize: 18,
+  //               fontWeight: FontWeight.bold,
+  //               color: Colors.black87,
+  //             ),
+  //           ),
+  //           const SizedBox(height: 8),
+  //           const Text(
+  //             "You haven't registered as a blood donor yet.",
+  //             style: TextStyle(
+  //               color: Colors.grey,
+  //               fontSize: 14,
+  //             ),
+  //             textAlign: TextAlign.center,
+  //           ),
+  //           const SizedBox(height: 16),
+  //           ElevatedButton.icon(
+  //             onPressed: () {
+  //               // Navigate to donor registration page
+  //               Navigator.push(context, MaterialPageRoute(builder: (context) => Donate()));
+  //             },
+  //             icon: const Icon(Icons.add, size: 18),
+  //             label: const Text("Register as Donor"),
+  //             style: ElevatedButton.styleFrom(
+  //               backgroundColor: Colors.green,
+  //               foregroundColor: Colors.white,
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  // Widget _buildDonorDetail(String label, String? value) {
+  //   final displayValue = value ?? '-';
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(vertical: 6),
+  //     child: Row(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         SizedBox(
+  //           width: 100,
+  //           child: Text(
+  //             "$label: ",
+  //             style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87, fontSize: 15),
+  //           ),
+  //         ),
+  //         const SizedBox(width: 8),
+  //         Expanded(
+  //           child: Text(
+  //             displayValue,
+  //             style: const TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w500),
+  //             overflow: TextOverflow.visible,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   String? _safeToString(dynamic value) {
     if (value == null) return null;
@@ -744,9 +788,9 @@ await prefs.remove('bloodId');
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
         title: const Text(
-          "Profile", 
+          "Profile",
           style: TextStyle(
-            color: Colors.white, 
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -767,7 +811,7 @@ await prefs.remove('bloodId');
               child: ListView(
                 children: [
                   _buildProfileSection(),
-                  _buildDonorSection(),
+                  // _buildDonorSection(),
                 ],
               ),
             ),
