@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hosta/presentation/screens/ambulance/register.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
 import '../../../services/api_service.dart';
@@ -15,6 +16,7 @@ class _AmbulanceState extends State<Ambulance> {
   List<dynamic> ambulanceList = [];
   bool isLoading = true;
   String searchQuery = '';
+    String? ambulanceId;
   
   // Filter variables (same as blood donor page)
   String selectedCountry = '';
@@ -27,6 +29,16 @@ class _AmbulanceState extends State<Ambulance> {
     super.initState();
     fetchAmbulances();
   }
+  void _handleAmbulanceRegister() {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const AmbulanceRegister(), // your add screen
+    ),
+  ).then((_) {
+    fetchAmbulances(); // refresh after adding
+  });
+}
 
   // ✅ Fetch all ambulances
   Future<void> fetchAmbulances() async {
@@ -211,22 +223,44 @@ class _AmbulanceState extends State<Ambulance> {
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() => searchQuery = value);
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Search ambulance service...",
-                      prefixIcon:
-                          const Icon(Icons.search, color: Colors.grey),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          onChanged: (value) {
+                            setState(() => searchQuery = value);
+                          },
+                          decoration: InputDecoration(
+                            hintText: "Search ambulance service...",
+                            prefixIcon:
+                                const Icon(Icons.search, color: Colors.grey),
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8,),
+                      if(ambulanceId == null)...{
+                           ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+               onPressed: _handleAmbulanceRegister,
+               child: const Text("Register", style: TextStyle(color: Colors.white)),
+              ),
+                      }else...{
+                      SizedBox.shrink()
+                      }
+                    ],
                   ),
+
                 ),
 
                 // 🗺️ Location Filter Row

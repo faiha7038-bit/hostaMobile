@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/data/models/doctor_model.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
+import 'package:hosta/presentation/screens/doctor/doctor_detail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
@@ -267,10 +268,13 @@ class _DoctorsState extends State<Doctors> {
     String firstLetter = 'D';
     if (doctor.name.trim().isNotEmpty) {
       firstLetter = doctor.name.trim()[0].toUpperCase();
+      
     }
     
     return GestureDetector(
-      onTap: () => _showDoctorDetails(context, doctor),
+      onTap: () =>{
+        Navigator.push(context, MaterialPageRoute(builder: (context)=>DoctorDetailScreen()))
+      },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -424,7 +428,7 @@ class _DoctorsState extends State<Doctors> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.transparent, 
       builder: (context) {
         return DoctorDetailsSheet(doctor: doctor, onBook: _showBookingSheet);
       },
