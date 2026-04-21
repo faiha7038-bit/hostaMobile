@@ -137,7 +137,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     if (value is Map) return value.toString();
     if (value is num) return value.toString();
     return defaultValue;
-  }
+  } 
 
   // Helper method to safely extract profile image URL based on your structure
   // picture: { imageUrl: { type: String }, public_id: { type: String } }

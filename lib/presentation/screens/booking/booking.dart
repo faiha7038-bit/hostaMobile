@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:intl/intl.dart';
@@ -52,15 +51,15 @@ class _BookingState extends State<Booking> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final storedUserId = prefs.getString('userId');
-      
+
       if (mounted) {
         setState(() {
           userId = storedUserId;
         });
       }
-      
+
       print("📱 Loaded user ID for bookings: $userId");
-      
+
       if (userId != null && userId!.isNotEmpty) {
         await _fetchBookings();
       } else {
@@ -87,7 +86,7 @@ class _BookingState extends State<Booking> {
     try {
       final response = await ApiService().getAllBookings(userId!);
       print("📋 Bookings API Response: ${response.data}");
-      
+
       // Handle different response structures
       dynamic bookingsData;
       if (response.data is Map && response.data.containsKey('data')) {
@@ -99,32 +98,34 @@ class _BookingState extends State<Booking> {
       }
 
       if (bookingsData is List) {
-        bookings = List<Map<String, dynamic>>.from(bookingsData.map((b) {
-          // Extract hospital data correctly
-          final hospitalData = b["hospitalId"] is Map ? b["hospitalId"] : {};
-          final hospitalName = hospitalData["name"] ?? "Unknown Hospital";
-          final hospitalType = hospitalData["type"] ?? "General";
-          final hospitalId = hospitalData["_id"] ?? b["hospitalId"] ?? "";
+        bookings = List<Map<String, dynamic>>.from(
+          bookingsData.map((b) {
+            // Extract hospital data correctly
+            final hospitalData = b["hospitalId"] is Map ? b["hospitalId"] : {};
+            final hospitalName = hospitalData["name"] ?? "Unknown Hospital";
+            final hospitalType = hospitalData["type"] ?? "General";
+            final hospitalId = hospitalData["_id"] ?? b["hospitalId"] ?? "";
 
-          return {
-            "id": b["bookingId"] ?? b["_id"] ?? "",
-            "hospital_id": hospitalId,
-            "hospital": hospitalName,
-            "type": hospitalType,
-            "doctor": b["doctor_name"] ?? "Not specified",
-            "specialty": b["specialty"] ?? "General",
-            "date": _parseDate(b["booking_date"]),
-            "status": (b["status"] ?? "pending").toString().toLowerCase(),
-            "time": b["booking_time"] ?? "N/A",
-            "patient_name": b["patient_name"] ?? "",
-            "patient_phone": b["patient_phone"] ?? "",
-            "patient_place": b["patient_place"] ?? "",
-          };
-        }));
+            return {
+              "id": b["bookingId"] ?? b["_id"] ?? "",
+              "hospital_id": hospitalId,
+              "hospital": hospitalName,
+              "type": hospitalType,
+              "doctor": b["doctor_name"] ?? "Not specified",
+              "specialty": b["specialty"] ?? "General",
+              "date": _parseDate(b["booking_date"]),
+              "status": (b["status"] ?? "pending").toString().toLowerCase(),
+              "time": b["booking_time"] ?? "N/A",
+              "patient_name": b["patient_name"] ?? "",
+              "patient_phone": b["patient_phone"] ?? "",
+              "patient_place": b["patient_place"] ?? "",
+            };
+          }),
+        );
       } else {
         bookings = [];
       }
-      
+
       print("✅ Loaded ${bookings.length} bookings");
     } catch (e) {
       print("❌ Error fetching bookings: $e");
@@ -140,7 +141,7 @@ class _BookingState extends State<Booking> {
     try {
       // Replace with your backend URL
       const String serverUrl = 'https://www.zorrowtek.in';
-      
+
       // Don't create socket if userId is null
       if (userId == null || userId!.isEmpty) {
         print("⚠️ Cannot setup socket: No user ID");
@@ -166,7 +167,7 @@ class _BookingState extends State<Booking> {
         setState(() {
           _isSocketConnected = true;
         });
-        
+
         // Join user-specific room after connection
         _joinUserRoom();
       });
@@ -222,16 +223,18 @@ class _BookingState extends State<Booking> {
 
       socket!.connect();
       print('🔌 Socket.IO connection initiated for user: $userId');
-
     } catch (e) {
       print('❌ Error setting up socket: $e');
     }
   }
 
   void _joinUserRoom() {
-    if (socket != null && socket!.connected && userId != null && userId!.isNotEmpty) {
+    if (socket != null &&
+        socket!.connected &&
+        userId != null &&
+        userId!.isNotEmpty) {
       socket!.emit('joinUserRoom', {'userId': userId});
-      
+
       // You can also request to join booking-specific rooms
       for (var booking in bookings) {
         if (booking['id'] != null && booking['id'].toString().isNotEmpty) {
@@ -243,33 +246,36 @@ class _BookingState extends State<Booking> {
 
   void _handleSocketNotification(dynamic data, String eventType) {
     if (!mounted) return;
-    
+
     try {
       // Extract user ID from notification data
       final notificationUserId = data['userId']?.toString();
       final bookingId = data['bookingId']?.toString();
-      
-      print('📱 Processing $eventType for user: $notificationUserId, booking: $bookingId');
-      
+
+      print(
+        '📱 Processing $eventType for user: $notificationUserId, booking: $bookingId',
+      );
+
       // Check if the notification is for this user
       if (notificationUserId == userId) {
         print('🔄 Refreshing bookings due to socket notification');
-        
+
         // Show a snackbar to notify user
         if (eventType == 'bookingCreated') {
           showTopSnackBar(
-            context, 
+            context,
             "New booking created! Refreshing...",
             isError: false,
           );
-        } else if (eventType == 'bookingUpdate' || eventType == 'bookingStatusChanged') {
+        } else if (eventType == 'bookingUpdate' ||
+            eventType == 'bookingStatusChanged') {
           showTopSnackBar(
-            context, 
+            context,
             "Booking updated! Refreshing...",
             isError: false,
           );
         }
-        
+
         // Refresh the bookings list
         _fetchBookings().then((_) {
           // Rejoin booking rooms after fetching new bookings
@@ -298,21 +304,21 @@ class _BookingState extends State<Booking> {
   String _formatTime(dynamic time) {
     try {
       if (time == null || time == "N/A") return "N/A";
-      
+
       String timeStr = time.toString().trim();
-      
+
       // If time is already in a good format, return as is
       if (timeStr.contains(':') && timeStr.length <= 5) {
         return timeStr;
       }
-      
+
       // Handle different time formats if needed
       if (timeStr.contains('T')) {
         // Handle ISO format
         DateTime dateTime = DateTime.parse(timeStr);
         return DateFormat('HH:mm').format(dateTime);
       }
-      
+
       return timeStr;
     } catch (e) {
       return time?.toString() ?? "N/A";
@@ -322,16 +328,17 @@ class _BookingState extends State<Booking> {
   List<Map<String, dynamic>> get filteredBookings {
     return bookings.where((b) {
       final matchesFilter =
-          selectedFilter == "All" || b["status"] == selectedFilter.toLowerCase();
-      final matchesSearch = b["hospital"]
-              .toString()
-              .toLowerCase()
-              .contains(searchQuery.toLowerCase()) ||
-          b["doctor"]
-              .toString()
-              .toLowerCase()
-              .contains(searchQuery.toLowerCase());
-      final matchesDate = selectedDate == null ||
+          selectedFilter == "All" ||
+          b["status"] == selectedFilter.toLowerCase();
+      final matchesSearch =
+          b["hospital"].toString().toLowerCase().contains(
+            searchQuery.toLowerCase(),
+          ) ||
+          b["doctor"].toString().toLowerCase().contains(
+            searchQuery.toLowerCase(),
+          );
+      final matchesDate =
+          selectedDate == null ||
           b["date"] == DateFormat('yyyy-MM-dd').format(selectedDate!);
       return matchesFilter && matchesSearch && matchesDate;
     }).toList();
@@ -353,21 +360,23 @@ class _BookingState extends State<Booking> {
   Future<void> _cancelBooking(Map<String, dynamic> booking) async {
     final bookingId = booking["id"].toString();
     final hospitalId = booking["hospital_id"].toString();
-    
+
     if (bookingId.isEmpty || hospitalId.isEmpty) {
       showTopSnackBar(context, "Invalid booking data", isError: true);
       return;
     }
 
     try {
-      await ApiService().updateBooking(bookingId, hospitalId, {"status": "cancel"});
+      await ApiService().updateBooking(bookingId, hospitalId, {
+        "status": "cancel",
+      });
       if (mounted) {
         setState(() {
           booking["status"] = "cancel";
         });
       }
       showTopSnackBar(context, "Booking cancelled successfully");
-      
+
       // Refresh bookings after cancellation
       await _fetchBookings();
     } catch (e) {
@@ -386,10 +395,7 @@ class _BookingState extends State<Booking> {
           backgroundColor: Colors.green,
           title: const Text(
             "My Bookings",
-            style: TextStyle(
-              fontWeight: FontWeight.bold, 
-              color: Colors.white,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           ),
           centerTitle: true,
         ),
@@ -421,10 +427,7 @@ class _BookingState extends State<Booking> {
         backgroundColor: Colors.green,
         title: const Text(
           "My Bookings",
-          style: TextStyle(
-            fontWeight: FontWeight.bold, 
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
         actions: [
@@ -499,31 +502,42 @@ class _BookingState extends State<Booking> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: ["All", "Pending", "Accepted", "Declined", "Cancelled"]
-                          .map(
-                            (f) => Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: ChoiceChip(
-                                label: Text(f),
-                                selected: selectedFilter == f,
-                                onSelected: (_) {
-                                  setState(() {
-                                    selectedFilter = f;
-                                    if (f == "All") {
-                                      selectedDate = null;
-                                      _searchController.clear();
-                                      searchQuery = "";
-                                    }
-                                  });
-                                },
-                                selectedColor: Colors.green,
-                                labelStyle: TextStyle(
-                                  color: selectedFilter == f ? Colors.white : Colors.black,
+                      children:
+                          [
+                                "All",
+                                "Pending",
+                                "Accepted",
+                                "Declined",
+                                "Cancelled",
+                              ]
+                              .map(
+                                (f) => Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: ChoiceChip(
+                                    label: Text(f),
+                                    selected: selectedFilter == f,
+                                    onSelected: (_) {
+                                      setState(() {
+                                        selectedFilter = f;
+                                        if (f == "All") {
+                                          selectedDate = null;
+                                          _searchController.clear();
+                                          searchQuery = "";
+                                        }
+                                      });
+                                    },
+                                    selectedColor: Colors.green,
+                                    labelStyle: TextStyle(
+                                      color: selectedFilter == f
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          )
-                          .toList(),
+                              )
+                              .toList(),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -535,14 +549,19 @@ class _BookingState extends State<Booking> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.event_busy, size: 60, color: Colors.grey),
+                                Icon(
+                                  Icons.event_busy,
+                                  size: 60,
+                                  color: Colors.grey,
+                                ),
                                 SizedBox(height: 16),
                                 Text(
                                   "No bookings found",
                                   style: TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                      fontWeight: FontWeight.w600),
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -553,27 +572,31 @@ class _BookingState extends State<Booking> {
                               final b = bookingsToShow[index];
                               return Card(
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                                 margin: const EdgeInsets.symmetric(vertical: 8),
                                 elevation: 3,
                                 child: Padding(
                                   padding: const EdgeInsets.all(12),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.local_hospital,
-                                              color: Colors.green),
+                                          const Icon(
+                                            Icons.local_hospital,
+                                            color: Colors.green,
+                                          ),
                                           const SizedBox(width: 8),
                                           Expanded(
-                                            child: Text(                                         
+                                            child: Text(
                                               b["hospital"],
-                                              overflow: TextOverflow.ellipsis,                                       
+                                              overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16),
-                                                   
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -581,8 +604,10 @@ class _BookingState extends State<Booking> {
                                       const SizedBox(height: 6),
                                       Row(
                                         children: [
-                                          const Icon(Icons.person,
-                                              color: Colors.green),
+                                          const Icon(
+                                            Icons.person,
+                                            color: Colors.green,
+                                          ),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
@@ -595,8 +620,10 @@ class _BookingState extends State<Booking> {
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          const Icon(Icons.medical_services,
-                                              color: Colors.green),
+                                          const Icon(
+                                            Icons.medical_services,
+                                            color: Colors.green,
+                                          ),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
@@ -609,8 +636,10 @@ class _BookingState extends State<Booking> {
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          const Icon(Icons.health_and_safety,
-                                              color: Colors.green),
+                                          const Icon(
+                                            Icons.health_and_safety,
+                                            color: Colors.green,
+                                          ),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
@@ -623,8 +652,10 @@ class _BookingState extends State<Booking> {
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          const Icon(Icons.calendar_today,
-                                              color: Colors.green),
+                                          const Icon(
+                                            Icons.calendar_today,
+                                            color: Colors.green,
+                                          ),
                                           const SizedBox(width: 8),
                                           Text("Date: ${b["date"]}"),
                                         ],
@@ -632,18 +663,25 @@ class _BookingState extends State<Booking> {
                                       const SizedBox(height: 4),
                                       Row(
                                         children: [
-                                          const Icon(Icons.access_time,
-                                              color: Colors.green),
+                                          const Icon(
+                                            Icons.access_time,
+                                            color: Colors.green,
+                                          ),
                                           const SizedBox(width: 8),
-                                          Text("Time: ${_formatTime(b["time"])}"),
+                                          Text(
+                                            "Time: ${_formatTime(b["time"])}",
+                                          ),
                                         ],
                                       ),
-                                      if (b["patient_name"]?.isNotEmpty == true) ...[
+                                      if (b["patient_name"]?.isNotEmpty ==
+                                          true) ...[
                                         const SizedBox(height: 4),
                                         Row(
                                           children: [
-                                            const Icon(Icons.person_outline,
-                                                color: Colors.green),
+                                            const Icon(
+                                              Icons.person_outline,
+                                              color: Colors.green,
+                                            ),
                                             const SizedBox(width: 8),
                                             Expanded(
                                               child: Text(
@@ -656,41 +694,52 @@ class _BookingState extends State<Booking> {
                                       ],
                                       const Divider(height: 20),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           // Status badge
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                                horizontal: 12, vertical: 4),
+                                              horizontal: 12,
+                                              vertical: 4,
+                                            ),
                                             decoration: BoxDecoration(
                                               color: b["status"] == "accepted"
                                                   ? Colors.green
                                                   : b["status"] == "declined"
-                                                      ? Colors.orange
-                                                      : b["status"] == "cancelled" || b["status"] == "cancel"
-                                                          ? Colors.red
-                                                          : b["status"] == "pending"
-                                                              ? Colors.blue
-                                                              : Colors.grey,
-                                              borderRadius: BorderRadius.circular(12),
+                                                  ? Colors.orange
+                                                  : b["status"] ==
+                                                            "cancelled" ||
+                                                        b["status"] == "cancel"
+                                                  ? Colors.red
+                                                  : b["status"] == "pending"
+                                                  ? Colors.blue
+                                                  : Colors.grey,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
                                             child: Text(
-                                              b["status"].toString().toUpperCase(),
+                                              b["status"]
+                                                  .toString()
+                                                  .toUpperCase(),
                                               style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold),
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                           // Cancel button only for pending bookings
                                           if (b["status"] == "pending")
                                             ElevatedButton(
-                                              onPressed: () => _cancelBooking(b),
+                                              onPressed: () =>
+                                                  _cancelBooking(b),
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor: Colors.red,
                                                 foregroundColor: Colors.white,
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
                                               ),
                                               child: const Text("Cancel"),
