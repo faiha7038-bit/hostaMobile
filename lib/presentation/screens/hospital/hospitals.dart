@@ -230,7 +230,7 @@ class _HospitalsState extends State<Hospitals> {
 
   void _navigateToHospitalDetails(dynamic hospital) {
     Navigator.push(
-      context,
+      context, 
       MaterialPageRoute(
         builder: (context) => HospitalDetailsPage(
           hospitalId: hospital["_id"], // Pass the hospital ID

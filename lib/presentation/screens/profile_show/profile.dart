@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/presentation/screens/ambulance/ambulance_details.dart';
+import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/blood_details.dart';
 import 'package:hosta/presentation/screens/contact/contact.dart';
 import 'package:hosta/presentation/screens/profile-edit/profile.dart';
@@ -394,6 +395,115 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             child: Column(
                               children: [
                                 _buildProfileOption(
+                                  icon: Icons.local_taxi_outlined,
+                                  title: 'Ambulance',
+                                  subtitle: 'About ambulance',
+                                  onTap: () async {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    String userId =
+                                        prefs.getString('userId') ?? '';
+                                    if (userId.isEmpty) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text("Login Required"),
+                                          content: const Text(
+                                            "Please login first",
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                              child: const Text("Cancel",style: TextStyle(color: Colors.black),),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        Signin(),
+                                                  ),
+                                                );
+                                              },
+                                              child: const Text("Login",style: TextStyle(color: Colors.green),),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AmbulanceDetailsPage(
+                                              // userId: userId,
+                                            ),
+                                      ),
+                                    );
+                                  },
+                                ),
+
+                                const Divider(height: 0),
+                                _buildProfileOption(
+                                  icon: Icons.water_drop_outlined,
+                                  title: 'Blood',
+                                  subtitle: 'About Blood',
+                                  onTap: () async {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    String userId =
+                                        prefs.getString('userId') ?? '';
+
+                                    if (userId.isEmpty) {
+                                       showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text("Login Required"),
+                                          content: const Text(
+                                            "Please login first",
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context),
+                                              child: const Text("Cancel",style: TextStyle(color: Colors.black),),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        Signin(),
+                                                  ),
+                                                );
+                                              },
+                                              child: const Text("Login",style: TextStyle(color: Colors.green),),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            MyBloodDetailsPage(userId: userId),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const Divider(height: 0),
+
+                                _buildProfileOption(
                                   icon: Icons.settings_outlined,
                                   title: 'Settings',
                                   subtitle: 'App settings and preferences',
@@ -412,59 +522,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                   title: 'About',
                                   subtitle: 'About this app',
                                   onTap: _showAboutDialog,
-                                ),
-                                const Divider(height: 0),
-                                _buildProfileOption(
-                                  icon: Icons.water_drop_outlined,
-                                  title: 'Blood',
-                                  subtitle: 'About Blood',
-                                  onTap: () async {
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    String userId =
-                                        prefs.getString('userId') ?? '';
-
-                                    if (userId.isEmpty) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Please login first"),
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            MyBloodDetailsPage(userId: userId),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const Divider(height: 0),
-                                _buildProfileOption(
-                                  icon: Icons.local_taxi_outlined,
-                                  title: 'Ambulance',
-                                  subtitle: 'About ambulance',
-                                  onTap: () async {
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    String userId =
-                                        prefs.getString('userId') ?? '';
-
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            AmbulanceDetailsPage(
-                                              userId: userId,
-                                            ),
-                                      ),
-                                    );
-                                  },
                                 ),
                               ],
                             ),

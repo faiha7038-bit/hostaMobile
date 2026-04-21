@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hosta/presentation/screens/donate/donate.dart';
+import 'package:hosta/presentation/screens/blood/donate.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -436,22 +436,23 @@ class _BloodState extends State<Blood> {
                 child: const Text("Donate", style: TextStyle(color: Colors.white)),
               ),
             ] else ...[
+               const SizedBox.shrink(),
               // Show registered status
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, size: 16, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text("Registered", style: TextStyle(color: Colors.white, fontSize: 12)),
-                  ],
-                ),
-              ),
+              // Container(
+              //   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              //   decoration: BoxDecoration(
+              //     color: Colors.green,
+              //     borderRadius: BorderRadius.circular(10),
+              //   ),
+              //   child: const Row(
+              //     mainAxisSize: MainAxisSize.min,
+              //     children: [
+              //       Icon(Icons.check_circle, size: 16, color: Colors.white),
+              //       SizedBox(width: 4),
+              //       Text("Registered", style: TextStyle(color: Colors.white, fontSize: 12)),
+              //     ],
+              //   ),
+              // ),
             ],
           ],
         ),

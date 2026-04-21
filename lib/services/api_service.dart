@@ -267,6 +267,7 @@ Future<Response> getAmbulance(String userId) async {
   return await _dio.get('/api/ambulance/user/$userId');
 }
 
+
 }
 
   
