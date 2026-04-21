@@ -1,43 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/providers/amb_detail-provider.dart';
 
-class AmbulanceDetailsPage extends StatefulWidget {
+class AmbulanceDetailsPage extends ConsumerWidget {
   const AmbulanceDetailsPage({super.key});
 
   @override
-  State<AmbulanceDetailsPage> createState() => _AmbulanceDetailsPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ambulanceProvider);
 
-class _AmbulanceDetailsPageState extends State<AmbulanceDetailsPage> {
-   bool isAvailable = true;
-  @override
-  
-  Widget build(BuildContext context) {
-    
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: Text("Ambulance Details", style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+        title: const Text(
+          "Ambulance Details",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.green,
-        elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
         ),
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             Padding(
-              padding: EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(8.0),
               child: Container(
                 width: double.infinity,
                 height: 220,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  image: DecorationImage(
+                  image: const DecorationImage(
                     image: AssetImage("assets/ambulance.jpg"),
                     fit: BoxFit.cover,
                   ),
@@ -45,17 +41,16 @@ class _AmbulanceDetailsPageState extends State<AmbulanceDetailsPage> {
               ),
             ),
 
-             SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-            // Card Section
             Padding(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildInfoCard(),
-                 SizedBox(height: 16),
+                  _buildInfoCard(context, ref),
+                  const SizedBox(height: 16),
                   _buildFacilityCard(),
-                SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildActionButtons(),
                 ],
               ),
@@ -66,9 +61,11 @@ class _AmbulanceDetailsPageState extends State<AmbulanceDetailsPage> {
     );
   }
 
-  Widget _buildInfoCard() {
+  Widget _buildInfoCard(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(ambulanceProvider);
+
     return Container(
-      padding:  EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -76,7 +73,6 @@ class _AmbulanceDetailsPageState extends State<AmbulanceDetailsPage> {
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset:  Offset(0, 4),
           ),
         ],
       ),
@@ -86,30 +82,30 @@ class _AmbulanceDetailsPageState extends State<AmbulanceDetailsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 "KL-11-AB-1234",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-               Row(
-      children: [
-        Text("Available"),
-        Switch(
-          value: isAvailable,
-          onChanged: (val) {
-            setState(() {
-              isAvailable = val;
-            });
-          },
-        ),
-      ],
-    ),
+              Row(
+                children: [
+                  Text(state.isAvailable ? "Available" : "Not Available"),
+                  Switch(
+                    value: state.isAvailable,
+                    onChanged: (val) {
+                      ref
+                          .read(ambulanceProvider.notifier)
+                          .toggleAvailability(val);
+                    },
+                  ),
+                ],
+              ),
             ],
           ),
-          SizedBox(height: 10),
-          Text("Type: ICU"),
-          Text("Driver: Rahman"),
-          Text("Phone: 9876543210"),
-          Text("Location: Calicut"),
+          const SizedBox(height: 10),
+          const Text("Type: ICU"),
+          const Text("Driver: Rahman"),
+          const Text("Phone: 9876543210"),
+          const Text("Location: Calicut"),
         ],
       ),
     );
@@ -138,10 +134,10 @@ class _AmbulanceDetailsPageState extends State<AmbulanceDetailsPage> {
           Wrap(
             spacing: 8,
             children: facilities
-                .map(
-                  (f) =>
-                      Chip(label: Text(f), backgroundColor: Colors.red.shade50),
-                )
+                .map((f) => Chip(
+                      label: Text(f),
+                      backgroundColor: Colors.red.shade50,
+                    ))
                 .toList(),
           ),
         ],
@@ -150,19 +146,12 @@ class _AmbulanceDetailsPageState extends State<AmbulanceDetailsPage> {
   }
 
   Widget _buildActionButtons() {
-    
     return Row(
-         
       mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        IconButton(
-          onPressed: () {},
-          icon: Icon(Icons.edit, color: Colors.black),
-        ),
-        IconButton(
-          onPressed: () {},
-          icon: Icon(Icons.delete_forever_rounded, color: Colors.black),
-        ),
+      children: const [
+        Icon(Icons.edit, color: Colors.black),
+        SizedBox(width: 10),
+        Icon(Icons.delete_forever_rounded, color: Colors.black),
       ],
     );
   }
