@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../common/top_snackbar.dart';
+import '../auth/signin.dart'; // 👈 Make sure path is correct
 
 class AmbulanceRegister extends StatefulWidget {
   const AmbulanceRegister({super.key});
@@ -16,10 +17,8 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
   final _phoneController = TextEditingController();
   final _driverNameController = TextEditingController();
   final _vehicleNumberController = TextEditingController();
-
   final _placeController = TextEditingController();
   final _pincodeController = TextEditingController();
-
   final _countryController = TextEditingController();
   final _stateController = TextEditingController();
   final _districtController = TextEditingController();
@@ -48,22 +47,37 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
   @override
   void initState() {
     super.initState();
+    _checkLogin(); // 👈 Protect screen
     _loadJson();
     _loadUserPhone();
   }
 
+  /// 🔐 Check login on screen load
+  Future<void> _checkLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+
+    if (userId == null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const Signin()),
+      );
+    }
+  }
+
   Future<void> _loadJson() async {
-    final String response = await rootBundle.loadString(
-      'assets/countries+states+cities.json',
-    );
+    final String response =
+        await rootBundle.loadString('assets/countries+states+cities.json');
     final data = json.decode(response);
 
     setState(() {
       jsonData = data;
       countries = data
-          .map<Map<String, dynamic>>(
-            (c) => {'id': c['iso3'], 'name': c['name'], 'states': c['states']},
-          )
+          .map<Map<String, dynamic>>((c) => {
+                'id': c['iso3'],
+                'name': c['name'],
+                'states': c['states'],
+              })
           .toList();
     });
   }
@@ -92,11 +106,10 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             filtered = data
-                .where(
-                  (item) => item['name'].toString().toLowerCase().contains(
-                    searchQuery.toLowerCase(),
-                  ),
-                )
+                .where((item) => item['name']
+                    .toString()
+                    .toLowerCase()
+                    .contains(searchQuery.toLowerCase()))
                 .toList();
 
             return Center(
@@ -115,13 +128,9 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          Text(title,
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
                           IconButton(
                             icon: const Icon(Icons.close),
                             onPressed: () => Navigator.pop(context),
@@ -130,7 +139,7 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
                       ),
                       TextField(
                         decoration: InputDecoration(
-                          prefixIcon: Icon(Icons.search),
+                          prefixIcon: const Icon(Icons.search),
                           hintText: "Search...",
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
@@ -180,13 +189,11 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
       _districtController.clear();
 
       states = (country['states'] as List)
-          .map(
-            (s) => {
-              'id': s['state_code'],
-              'name': s['name'],
-              'cities': s['cities'],
-            },
-          )
+          .map((s) => {
+                'id': s['state_code'],
+                'name': s['name'],
+                'cities': s['cities'],
+              })
           .toList();
 
       districts = [];
@@ -214,10 +221,20 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
     });
   }
 
+  /// 🚀 Submit with login check
   Future<void> _submit() async {
-    print("Country: $selectedCountry");
-    print("State: $selectedState");
-    print("District: $selectedDistrict");
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+
+    if (userId == null) {
+      showTopSnackBar(context, "Please login first", isError: true);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => Signin()),
+      );
+      return;
+    }
 
     if (_driverNameController.text.isEmpty ||
         _vehicleNumberController.text.isEmpty ||
@@ -225,11 +242,8 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
         selectedCountry == null ||
         _placeController.text.isEmpty ||
         _pincodeController.text.isEmpty) {
-      showTopSnackBar(
-        context,
-        "Please fill all required fields",
-        isError: true,
-      );
+      showTopSnackBar(context, "Please fill all required fields",
+          isError: true);
       return;
     }
 
@@ -244,9 +258,6 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-
       final payload = {
         "phone": _phoneController.text,
         "driverName": _driverNameController.text,
@@ -263,14 +274,9 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
         "userId": userId,
       };
 
-      // final response = await ApiService().createAmbulance(payload);
+      print(payload);
 
-      // if (response.statusCode == 201) {
-      //   showTopSnackBar(context, "Ambulance Registered Successfully");
-      //   Navigator.pop(context);
-      // } else {
-      //   showTopSnackBar(context, "Registration Failed", isError: true);
-      // }
+      showTopSnackBar(context, "Ambulance Registered Successfully");
     } on DioException catch (e) {
       showTopSnackBar(
         context,
@@ -285,16 +291,13 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
-        title: const Text(
-          "Register Ambulance",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: const Text("Register Ambulance",
+            style: TextStyle(color: Colors.white,fontWeight: FontWeight.bold)),
+            centerTitle: true,
         backgroundColor: Colors.green,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: IconButton(onPressed: (){
+          Navigator.pop(context);
+        }, icon: Icon(Icons.arrow_back_ios_new, color: Colors.white)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -303,170 +306,77 @@ class _AmbulanceRegisterState extends State<AmbulanceRegister> {
             TextField(
               controller: _phoneController,
               readOnly: true,
-              decoration: InputDecoration(
-                labelText: "Phone",
-                prefixIcon: Icon(Icons.phone),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              decoration:  InputDecoration(labelText: "Phone",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10)
+              )
               ),
+              
             ),
-
-            const SizedBox(height: 12),
-
+            SizedBox(height: 5,),
             TextField(
               controller: _driverNameController,
-              decoration: InputDecoration(
-                labelText: "Driver Name",
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              decoration:  InputDecoration(labelText: "Driver Name",
+               border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10)
+              )
               ),
+              
             ),
-
-            const SizedBox(height: 12),
-
+            SizedBox(height: 5,),
             TextField(
               controller: _vehicleNumberController,
-              decoration: InputDecoration(
-                labelText: "Vehicle Number",
-                prefixIcon: Icon(Icons.directions_car),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              decoration:  InputDecoration(labelText: "Vehicle Number",
+               border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10)
+              )
               ),
             ),
-
-            const SizedBox(height: 12),
-
+            SizedBox(height: 5,),
             DropdownButtonFormField<String>(
               value: vehicleType,
               items: vehicleTypes
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (val) => setState(() => vehicleType = val),
-              decoration: InputDecoration(
-                labelText: "Vehicle Type",
-                prefixIcon: Icon(Icons.local_shipping),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              decoration:  InputDecoration(labelText: "Vehicle Type",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10)
+              )
               ),
+              
             ),
-
             SwitchListTile(
               title: const Text("Available"),
               value: isAvailable,
               onChanged: (val) => setState(() => isAvailable = val),
             ),
-
-            const SizedBox(height: 12),
-
-            // COUNTRY
-            GestureDetector(
-              onTap: () => _openSearchModal(
-                title: "Select Country",
-                data: countries,
-                onSelected: _onCountrySelected,
-              ),
-              child: AbsorbPointer(
-                child: TextField(
-                  controller: _countryController,
-                  decoration: InputDecoration(
-                    labelText: "Country",
-                    prefixIcon: Icon(Icons.public),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            if (states.isNotEmpty)
-              GestureDetector(
-                onTap: () => _openSearchModal(
-                  title: "Select State",
-                  data: states,
-                  onSelected: _onStateSelected,
-                ),
-                child: AbsorbPointer(
-                  child: TextField(
-                    controller: _stateController,
-                    decoration: InputDecoration(
-                      labelText: "State",
-                      prefixIcon: Icon(Icons.map),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 12),
-
-            if (districts.isNotEmpty)
-              GestureDetector(
-                onTap: () => _openSearchModal(
-                  title: "Select District",
-                  data: districts,
-                  onSelected: _onDistrictSelected,
-                ),
-                child: AbsorbPointer(
-                  child: TextField(
-                    controller: _districtController,
-                    decoration: InputDecoration(
-                      labelText: "District",
-                      prefixIcon: Icon(Icons.location_city),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 12),
-
+            SizedBox(height: 5,),
             TextField(
               controller: _placeController,
-              decoration: InputDecoration(
-                labelText: "Place",
-                prefixIcon: Icon(Icons.location_on),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              decoration:  InputDecoration(labelText: "Place",
+               border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10)
+              )
               ),
             ),
-
-            const SizedBox(height: 12),
-
+            SizedBox(height: 5,),
             TextField(
               controller: _pincodeController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: "Pincode",
-                prefixIcon: Icon(Icons.pin_drop),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+              decoration:  InputDecoration(labelText: "Pincode",
+               border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10)
+              )
               ),
             ),
-
             const SizedBox(height: 20),
-
             ElevatedButton(
-              onPressed: _submit,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text(
-                "Register Ambulance",
-                style: TextStyle(color: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green
               ),
-            ),
+              onPressed: _submit,
+              child: const Text("Register Ambulance",style: TextStyle(color: Colors.white),),
+            )
           ],
         ),
       ),

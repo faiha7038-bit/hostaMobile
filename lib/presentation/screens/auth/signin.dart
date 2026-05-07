@@ -2,13 +2,10 @@ import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/common/top_snackbar.dart';
-import 'package:hosta/firebase_msg.dart';
-import 'package:hosta/presentation/widgets/bottomnav.dart';
+import 'package:hosta/presentation/screens/auth/otp_verification.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
-import 'package:pin_code_fields/pin_code_fields.dart';
-import 'signup.dart';
 import '../../../services/api_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'signup.dart';
 
 class Signin extends StatefulWidget {
   const Signin({super.key});
@@ -23,14 +20,11 @@ class _SigninState extends State<Signin> {
 
   bool isSendingOtp = false;
   String? receivedOtp;
-  String? phoneError; // For inline error message
+  String? phoneError;
 
-  // Validate phone number
   bool _validatePhoneNumber(String phone) {
-    // Remove all non-digit characters except +
     String cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
 
-    // Check if it starts with + and has 10-15 digits (international format)
     if (!cleaned.startsWith('+')) {
       setState(() {
         phoneError = 'Phone number must include country code (e.g., +91)';
@@ -38,7 +32,6 @@ class _SigninState extends State<Signin> {
       return false;
     }
 
-    // Count digits only (excluding +)
     int digitCount = cleaned.replaceAll('+', '').length;
 
     if (digitCount < 10) {
@@ -54,16 +47,14 @@ class _SigninState extends State<Signin> {
     }
 
     setState(() {
-      phoneError = null; // Clear error if valid
+      phoneError = null;
     });
     return true;
   }
 
-  // SEND OTP
   Future<void> _sendOtp() async {
     String phone = phoneController.text.trim();
 
-    // Validate phone number first
     if (!_validatePhoneNumber(phone)) {
       return;
     }
@@ -72,8 +63,8 @@ class _SigninState extends State<Signin> {
       setState(() => isSendingOtp = true);
 
       final response = await _apiService.loginUser({"phone": phone});
-    log("status:${response.statusCode}");
-    log("Data:${response.data}");
+      log("status:${response.statusCode}");
+      log("Data:${response.data}");
 
       setState(() => isSendingOtp = false);
 
@@ -101,7 +92,6 @@ class _SigninState extends State<Signin> {
         } catch (_) {}
       }
 
-      // Show error in input field if it's a validation error from server
       if (errorMessage.toLowerCase().contains('phone') ||
           errorMessage.toLowerCase().contains('number')) {
         setState(() {
@@ -190,387 +180,20 @@ class _SigninState extends State<Signin> {
   }
 
   void _showOtpPopup(String phone, String? backendOtp) {
-    final otpController = TextEditingController();
-
-    if (backendOtp != null) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted && otpController.text.isEmpty) {
-          otpController.text = backendOtp;
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted && otpController.text.length == 6) {
-              // Will be handled by dialog's StatefulBuilder
-            }
-          });
-        }
-      });
-    }
-
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        int resendAfter = 30;
-        bool isVerifying = false;
-        bool isOtpFilled = false;
-        String? otpError;
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            if (resendAfter > 0) {
-              Future.delayed(const Duration(seconds: 1), () {
-                if (mounted && resendAfter > 0) {
-                  setState(() => resendAfter--);
-                }
-              });
-            }
-
-            if (otpController.text.length == 6 &&
-                !isVerifying &&
-                !isOtpFilled &&
-                otpError == null) {
-               
-              isOtpFilled = true;
-              Future.delayed(const Duration(milliseconds: 800), () {
-                if (mounted && !isVerifying) {
-                  setState(() => isVerifying = true);
-                  _verifyOtp(
-                    phone,
-                    otpController.text,
-                    otpController,
-                    dialogContext,
-                    (error) {
-                      setState(() {
-                        otpError = error;
-                        isVerifying = false;
-                        isOtpFilled = false;
-                      });
-                    },
-                  );
-                }
-              });
-            }
-            double screenWidth = MediaQuery.of(context).size.width;
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.smartphone_rounded,
-                        color: Colors.green,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    const Text(
-                      "Enter Verification Code",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Text(
-                      "Code sent to ${phoneController.text}",
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                    const SizedBox(height: 24),
-
-                    TweenAnimationBuilder(
-                      tween: Tween<double>(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeOut,
-                      builder: (context, double opacity, child) {
-                        return Opacity(opacity: opacity, child: child);
-                      },
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          double fieldWidth = (constraints.maxWidth - 40) / 6;
-
-                          return PinCodeTextField(
-                            appContext: context,
-                            length: 6,
-                            controller: otpController,
-                            keyboardType: TextInputType.number,
-                            animationType: AnimationType.fade,
-                            animationDuration: const Duration(
-                              milliseconds: 300,
-                            ),
-                            autoDismissKeyboard: true,
-                            enablePinAutofill: true,
-                            autoFocus: true,
-                            textStyle: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            pinTheme: PinTheme(
-                              shape: PinCodeFieldShape.box,
-                              borderRadius: BorderRadius.circular(12),
-                              fieldHeight: 55,
-                              fieldWidth: fieldWidth.clamp(35, 50),
-                              activeFillColor: Colors.white,
-                              selectedFillColor: Colors.white,
-                              inactiveFillColor: Colors.grey[50],
-                              activeColor: otpError != null
-                                  ? Colors.red
-                                  : Colors.green,
-                              selectedColor: otpError != null
-                                  ? Colors.red
-                                  : Colors.blue,
-                              inactiveColor: otpError != null
-                                  ? Colors.red
-                                  : Colors.grey[300]!,
-                              borderWidth: 2,
-                            ),
-                            onCompleted: (value) {
-                              if (!isVerifying) {
-                                setState(() => isVerifying = true);
-                                _verifyOtp(
-                                  phone,
-                                  value,
-                                  otpController,
-                                  dialogContext,
-                                  (error) {
-                                    setState(() {
-                                      otpError = error;
-                                      isVerifying = false;
-                                    });
-                                  },
-                                );
-                              }
-                            },
-                            onChanged: (value) {
-                              if (otpError != null) {
-                                setState(() {
-                                  otpError = null;
-                                });
-                              }
-                            },
-                          );
-                        },
-                      ),
-                    ),
-
-                    // Show OTP error below the field without increasing height
-                    if (otpError != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 14,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                otpError!,
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 24),
-
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: isVerifying
-                            ? null
-                            : () {
-                                if (otpController.text.length == 6) {
-                                  setState(() => isVerifying = true);
-                                  _verifyOtp(
-                                    phone,
-                                    otpController.text,
-                                    otpController,
-                                    dialogContext,
-                                    (error) {
-                                      setState(() {
-                                        otpError = error;
-                                        isVerifying = false;
-                                      });
-                                    },
-                                  );
-                                } else {
-                                  setState(() {
-                                    otpError =
-                                        "Please enter a 6-digit verification code";
-                                  });
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: isVerifying
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                "Verify & Login",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Didn't receive code? ",
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        resendAfter > 0
-                            ? TweenAnimationBuilder(
-                                tween: Tween<double>(
-                                  begin: resendAfter.toDouble(),
-                                  end: 0,
-                                ),
-                                duration: Duration(seconds: resendAfter),
-                                builder: (context, double value, child) {
-                                  return Text(
-                                    "Resend in ${value.toInt()}s",
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  );
-                                },
-                              )
-                            : GestureDetector(
-                                onTap: isVerifying
-                                    ? null
-                                    : () async {
-                                        Navigator.pop(dialogContext);
-                                        await _sendOtp();
-                                      },
-                                child: const Text(
-                                  "Resend OTP",
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
+        return OtpVerification(
+          phone: phone,
+          backendOtp: backendOtp,
+          apiService: _apiService,
+          onResendOtp: () {
+            _sendOtp();
           },
         );
       },
     );
-  }
-
-  // Updated verify method with error callback
-  Future<void> _verifyOtp(
-    String phone,
-    String otp,
-    TextEditingController otpController,
-    BuildContext dialogContext,
-    Function(String) onError,
-  ) async {
-    if (otp.length != 6) {
-      onError("Please enter a valid 6-digit OTP");
-      return;
-    }
-
-    try {
-      String? token = await FirebaseMsg().token;
-
-      final response = await _apiService.otpUser({
-        "phone": phone,
-        "otp": otp,
-        "FcmToken": token,
-      });
-
-      if (response.statusCode == 200 && response.data["status"] == 200) {
-        final userId = response.data["userDetails"]["_id"];
-        final userPhone = response.data["userDetails"]["phone"];
-        final donorId = response.data["userDetails"]["donorId"];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userId', userId);
-        await prefs.setString('userPhone', userPhone);
-
-        if (donorId != null && donorId.toString().isNotEmpty) {
-          await prefs.setString('bloodId', donorId.toString());
-        }
-
-        if (Navigator.canPop(dialogContext)) {
-          Navigator.pop(dialogContext);
-        }
-
-        if (mounted) {
-          showTopSnackBar(context, "Login successful!");
-            Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(builder: (context) => const Bottomnav()),
-    (route) => false,
-  );
-        }
-
-        if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const Bottomnav()),
-            (route) => false,
-          );
-        }
-      } else {
-        onError(response.data["message"] ?? "Invalid OTP. Please try again.");
-      }
-    } on DioException catch (dioError) {
-      String errorMessage = "Something went wrong";
-
-      if (dioError.response != null) {
-        try {
-          errorMessage = dioError.response?.data['message'] ?? errorMessage;
-        } catch (_) {}
-      }
-
-      onError(errorMessage);
-    } catch (e) {
-      onError("Invalid OTP. Please try again.");
-    }
   }
 
   @override
@@ -615,7 +238,6 @@ class _SigninState extends State<Signin> {
                 ),
                 const SizedBox(height: 32),
 
-                // Phone field with errorText (doesn't increase height)
                 IntlPhoneField(
                   decoration: InputDecoration(
                     labelText: 'Phone Number',
@@ -625,18 +247,14 @@ class _SigninState extends State<Signin> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(
-                        color: phoneError != null
-                            ? Colors.red
-                            : Colors.grey[300]!,
+                        color: phoneError != null ? Colors.red : Colors.grey[300]!,
                         width: phoneError != null ? 1.5 : 1,
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(
-                        color: phoneError != null
-                            ? Colors.red
-                            : Colors.grey[300]!,
+                        color: phoneError != null ? Colors.red : Colors.grey[300]!,
                         width: phoneError != null ? 1.5 : 1,
                       ),
                     ),
@@ -658,8 +276,7 @@ class _SigninState extends State<Signin> {
                       borderRadius: BorderRadius.circular(16),
                       borderSide: const BorderSide(color: Colors.red, width: 2),
                     ),
-                    errorText:
-                        phoneError, // This shows error without increasing height
+                    errorText: phoneError,
                     errorStyle: const TextStyle(
                       color: Colors.red,
                       fontSize: 12,
@@ -674,7 +291,6 @@ class _SigninState extends State<Signin> {
                   initialCountryCode: 'IN',
                   onChanged: (phone) {
                     phoneController.text = phone.completeNumber;
-                    // Clear error when user starts typing
                     if (phoneError != null) {
                       setState(() {
                         phoneError = null;

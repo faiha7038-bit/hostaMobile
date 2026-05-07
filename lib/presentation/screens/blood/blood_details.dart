@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/blood/widgets/delete_alert.dart';
 import 'package:hosta/presentation/screens/blood/donate.dart';
-import 'package:hosta/providers/blood_provider.dart';
+import 'package:hosta/providers/blood_details_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MyBloodDetailsPage extends ConsumerStatefulWidget {

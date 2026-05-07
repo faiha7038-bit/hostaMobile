@@ -1,63 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/ambulance/register.dart';
+import 'package:hosta/providers/ambulance-provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:dio/dio.dart';
-import '../../../services/api_service.dart';
 
-class Ambulance extends StatefulWidget {
+class Ambulance extends ConsumerStatefulWidget {
   const Ambulance({super.key});
 
   @override
-  State<Ambulance> createState() => _AmbulanceState();
+  ConsumerState<Ambulance> createState() => _AmbulanceState();
 }
 
-class _AmbulanceState extends State<Ambulance> {
-  final ApiService apiService = ApiService();
-  List<dynamic> ambulanceList = [];
-  bool isLoading = true;
-  String searchQuery = '';
-    String? ambulanceId;
-  
-  // Filter variables (same as blood donor page)
-  String selectedCountry = '';
-  String selectedState = '';
-  String selectedDistrict = '';
-  String selectedPlace = '';
+class _AmbulanceState extends ConsumerState<Ambulance> {
+@override
+@override
+void initState() {
+  super.initState();
 
-  @override
-  void initState() {
-    super.initState();
-    fetchAmbulances();
-  }
-  void _handleAmbulanceRegister() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const AmbulanceRegister(), // your add screen
-    ),
-  ).then((_) {
-    fetchAmbulances(); // refresh after adding
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted) return;
+
+    ref.read(isLoadingProvider.notifier).state = true;
+    _fetchAmbulances();   
   });
 }
 
-  // ✅ Fetch all ambulances
-  Future<void> fetchAmbulances() async {
+  Future<void> _fetchAmbulances() async {
     try {
-      final Response response = await apiService.getAllAmbulances();
-      if (response.statusCode == 200 && response.data["status"] == "Success") {
-        setState(() {
-          ambulanceList = response.data["data"];
-          isLoading = false;
-        });
-      } else {
-        throw Exception("Failed to load ambulance data");
-      }
+      await ref.read(ambulanceListProvider.notifier).fetchAmbulances();
+      ref.read(isLoadingProvider.notifier).state = false;
     } catch (e) {
-      setState(() => isLoading = false);
+      ref.read(isLoadingProvider.notifier).state = false;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 
-  // 📞 Call Number
+  void _handleAmbulanceRegister() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AmbulanceRegister(),
+      ),
+    ).then((_) {
+      _fetchAmbulances();
+    });
+  }
+
   Future<void> _callNumber(String phone) async {
     final Uri uri = Uri(scheme: 'tel', path: phone);
     if (await canLaunchUrl(uri)) {
@@ -69,7 +61,6 @@ class _AmbulanceState extends State<Ambulance> {
     }
   }
 
-  // 📍 Open in Google Maps (if coordinates exist)
   Future<void> _openMap(double lat, double lon) async {
     final Uri uri =
         Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
@@ -82,8 +73,8 @@ class _AmbulanceState extends State<Ambulance> {
     }
   }
 
-  // Helper methods to get filtered locations based on selections
   List<String> getFilteredCountries() {
+    final ambulanceList = ref.read(ambulanceListProvider);
     final countries = <String>[];
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -93,7 +84,6 @@ class _AmbulanceState extends State<Ambulance> {
         countries.add(country);
       }
     }
-    
     countries.sort();
     return countries;
   }
@@ -101,6 +91,7 @@ class _AmbulanceState extends State<Ambulance> {
   List<String> getFilteredStates(String country) {
     if (country.isEmpty) return [];
     
+    final ambulanceList = ref.read(ambulanceListProvider);
     final filteredStates = <String>[];
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -113,7 +104,6 @@ class _AmbulanceState extends State<Ambulance> {
         filteredStates.add(state);
       }
     }
-    
     filteredStates.sort();
     return filteredStates;
   }
@@ -121,6 +111,7 @@ class _AmbulanceState extends State<Ambulance> {
   List<String> getFilteredDistricts(String country, String state) {
     if (country.isEmpty || state.isEmpty) return [];
     
+    final ambulanceList = ref.read(ambulanceListProvider);
     final filteredDistricts = <String>[];
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -135,7 +126,6 @@ class _AmbulanceState extends State<Ambulance> {
         filteredDistricts.add(district);
       }
     }
-    
     filteredDistricts.sort();
     return filteredDistricts;
   }
@@ -143,6 +133,7 @@ class _AmbulanceState extends State<Ambulance> {
   List<String> getFilteredPlaces(String country, String state, String district) {
     if (country.isEmpty || state.isEmpty || district.isEmpty) return [];
     
+    final ambulanceList = ref.read(ambulanceListProvider);
     final filteredPlaces = <String>[];
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -159,40 +150,26 @@ class _AmbulanceState extends State<Ambulance> {
         filteredPlaces.add(place);
       }
     }
-    
     filteredPlaces.sort();
     return filteredPlaces;
   }
 
-  // Refresh data
   void _refreshData() {
-    fetchAmbulances();
+    ref.read(isLoadingProvider.notifier).state = true;
+    _fetchAmbulances();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Apply filters
-    final filteredList = ambulanceList.where((ambulance) {
-      final address = ambulance['address'] ?? {};
-      
-      final name = (ambulance['serviceName'] ?? '').toString().toLowerCase();
-      final country = (address['country'] ?? '').toString();
-      final state = (address['state'] ?? '').toString();
-      final district = (address['district'] ?? '').toString();
-      final place = (address['place'] ?? '').toString();
-
-      final matchesSearch = name.contains(searchQuery.toLowerCase());
-      final matchesCountry = selectedCountry.isEmpty || country == selectedCountry;
-      final matchesState = selectedState.isEmpty || state == selectedState;
-      final matchesDistrict = selectedDistrict.isEmpty || district == selectedDistrict;
-      final matchesPlace = selectedPlace.isEmpty || place == selectedPlace;
-
-      return matchesSearch &&
-          matchesCountry &&
-          matchesState &&
-          matchesDistrict &&
-          matchesPlace;
-    }).toList();
+    final isLoading = ref.watch(isLoadingProvider);
+    final filteredList = ref.watch(filteredAmbulanceListProvider);
+    final ambulanceList = ref.watch(ambulanceListProvider);
+    final ambulanceId = ref.watch(ambulanceIdProvider);
+    final searchQuery = ref.watch(searchQueryProvider);
+    final selectedCountry = ref.watch(selectedCountryProvider);
+    final selectedState = ref.watch(selectedStateProvider);
+    final selectedDistrict = ref.watch(selectedDistrictProvider);
+    final selectedPlace = ref.watch(selectedPlaceProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
@@ -219,21 +196,18 @@ class _AmbulanceState extends State<Ambulance> {
           ? const Center(child: CircularProgressIndicator(color: Colors.green))
           : Column(
               children: [
-                // 🔍 Search Bar
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
                           onChanged: (value) {
-                            setState(() => searchQuery = value);
+                            ref.read(searchQueryProvider.notifier).state = value;
                           },
                           decoration: InputDecoration(
                             hintText: "Search ambulance service...",
-                            prefixIcon:
-                                const Icon(Icons.search, color: Colors.grey),
+                            prefixIcon: const Icon(Icons.search, color: Colors.grey),
                             filled: true,
                             fillColor: Colors.grey[100],
                             border: OutlineInputBorder(
@@ -243,30 +217,25 @@ class _AmbulanceState extends State<Ambulance> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8,),
+                      const SizedBox(width: 8),
                       if(ambulanceId == null)...{
-                           ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-               onPressed: _handleAmbulanceRegister,
-               child: const Text("Register", style: TextStyle(color: Colors.white)),
-              ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: _handleAmbulanceRegister,
+                          child: const Text("Register", style: TextStyle(color: Colors.white)),
+                        ),
                       }else...{
-                      SizedBox.shrink()
+                        const SizedBox.shrink()
                       }
                     ],
                   ),
-
                 ),
-
-                // 🗺️ Location Filter Row
                 _buildLocationAndClearButton(context),
-
-                // 🚑 Ambulance List
                 Expanded(
                   child: filteredList.isEmpty
                       ? Center(
@@ -327,7 +296,6 @@ class _AmbulanceState extends State<Ambulance> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Ambulance Icon
                                     Container(
                                       decoration: BoxDecoration(
                                         color: Colors.green.shade50,
@@ -341,14 +309,10 @@ class _AmbulanceState extends State<Ambulance> {
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    
-                                    // Details
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          // Service Name
                                           Text(
                                             amb["serviceName"] ?? "Unknown",
                                             style: const TextStyle(
@@ -357,8 +321,6 @@ class _AmbulanceState extends State<Ambulance> {
                                             ),
                                           ),
                                           const SizedBox(height: 4),
-                                          
-                                          // Address Details (same format as blood donor)
                                           Text(
                                             "${address["place"] ?? ""}",
                                             style: const TextStyle(
@@ -375,8 +337,6 @@ class _AmbulanceState extends State<Ambulance> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           const SizedBox(height: 4),
-                                          
-                                          // Vehicle Type
                                           Text(
                                             "${amb["vehicleType"] ?? "N/A"}",
                                             style: const TextStyle(
@@ -386,11 +346,8 @@ class _AmbulanceState extends State<Ambulance> {
                                         ],
                                       ),
                                     ),
-                                    
-                                    // Action Buttons
                                     Column(
                                       children: [
-                                        // Call Button
                                         IconButton(
                                           onPressed: () {
                                             _callNumber(amb["phone"] ?? "");
@@ -401,8 +358,6 @@ class _AmbulanceState extends State<Ambulance> {
                                             size: 28,
                                           ),
                                         ),
-                                        
-                                        // Location Button (if coordinates exist)
                                         if (amb["latitude"] != null && amb["longitude"] != null)
                                           IconButton(
                                             onPressed: () {
@@ -436,7 +391,6 @@ class _AmbulanceState extends State<Ambulance> {
     );
   }
 
-  // --- Location and Clear Button (same as blood donor) ---
   Widget _buildLocationAndClearButton(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Row(
@@ -451,9 +405,9 @@ class _AmbulanceState extends State<Ambulance> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    selectedCountry.isEmpty
+                    ref.watch(selectedCountryProvider).isEmpty
                         ? "Select Location"
-                        : "$selectedCountry > $selectedState > $selectedDistrict > $selectedPlace",
+                        : "${ref.watch(selectedCountryProvider)} > ${ref.watch(selectedStateProvider)} > ${ref.watch(selectedDistrictProvider)} > ${ref.watch(selectedPlaceProvider)}",
                     style: const TextStyle(fontSize: 14, color: Colors.black54),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -463,13 +417,11 @@ class _AmbulanceState extends State<Ambulance> {
             ),
             TextButton.icon(
               onPressed: () {
-                setState(() {
-                  selectedCountry = '';
-                  selectedState = '';
-                  selectedDistrict = '';
-                  selectedPlace = '';
-                  searchQuery = '';
-                });
+                ref.read(selectedCountryProvider.notifier).state = '';
+                ref.read(selectedStateProvider.notifier).state = '';
+                ref.read(selectedDistrictProvider.notifier).state = '';
+                ref.read(selectedPlaceProvider.notifier).state = '';
+                ref.read(searchQueryProvider.notifier).state = '';
               },
               icon: const Icon(Icons.clear, color: Colors.red),
               label: const Text("Clear", style: TextStyle(color: Colors.red)),
@@ -478,12 +430,11 @@ class _AmbulanceState extends State<Ambulance> {
         ),
       );
 
-  // --- Location Filter Dialog (same as blood donor) ---
   void _openLocationFilter(BuildContext context) {
-    String tempCountry = selectedCountry;
-    String tempState = selectedState;
-    String tempDistrict = selectedDistrict;
-    String tempPlace = selectedPlace;
+    String tempCountry = ref.read(selectedCountryProvider);
+    String tempState = ref.read(selectedStateProvider);
+    String tempDistrict = ref.read(selectedDistrictProvider);
+    String tempPlace = ref.read(selectedPlaceProvider);
 
     showModalBottomSheet(
       context: context,
@@ -493,8 +444,6 @@ class _AmbulanceState extends State<Ambulance> {
       ),
       builder: (context) {
         return StatefulBuilder(builder: (context, setModalState) {
-          
-          // Get filtered locations based on current TEMPORARY selections
           final countries = getFilteredCountries();
           final filteredStates = getFilteredStates(tempCountry);
           final filteredDistricts = getFilteredDistricts(tempCountry, tempState);
@@ -515,8 +464,6 @@ class _AmbulanceState extends State<Ambulance> {
                   ),
                   const SizedBox(height: 16),
                   const Divider(),
-
-                  // Country Dropdown (Always shown)
                   DropdownButtonFormField<String>(
                     value: tempCountry.isEmpty ? null : tempCountry,
                     decoration: const InputDecoration(
@@ -547,8 +494,6 @@ class _AmbulanceState extends State<Ambulance> {
                     },
                   ),
                   const SizedBox(height: 16),
-
-                  // State Dropdown (Only shown when country is selected)
                   if (tempCountry.isNotEmpty) ...[
                     DropdownButtonFormField<String>(
                       value: tempState.isEmpty ? null : tempState,
@@ -580,8 +525,6 @@ class _AmbulanceState extends State<Ambulance> {
                     ),
                     const SizedBox(height: 16),
                   ],
-
-                  // District Dropdown (Only shown when state is selected)
                   if (tempCountry.isNotEmpty && tempState.isNotEmpty) ...[
                     DropdownButtonFormField<String>(
                       value: tempDistrict.isEmpty ? null : tempDistrict,
@@ -612,8 +555,6 @@ class _AmbulanceState extends State<Ambulance> {
                     ),
                     const SizedBox(height: 16),
                   ],
-
-                  // Place Dropdown (Only shown when district is selected)
                   if (tempCountry.isNotEmpty && tempState.isNotEmpty && tempDistrict.isNotEmpty) ...[
                     DropdownButtonFormField<String>(
                       value: tempPlace.isEmpty ? null : tempPlace,
@@ -643,18 +584,13 @@ class _AmbulanceState extends State<Ambulance> {
                     ),
                     const SizedBox(height: 16),
                   ],
-
                   const SizedBox(height: 24),
-
-                  // Apply Filter Button
                   ElevatedButton(
                     onPressed: () {
-                      setState(() {
-                        selectedCountry = tempCountry;
-                        selectedState = tempState;
-                        selectedDistrict = tempDistrict;
-                        selectedPlace = tempPlace;
-                      });
+                      ref.read(selectedCountryProvider.notifier).state = tempCountry;
+                      ref.read(selectedStateProvider.notifier).state = tempState;
+                      ref.read(selectedDistrictProvider.notifier).state = tempDistrict;
+                      ref.read(selectedPlaceProvider.notifier).state = tempPlace;
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(

@@ -5,6 +5,10 @@ class About extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 600;
+
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
@@ -12,20 +16,21 @@ class About extends StatelessWidget {
         elevation: 3,
         shadowColor: Colors.green.shade100,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: screenWidth * 0.055),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "About",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
+            fontSize: screenWidth * 0.05,
           ),
         ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(screenWidth * 0.05),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -33,22 +38,22 @@ class About extends StatelessWidget {
             Center(
               child: Column(
                 children: [
-                  Icon(Icons.local_hospital, size: 70, color: Colors.green[700]),
-                  const SizedBox(height: 12),
-                  const Text(
+                  Icon(Icons.local_hospital, size: screenWidth * 0.18, color: Colors.green[700]),
+                  SizedBox(height: screenHeight * 0.015),
+                  Text(
                     "Hospital Finder",
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: screenWidth * 0.065,
                       fontWeight: FontWeight.bold,
                       color: Colors.green,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  SizedBox(height: screenHeight * 0.01),
+                  Text(
                     "Connecting you to quality healthcare easily.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: screenWidth * 0.04,
                       color: Colors.black54,
                     ),
                   ),
@@ -56,28 +61,36 @@ class About extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 30),
+            SizedBox(height: screenHeight * 0.037),
 
             // 🌿 About Section
-            _buildSectionTitle("About Our App"),
-            const Text(
+            _buildSectionTitle("About Our App", screenWidth),
+            Text(
               "Welcome to our innovative hospital finder platform that connects patients with nearby hospitals and doctors. "
               "Our goal is to make healthcare access simple, fast, and stress-free.",
-              style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5),
+              style: TextStyle(
+                fontSize: screenWidth * 0.04, 
+                color: Colors.black87, 
+                height: 1.5,
+              ),
             ),
-            const SizedBox(height: 10),
-            const Text(
+            SizedBox(height: screenHeight * 0.012),
+            Text(
               "You can search hospitals, book appointments, and even access emergency ambulance services instantly.",
-              style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5),
+              style: TextStyle(
+                fontSize: screenWidth * 0.04, 
+                color: Colors.black87, 
+                height: 1.5,
+              ),
             ),
 
-            const SizedBox(height: 30),
+            SizedBox(height: screenHeight * 0.037),
 
             // 🌿 Key Features
-            _buildSectionTitle("Key Features"),
+            _buildSectionTitle("Key Features", screenWidth),
             Wrap(
-              spacing: 14,
-              runSpacing: 14,
+              spacing: screenWidth * 0.035,
+              runSpacing: screenHeight * 0.0175,
               children: const [
                 FeatureCard(
                   icon: Icons.search,
@@ -112,41 +125,52 @@ class About extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 30),
+            SizedBox(height: screenHeight * 0.037),
 
             // 🌿 Find Section
-            _buildSectionTitle("Find Hospitals Near You"),
-            const Text(
+            _buildSectionTitle("Find Hospitals Near You", screenWidth),
+            Text(
               "Use our search feature to find hospitals and doctors nearby. Simply enter your area or city to begin.",
-              style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5),
+              style: TextStyle(
+                fontSize: screenWidth * 0.04, 
+                color: Colors.black87, 
+                height: 1.5,
+              ),
             ),
 
-            const SizedBox(height: 30),
+            SizedBox(height: screenHeight * 0.037),
 
             // 🌿 For Hospitals
-            _buildSectionTitle("For Hospitals"),
-            const Text(
+            _buildSectionTitle("For Hospitals", screenWidth),
+            Text(
               "Healthcare providers can join our platform to:",
-              style: TextStyle(fontSize: 16, color: Colors.black87, height: 1.5),
+              style: TextStyle(
+                fontSize: screenWidth * 0.04, 
+                color: Colors.black87, 
+                height: 1.5,
+              ),
             ),
-            const SizedBox(height: 10),
-            const _BulletList(items: [
+            SizedBox(height: screenHeight * 0.012),
+            _BulletList(items: [
               "Showcase facilities and services",
               "Manage appointments and patient bookings",
               "Add doctor details and specialties",
               "Provide updates about working hours"
             ]),
-            const SizedBox(height: 10),
-            const Text(
+            SizedBox(height: screenHeight * 0.012),
+            Text(
               "Contact us to learn more about listing your hospital.",
-              style: TextStyle(fontSize: 16, color: Colors.black87),
+              style: TextStyle(
+                fontSize: screenWidth * 0.04, 
+                color: Colors.black87,
+              ),
             ),
 
-            const SizedBox(height: 30),
+            SizedBox(height: screenHeight * 0.037),
 
             // 🌿 Commitment
-            _buildSectionTitle("Our Commitment"),
-            const _BulletList(items: [
+            _buildSectionTitle("Our Commitment", screenWidth),
+            _BulletList(items: [
               "Simplifying access to healthcare",
               "Providing accurate information",
               "Ensuring a seamless experience",
@@ -154,30 +178,30 @@ class About extends StatelessWidget {
               "Maintaining data privacy and security",
             ]),
 
-            const SizedBox(height: 40),
+            SizedBox(height: screenHeight * 0.05),
             Center(
               child: Text(
                 "© 2025 Hospital Finder App",
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: screenWidth * 0.035,
                   color: Colors.grey[600],
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: screenHeight * 0.012),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, double screenWidth) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.only(bottom: screenWidth * 0.025),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 22,
+        style: TextStyle(
+          fontSize: screenWidth * 0.055,
           fontWeight: FontWeight.w600,
           color: Colors.green,
         ),
@@ -201,12 +225,15 @@ class FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
     return Container(
-      width: (MediaQuery.of(context).size.width / 2) - 28,
-      padding: const EdgeInsets.all(16),
+      width: (screenWidth / 2) - (screenWidth * 0.07),
+      padding: EdgeInsets.all(screenWidth * 0.04),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(screenWidth * 0.035),
         boxShadow: [
           BoxShadow(
             color: Colors.green.withOpacity(0.1),
@@ -217,23 +244,23 @@ class FeatureCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, size: 48, color: Colors.green),
-          const SizedBox(height: 8),
+          Icon(icon, size: screenWidth * 0.12, color: Colors.green),
+          SizedBox(height: screenHeight * 0.01),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: screenWidth * 0.04,
               color: Colors.green,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: screenHeight * 0.0075),
           Text(
             description,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 14,
+            style: TextStyle(
+              fontSize: screenWidth * 0.035,
               color: Colors.black54,
             ),
           ),
@@ -250,22 +277,29 @@ class _BulletList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: items
           .map((item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: EdgeInsets.symmetric(vertical: screenHeight * 0.005),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("• ",
+                    Text("• ",
                         style: TextStyle(
-                            fontSize: 18, color: Colors.green, height: 1.3)),
+                            fontSize: screenWidth * 0.045, 
+                            color: Colors.green, 
+                            height: 1.3)),
                     Expanded(
                       child: Text(
                         item,
-                        style: const TextStyle(
-                            fontSize: 16, color: Colors.black87, height: 1.4),
+                        style: TextStyle(
+                            fontSize: screenWidth * 0.04, 
+                            color: Colors.black87, 
+                            height: 1.4),
                       ),
                     ),
                   ],

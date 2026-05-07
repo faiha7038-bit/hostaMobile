@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
@@ -7,60 +8,54 @@ import 'package:hosta/presentation/screens/hospital/widgets/info-tab.dart';
 import 'package:hosta/presentation/screens/hospital/widgets/location.dart';
 import 'package:hosta/presentation/screens/hospital/widgets/review-tab.dart';
 import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hosta/providers/hospital-details-provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../services/api_service.dart';
 
-class HospitalDetailsPage extends StatefulWidget {
+class HospitalDetailsPage extends ConsumerStatefulWidget {
   final String hospitalId;
   final Map<String, dynamic> hospital;
 
   const HospitalDetailsPage({
-    super.key, 
+    super.key,
     required this.hospitalId,
-    required this.hospital
+    required this.hospital,
   });
 
   @override
-  State<HospitalDetailsPage> createState() => _HospitalDetailsPageState();
+  ConsumerState<HospitalDetailsPage> createState() => _HospitalDetailsPageState();
 }
 
-class _HospitalDetailsPageState extends State<HospitalDetailsPage> {
+class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
   late Map<String, dynamic> hospital;
   bool isLoading = true;
-  bool isReviewLoading = false;
-  
-  // User authentication
-  String? currentUserId;
-  String? currentUserName;
-  String? currentUserEmail;
-
-  // Separate list for reviews
-  List<dynamic> reviews = [];
 
   @override
   void initState() {
     super.initState();
     hospital = widget.hospital;
-    _initializeUser();
-    _loadInitialData();
+    _initializeData();
   }
 
-  Future<void> _initializeUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      currentUserId = prefs.getString('userId');
-      currentUserName = prefs.getString('userName');
-      currentUserEmail = prefs.getString('userEmail');
-    });
+  Future<void> _initializeData() async {
+    await ref.read(userProvider.notifier).initializeUser();
+    await _loadInitialData();
   }
 
   Future<void> _loadInitialData() async {
     try {
       print("🔄 Loading initial data for hospital ID: ${widget.hospitalId}");
       
-      await _fetchHospitalDetails();
-      await _fetchHospitalReviews();
+      // Fetch hospital details and reviews
+      await ref.read(hospitalDetailsProvider(widget.hospitalId).future);
+      await ref.read(hospitalReviewsProvider(widget.hospitalId).future);
+      
+      // Update local hospital data
+      final hospitalData = ref.read(hospitalDetailsProvider(widget.hospitalId));
+      hospitalData.whenData((data) {
+        setState(() {
+          hospital = data;
+        });
+      });
       
       setState(() {
         isLoading = false;
@@ -74,9 +69,9 @@ class _HospitalDetailsPageState extends State<HospitalDetailsPage> {
   Future<void> _fetchHospitalDetails() async {
     try {
       print("🏥 Fetching hospital details for ID: ${widget.hospitalId}");
-      final response = await ApiService().getAHospitals(widget.hospitalId);
+      final hospitalData = await ref.read(hospitalDetailsProvider(widget.hospitalId).future);
       setState(() {
-        hospital = response.data;
+        hospital = hospitalData;
       });
       print("✅ Hospital details fetched successfully");
     } catch (e) {
@@ -84,150 +79,73 @@ class _HospitalDetailsPageState extends State<HospitalDetailsPage> {
     }
   }
 
-  Future<void> _fetchHospitalReviews() async {
-    try {
-      print("📝 Fetching reviews for hospital ID: ${widget.hospitalId}");
-      final response = await ApiService().getAHospitalsReview(widget.hospitalId);
-      print('✅ Reviews API Response received: ${response.data}');
-      
-      if (response.data != null) {
-        if (response.data is Map && response.data.containsKey("data")) {
-          setState(() {
-            reviews = response.data["data"] ?? [];
-          });
-        } else if (response.data is List) {
-          setState(() {
-            reviews = response.data;
-          });
-        } else {
-          setState(() {
-            reviews = [];
-          });
-        }
-      } else {
-        setState(() {
-          reviews = [];
-        });
-      }
-      
-      print('✅ Final reviews count: ${reviews.length}');
-    } catch (e) {
-      print("❌ Error fetching reviews: $e");
-      setState(() {
-        reviews = [];
-      });
-    }
-  }
-
   Future<void> _createReview({required double rating, required String comment}) async {
-    setState(() => isReviewLoading = true);
+    final userState = ref.read(userProvider);
+    
+    if (userState.userId == null) return;
 
-    try {
-      final Map<String, dynamic> reviewData = {
-        "userId": currentUserId!,
-        "rating": rating,
-        "comment": comment,
-        "hospitalId": widget.hospitalId,
-      };
-
-      // Create temporary review for instant UI update
-      final tempReview = {
-        "_id": "temp_${DateTime.now().millisecondsSinceEpoch}",
-        "userId": {
-          "_id": currentUserId,
-          "name": currentUserName ?? "You",
-          "email": currentUserEmail ?? "",
-        },
-        "rating": rating,
-        "comment": comment,
-        "createdAt": DateTime.now().toIso8601String(),
-        "isTemp": true,
-        "isSubmitting": true,
-      };
-
-      setState(() {
-        reviews = [tempReview, ...reviews];
-      });
-
-      await ApiService().createAHospitalReview(reviewData);
-      await _fetchHospitalReviews();
-      showTopSnackBar(context, "Review submitted successfully!");
-
-      setState(() => isReviewLoading = false);
-    } catch (e) {
-      setState(() {
-        reviews = reviews.where((review) => review["isTemp"] != true).toList();
-      });
-      setState(() => isReviewLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error submitting review: $e")),
-      );
-    }
+    final reviewOps = ref.read(reviewOperationsProvider);
+    
+    await reviewOps.createReview(
+      hospitalId: widget.hospitalId,
+      rating: rating,
+      comment: comment,
+      userId: userState.userId!,
+      userName: userState.userName ?? "You",
+      userEmail: userState.userEmail ?? "",
+      onSuccess: () {
+        showTopSnackBar(context, "Review submitted successfully!");
+        _fetchHospitalReviews();
+      },
+      onError: (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      },
+    );
   }
 
   Future<void> _updateReview(String reviewId, {required double rating, required String comment}) async {
-    setState(() => isReviewLoading = true);
-
-    try {
-      final Map<String, dynamic> reviewData = {
-        "rating": rating,
-        "comment": comment,
-      };
-
-      setState(() {
-        final reviewIndex = reviews.indexWhere((review) => review["_id"] == reviewId);
-        if (reviewIndex != -1) {
-          reviews[reviewIndex] = {
-            ...reviews[reviewIndex],
-            "rating": rating,
-            "comment": comment,
-            "isUpdating": true,
-          };
-        }
-      });
-
-      await ApiService().updateAHospitalReview(reviewId, reviewData);
-      await _fetchHospitalReviews();
-      showTopSnackBar(context, "Review updated successfully!");
-
-      setState(() => isReviewLoading = false);
-    } catch (e) {
-      await _fetchHospitalReviews();
-      setState(() => isReviewLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error updating review: $e")),
-      );
-    }
+    final reviewOps = ref.read(reviewOperationsProvider);
+    
+    await reviewOps.updateReview(
+      reviewId: reviewId,
+      hospitalId: widget.hospitalId,
+      rating: rating,
+      comment: comment,
+      onSuccess: () {
+        showTopSnackBar(context, "Review updated successfully!");
+        _fetchHospitalReviews();
+      },
+      onError: (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      },
+    );
   }
 
   Future<void> _deleteReview(String reviewId) async {
-    setState(() => isReviewLoading = true);
-
-    final reviewToDeleteIndex = reviews.indexWhere((review) => review["_id"] == reviewId);
-    if (reviewToDeleteIndex == -1) {
-      setState(() => isReviewLoading = false);
-      return;
-    }
+    final reviewOps = ref.read(reviewOperationsProvider);
     
-    final reviewToDelete = Map<String, dynamic>.from(reviews[reviewToDeleteIndex]);
+    await reviewOps.deleteReview(
+      reviewId: reviewId,
+      hospitalId: widget.hospitalId,
+      onSuccess: () {
+        showTopSnackBar(context, "Review deleted successfully!");
+        _fetchHospitalReviews();
+      },
+      onError: (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), backgroundColor: Colors.red),
+        );
+      },
+    );
+  }
 
-    setState(() {
-      reviews = reviews.where((review) => review["_id"] != reviewId).toList();
-    });
-
-    try {
-      await ApiService().deleteAHospitalReview(reviewId);
-      showTopSnackBar(context, "Review deleted successfully!");
-      setState(() => isReviewLoading = false);
-    } catch (e) {
-      setState(() {
-        reviews = [reviewToDelete, ...reviews];
-      });
-      setState(() => isReviewLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error deleting review: $e"), backgroundColor: Colors.red),
-      );
-    }
+  Future<void> _fetchHospitalReviews() async {
+    // Refresh the reviews provider
+    ref.invalidate(hospitalReviewsProvider(widget.hospitalId));
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
@@ -238,7 +156,9 @@ class _HospitalDetailsPageState extends State<HospitalDetailsPage> {
   }
 
   Future<bool> _checkAuthentication() async {
-    if (currentUserId != null) {
+    final userState = ref.read(userProvider);
+    
+    if (userState.userId != null) {
       return true;
     }
     
@@ -248,13 +168,9 @@ class _HospitalDetailsPageState extends State<HospitalDetailsPage> {
     );
     
     if (result == true) {
-      final prefs = await SharedPreferences.getInstance();
-      setState(() {
-        currentUserId = prefs.getString('userId');
-        currentUserName = prefs.getString('userName');
-        currentUserEmail = prefs.getString('userEmail');
-      });
-      return currentUserId != null;
+      await ref.read(userProvider.notifier).refreshUser();
+      final updatedUserState = ref.read(userProvider);
+      return updatedUserState.userId != null;
     }
     
     return false;
@@ -293,7 +209,7 @@ class _HospitalDetailsPageState extends State<HospitalDetailsPage> {
     );
     
     if (result == true) {
-      await _initializeUser();
+      await ref.read(userProvider.notifier).refreshUser();
     }
   }
 
@@ -325,7 +241,13 @@ class _HospitalDetailsPageState extends State<HospitalDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    // Watch for hospital details changes
+    final hospitalDetailsAsync = ref.watch(hospitalDetailsProvider(widget.hospitalId));
+    final reviewsAsync = ref.watch(hospitalReviewsProvider(widget.hospitalId));
+    final isReviewLoading = ref.watch(reviewLoadingProvider);
+    final userState = ref.watch(userProvider);
+
+    if (isLoading || userState.isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator(color: Colors.green)),
       );
@@ -417,19 +339,24 @@ class _HospitalDetailsPageState extends State<HospitalDetailsPage> {
                     ),
                     ReviewsTab(
                       hospitalId: widget.hospitalId,
-                      reviews: reviews,
-                      currentUserId: currentUserId,
-                      currentUserName: currentUserName,
-                      currentUserEmail: currentUserEmail,
+                      reviews: reviewsAsync.when(
+                        data: (reviews) => reviews,
+                        loading: () => [],
+                        error: (_, __) => [],
+                      ),
+                      currentUserId: userState.userId,
+                      currentUserName: userState.userName,
+                      currentUserEmail: userState.userEmail,
                       isReviewLoading: isReviewLoading,
                       onCreateReview: () async {
                         // This will be handled by the ReviewsTab's internal state
-                        // The actual implementation needs to be adjusted
                       },
                       onUpdateReview: (reviewId) {},
                       onDeleteReview: _deleteReview,
                       onNavigateToLogin: _navigateToLogin,
-                      onInitializeUser: _initializeUser,
+                      onInitializeUser: () async {
+                        await ref.read(userProvider.notifier).initializeUser();
+                      },
                     ),
                   ],
                 ),

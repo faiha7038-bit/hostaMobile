@@ -1,40 +1,25 @@
-import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hosta/common/top_snackbar.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/providers/blood-donateprovider.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../services/api_service.dart';
+import 'package:hosta/common/top_snackbar.dart';
 
-class Donate extends StatefulWidget {
+class Donate extends ConsumerStatefulWidget {
   const Donate({super.key});
 
   @override
-  State<Donate> createState() => _DonateState();
+  ConsumerState<Donate> createState() => _DonateState();
 }
 
-class _DonateState extends State<Donate> {
+class _DonateState extends ConsumerState<Donate> {
   final _phoneController = TextEditingController();
   final _placeController = TextEditingController();
   final _pincodeController = TextEditingController();
-
   final _dobController = TextEditingController();
   final _countryController = TextEditingController();
   final _stateController = TextEditingController();
   final _districtController = TextEditingController();
-
-  String? dateOfBirth;
-  String? bloodGroup;
-
-  Map<String, dynamic>? selectedCountry;
-  Map<String, dynamic>? selectedState;
-  Map<String, dynamic>? selectedDistrict;
-
-  List<Map<String, dynamic>> countries = [];
-  List<Map<String, dynamic>> states = [];
-  List<Map<String, dynamic>> districts = [];
-  List<dynamic> jsonData = [];
 
   final List<String> bloodGroups = [
     "A+",
@@ -50,61 +35,30 @@ class _DonateState extends State<Donate> {
   @override
   void initState() {
     super.initState();
-    _loadJson();
     _loadUserPhone();
   }
 
-  Future<void> _loadJson() async {
-    try {
-      final String response = await rootBundle.loadString(
-        'assets/countries+states+cities.json',
-      );
-      final data = await json.decode(response);
-      setState(() {
-        jsonData = data;
-        countries = data
-            .map<Map<String, dynamic>>(
-              (c) => {
-                'id': c['iso3'],
-                'name': c['name'],
-                'states': c['states'],
-              },
-            )
-            .toList();
-      });
-    } catch (e) {
-      print("Error loading JSON: $e");
-    }
-  }
-
   Future<void> _loadUserPhone() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedUserPhone = prefs.getString('userPhone');
-      if (storedUserPhone != null) {
-        setState(() {
-          _phoneController.text = storedUserPhone;
-        });
-      }
-    } catch (e) {
-      print("Error loading user phone: $e");
+    final phoneAsync = await ref.read(userPhoneProvider.future);
+    if (phoneAsync != null) {
+      _phoneController.text = phoneAsync;
     }
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    final dateOfBirth = ref.read(donorFormProvider).dateOfBirth;
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: dateOfBirth != null
-          ? DateFormat('yyyy-MM-dd').parse(dateOfBirth!)
+          ? DateFormat('yyyy-MM-dd').parse(dateOfBirth)
           : DateTime(1990),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
     if (picked != null) {
-      setState(() {
-        dateOfBirth = DateFormat('yyyy-MM-dd').format(picked);
-        _dobController.text = dateOfBirth!;
-      });
+      final formattedDate = DateFormat('yyyy-MM-dd').format(picked);
+      ref.read(donorFormProvider.notifier).updateDateOfBirth(formattedDate);
+      _dobController.text = formattedDate;
     }
   }
 
@@ -198,116 +152,92 @@ class _DonateState extends State<Donate> {
   }
 
   void _onCountrySelected(Map<String, dynamic> country) {
-    setState(() {
-      selectedCountry = country;
-      _countryController.text = country['name'].toString();
-      selectedState = null;
-      selectedDistrict = null;
-      _stateController.clear();
-      _districtController.clear();
-      states = (country['states'] as List)
-          .map(
-            (s) => {
-              'id': s['state_code'],
-              'name': s['name'],
-              'cities': s['cities'],
-            },
-          )
-          .toList();
-      districts = [];
-    });
+    ref.read(donorFormProvider.notifier).updateSelectedCountry(country);
+    _countryController.text = country['name'].toString();
+    _stateController.clear();
+    _districtController.clear();
   }
 
   void _onStateSelected(Map<String, dynamic> state) {
-    setState(() {
-      selectedState = state;
-      _stateController.text = state['name'].toString();
-      selectedDistrict = null;
-      _districtController.clear();
-      districts = (state['cities'] as List)
-          .map((d) => {'id': d['id'].toString(), 'name': d['name']})
-          .toList();
-    });
+    ref.read(donorFormProvider.notifier).updateSelectedState(state);
+    _stateController.text = state['name'].toString();
+    _districtController.clear();
   }
 
   void _onDistrictSelected(Map<String, dynamic> district) {
-    setState(() {
-      selectedDistrict = district;
-      _districtController.text = district['name'].toString();
-    });
+    ref.read(donorFormProvider.notifier).updateSelectedDistrict(district);
+    _districtController.text = district['name'].toString();
   }
 
   Future<void> _submit() async {
-    if (_phoneController.text.isEmpty ||
-        dateOfBirth == null ||
-        bloodGroup == null ||
-        selectedCountry == null ||
-        _placeController.text.isEmpty ||
-        _pincodeController.text.isEmpty) {
+    final formState = ref.read(donorFormProvider);
+    final phone = _phoneController.text;
+    final place = _placeController.text;
+    final pincode = _pincodeController.text;
+
+    if (phone.isEmpty ||
+        formState.dateOfBirth == null ||
+        formState.bloodGroup == null ||
+        formState.selectedCountry == null ||
+        place.isEmpty ||
+        pincode.isEmpty) {
       showTopSnackBar(
         context,
         "Please fill all required fields",
         isError: true,
       );
-
       return;
     }
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedUserId = prefs.getString('userId');
+    final userId = await ref.read(userIdProvider.future);
+    if (userId == null) {
+      showTopSnackBar(context, "User not logged in", isError: true);
+      return;
+    }
 
-      if (storedUserId == null) {
-        showTopSnackBar(context, "User not logged in", isError: true);
-        return;
-      }
+    final payload = {
+      "phone": phone,
+      "dateOfBirth": formState.dateOfBirth,
+      "bloodGroup": formState.bloodGroup,
+      "address": {
+        "country": formState.selectedCountry!['name'].toString(),
+        "state": formState.selectedState!['name'].toString(),
+        "district": formState.selectedDistrict!['name'].toString(),
+        "place": place,
+        "pincode": pincode,
+      },
+      "userId": userId,
+    };
 
-      final payload = {
-        "phone": _phoneController.text,
-        "dateOfBirth": dateOfBirth,
-        "bloodGroup": bloodGroup,
-        "address": {
-          "country": selectedCountry!['name'].toString(),
-          "state": selectedState!['name'].toString(),
-          "district": selectedDistrict!['name'].toString(),
-          "place": _placeController.text,
-          "pincode": _pincodeController.text,
-        },
-        "userId": storedUserId,
-      };
-
-      final response = await ApiService().createADonor(payload);
-
-      if (response.statusCode == 201) {
-        final bloodId = response.data["donor"]["_id"];
-        await prefs.setString('bloodId', bloodId);
-
-        showTopSnackBar(context, "Donor Created Successfully");
-        Navigator.pop(context);
-      } else {
-        showTopSnackBar(
-          context,
-          response.data['message'] ?? 'Donate failed',
-          isError: true,
-        );
-      }
-    } on DioException catch (dioError) {
-      String errorMessage = "Something went wrong";
-
-      if (dioError.response != null) {
-        try {
-          errorMessage = dioError.response?.data['message'] ?? errorMessage;
-        } catch (_) {}
-      }
-
-      showTopSnackBar(context, errorMessage, isError: true);
-    } catch (e) {
-      showTopSnackBar(context, "Error: $e", isError: true);
+    ref.read(donorFormProvider.notifier).setLoading(true);
+    
+    final result = await ref.read(donorCreationProvider(payload).future);
+    
+    ref.read(donorFormProvider.notifier).setLoading(false);
+    
+    if (result) {
+      showTopSnackBar(context, "Donor Created Successfully");
+      Navigator.pop(context);
+    } else {
+      final error = ref.read(donorFormProvider).error;
+      showTopSnackBar(
+        context,
+        error ?? 'Donate failed',
+        isError: true,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final locationAsync = ref.watch(locationDataProvider);
+    final formState = ref.watch(donorFormProvider);
+    final isLoading = formState.isLoading;
+    final bloodGroup = formState.bloodGroup;
+    final countries = locationAsync.value ?? [];
+    final states = formState.states;
+    final districts = formState.districts;
+
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
@@ -325,11 +255,10 @@ class _DonateState extends State<Donate> {
           icon: const Icon(
             Icons.arrow_back_ios_new,
             color: Colors.white,
-          ), // Back button color changed to white
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-
       body: Center(
         child: SingleChildScrollView(
           child: ConstrainedBox(
@@ -377,7 +306,11 @@ class _DonateState extends State<Donate> {
                           ),
                         )
                         .toList(),
-                    onChanged: (val) => setState(() => bloodGroup = val),
+                    onChanged: (val) {
+                      if (val != null) {
+                        ref.read(donorFormProvider.notifier).updateBloodGroup(val);
+                      }
+                    },
                     decoration: InputDecoration(
                       labelText: "Blood Group",
                       prefixIcon: Icon(Icons.bloodtype),
@@ -387,26 +320,31 @@ class _DonateState extends State<Donate> {
                     ),
                   ),
                   SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () => _openSearchModal(
-                      title: "Select Country",
-                      data: countries,
-                      onSelected: _onCountrySelected,
-                    ),
-                    child: AbsorbPointer(
-                      child: TextField(
-                        controller: _countryController,
-                        decoration: InputDecoration(
-                          labelText: "Country",
-                          prefixIcon: Icon(Icons.public),
-                          hintText: "Select Country",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
+                  if (locationAsync.isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (locationAsync.hasError)
+                    const Center(child: Text("Error loading countries"))
+                  else
+                    GestureDetector(
+                      onTap: () => _openSearchModal(
+                        title: "Select Country",
+                        data: countries,
+                        onSelected: _onCountrySelected,
+                      ),
+                      child: AbsorbPointer(
+                        child: TextField(
+                          controller: _countryController,
+                          decoration: InputDecoration(
+                            labelText: "Country",
+                            prefixIcon: Icon(Icons.public),
+                            hintText: "Select Country",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
                   const SizedBox(height: 12),
                   if (states.isNotEmpty)
                     GestureDetector(
@@ -477,17 +415,26 @@ class _DonateState extends State<Donate> {
                   ),
                   SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: _submit,
+                    onPressed: isLoading ? null : _submit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                     ),
-                    child: const Text(
-                      "Create Donor",
-                      style: TextStyle(
-                        color: Colors.white, // text color
-                        fontSize: 16,
-                      ),
-                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            "Create Donor",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
                   ),
                 ],
               ),
@@ -496,5 +443,17 @@ class _DonateState extends State<Donate> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _placeController.dispose();
+    _pincodeController.dispose();
+    _dobController.dispose();
+    _countryController.dispose();
+    _stateController.dispose();
+    _districtController.dispose();
+    super.dispose();
   }
 }

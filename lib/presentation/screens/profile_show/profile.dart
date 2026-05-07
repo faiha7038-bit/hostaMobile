@@ -5,6 +5,8 @@ import 'package:hosta/presentation/screens/ambulance/ambulance_details.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/blood_details.dart';
 import 'package:hosta/presentation/screens/contact/contact.dart';
+import 'package:hosta/presentation/screens/history/myhistory.dart';
+import 'package:hosta/presentation/screens/lab/lab.dart';
 import 'package:hosta/presentation/screens/prescription.dart';
 import 'package:hosta/presentation/screens/profile-edit/profile.dart';
 import 'package:hosta/presentation/screens/privacy/privacy.dart';
@@ -175,9 +177,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     Navigator.push(context, MaterialPageRoute(builder: (context) => Profile()));
   }
 
-  // Logout function moved to SettingsPage
-  // This function is removed from ProfilePage
-
   void _navigateToSettings() {
     Navigator.push(
       context,
@@ -197,8 +196,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     showDialog(context: context, builder: (context) => const Privacy());
   }
 
-  // Logout confirmation dialog removed from ProfilePage
-
   @override
   void dispose() {
     socket?.disconnect();
@@ -208,25 +205,31 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenHeight = screenSize.height;
+    final screenWidth = screenSize.width;
+    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    
     String? profileImageUrl = _getProfileImage();
     print("📸 Profile image URL: $profileImageUrl"); // Debug print
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Profile',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white, 
+            fontWeight: FontWeight.bold,
+            fontSize: screenWidth * 0.05,
+          ),
         ),
-        centerTitle: true, // This centers the title
+        centerTitle: true,
         backgroundColor: const Color(0xFF28A745),
         elevation: 0,
-        // leading: IconButton(
-        //   icon: const Icon(Icons.arrow_back, color: Colors.white),
-        //   onPressed: () => Navigator.pop(context),
-        // ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
+            icon: Icon(Icons.settings, color: Colors.white, size: screenWidth * 0.06),
             onPressed: _navigateToSettings,
           ),
         ],
@@ -237,276 +240,293 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               onRefresh: _refreshUserData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    // Profile Header
-                    Container(
-                      width: double.infinity,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF28A745),
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(30),
-                          bottomRight: Radius.circular(30),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          // Profile Image - Eye icon removed
-                          GestureDetector(
-                            onTap: _navigateToViewProfile,
-                            child: Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 4,
-                                ),
-                                color: Colors
-                                    .white, // Background color for fallback
-                              ),
-                              child: ClipOval(
-                                child: profileImageUrl != null
-                                    ? Image.network(
-                                        profileImageUrl,
-                                        fit: BoxFit.cover,
-                                        width: 120,
-                                        height: 120,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              print(
-                                                "❌ Error loading image: $error",
-                                              );
-                                              return Container(
-                                                color: Colors.grey[200],
-                                                child: const Icon(
-                                                  Icons.person,
-                                                  size: 60,
-                                                  color: Color(0xFF28A745),
-                                                ),
-                                              );
-                                            },
-                                        loadingBuilder:
-                                            (context, child, loadingProgress) {
-                                              if (loadingProgress == null)
-                                                return child;
-                                              return Container(
-                                                color: Colors.grey[200],
-                                                child: const Center(
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        color: Color(
-                                                          0xFF28A745,
-                                                        ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: screenHeight - kToolbarHeight - topPadding,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        // Profile Header
+                        Container(
+                          width: screenWidth,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF28A745),
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(30),
+                              bottomRight: Radius.circular(30),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              SizedBox(height: screenHeight * 0.02),
+                              // Profile Image
+                              GestureDetector(
+                                onTap: _navigateToViewProfile,
+                                child: Container(
+                                  width: screenWidth * 0.28,
+                                  height: screenWidth * 0.28,
+                                  constraints: BoxConstraints(
+                                    maxWidth: screenWidth * 0.32,
+                                    maxHeight: screenWidth * 0.32,
+                                    minWidth: screenWidth * 0.22,
+                                    minHeight: screenWidth * 0.22,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: screenWidth * 0.01,
+                                    ),
+                                    color: Colors.white,
+                                  ),
+                                  child: ClipOval(
+                                    child: profileImageUrl != null
+                                        ? Image.network(
+                                            profileImageUrl,
+                                            fit: BoxFit.cover,
+                                            width: screenWidth * 0.28,
+                                            height: screenWidth * 0.28,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                                  print(
+                                                    "❌ Error loading image: $error",
+                                                  );
+                                                  return Container(
+                                                    color: Colors.grey[200],
+                                                    child: Icon(
+                                                      Icons.person,
+                                                      size: screenWidth * 0.12,
+                                                      color: const Color(0xFF28A745),
+                                                    ),
+                                                  );
+                                                },
+                                            loadingBuilder:
+                                                (context, child, loadingProgress) {
+                                                  if (loadingProgress == null)
+                                                    return child;
+                                                  return Container(
+                                                    color: Colors.grey[200],
+                                                    child: Center(
+                                                      child: CircularProgressIndicator(
+                                                        color: const Color(0xFF28A745),
+                                                        strokeWidth: screenWidth * 0.008,
                                                       ),
-                                                ),
-                                              );
-                                            },
-                                      )
-                                    : Container(
-                                        color: Colors.grey[200],
-                                        child: const Icon(
-                                          Icons.person,
-                                          size: 60,
-                                          color: Color(0xFF28A745),
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          // User Name
-                          Text(
-                            _getSafeString(
-                              userData['name'],
-                              defaultValue: 'User Name',
-                            ),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // User Email
-                          Text(
-                            _getSafeString(
-                              userData['email'],
-                              defaultValue: 'email@example.com',
-                            ),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          //
-                          //View Profile Button
-                          if (userId != null && userId!.isNotEmpty)
-                            ElevatedButton.icon(
-                              onPressed: _navigateToViewProfile,
-                              icon: const Icon(Icons.person, size: 18),
-                              label: const Text('View Full Profile'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFF28A745),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
+                                                    ),
+                                                  );
+                                                },
+                                          )
+                                        : Container(
+                                            color: Colors.grey[200],
+                                            child: Icon(
+                                              Icons.person,
+                                              size: screenWidth * 0.12,
+                                              color: const Color(0xFF28A745),
+                                            ),
+                                          ),
+                                  ),
                                 ),
+                              ),
+                              SizedBox(height: screenHeight * 0.02),
+                              // User Name
+                              Text(
+                                _getSafeString(
+                                  userData['name'],
+                                  defaultValue: 'User Name',
+                                ),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: screenWidth * 0.06,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.01),
+                              // User Email
+                              Text(
+                                _getSafeString(
+                                  userData['email'],
+                                  defaultValue: 'email@example.com',
+                                ),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: screenWidth * 0.04,
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.025),
+                              //View Profile Button
+                              if (userId != null && userId!.isNotEmpty)
+                                ElevatedButton.icon(
+                                  onPressed: _navigateToViewProfile,
+                                  icon: Icon(Icons.person, size: screenWidth * 0.045),
+                                  label: Text(
+                                    'View Full Profile',
+                                    style: TextStyle(fontSize: screenWidth * 0.035),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: const Color(0xFF28A745),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.05,
+                                      vertical: screenHeight * 0.015,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(screenWidth * 0.075),
+                                    ),
+                                  ),
+                                ),
+                              SizedBox(height: screenHeight * 0.035),
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(height: screenHeight * 0.025),
+
+                        // Profile Options
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                          child: Column(
+                            children: [
+                              // App Settings Section
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'App Settings',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.045,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF28A745),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.012),
+
+                              // Settings Card
+                              Card(
+                                elevation: screenWidth * 0.005,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
+                                  borderRadius: BorderRadius.circular(screenWidth * 0.0375),
                                 ),
-                              ),
-                            ),
-                          const SizedBox(height: 30),
-                        ],
-                      ),
-                    ),
+                                child: Column(
+                                  children: [
+                                    _buildProfileOption(
+                                      icon: Icons.local_taxi_outlined,
+                                      title: 'Ambulance',
+                                      subtitle: 'About ambulance',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: () async {
+                                        final prefs =
+                                            await SharedPreferences.getInstance();
+                                        String userId =
+                                            prefs.getString('userId') ?? '';
+                                        if (userId.isEmpty) {
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
+                                              content: Text(
+                                                "Please login first",
+                                                style: TextStyle(fontSize: screenWidth * 0.04),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            Signin(),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return;
+                                        }
 
-                    const SizedBox(height: 20),
-
-                    // Profile Options (Contact Information removed)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        children: [
-                          // App Settings Section
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'App Settings',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF28A745),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Settings Card
-                          Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildProfileOption(
-                                  icon: Icons.local_taxi_outlined,
-                                  title: 'Ambulance',
-                                  subtitle: 'About ambulance',
-                                  onTap: () async {
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    String userId =
-                                        prefs.getString('userId') ?? '';
-                                    if (userId.isEmpty) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text("Login Required"),
-                                          content: const Text(
-                                            "Please login first",
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                AmbulanceDetailsPage(),
                                           ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              child: const Text("Cancel",style: TextStyle(color: Colors.black),),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        Signin(),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text("Login",style: TextStyle(color: Colors.green),),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                      return;
-                                    }
+                                        );
+                                      },
+                                    ),
 
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            AmbulanceDetailsPage(
-                                              // userId: userId,
-                                            ),
-                                      ),
-                                    );
-                                  },
-                                ),
+                                    const Divider(height: 0),
+                                    _buildProfileOption(
+                                      icon: Icons.water_drop_outlined,
+                                      title: 'Blood',
+                                      subtitle: 'About Blood',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: () async {
+                                        final prefs =
+                                            await SharedPreferences.getInstance();
+                                        String userId =
+                                            prefs.getString('userId') ?? '';
 
+                                        if (userId.isEmpty) {
+                                           showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
+                                              content: Text(
+                                                "Please login first",
+                                                style: TextStyle(fontSize: screenWidth * 0.04),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            Signin(),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                MyBloodDetailsPage(userId: userId),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                 const Divider(height: 0),
                                 _buildProfileOption(
-                                  icon: Icons.water_drop_outlined,
-                                  title: 'Blood',
-                                  subtitle: 'About Blood',
-                                  onTap: () async {
-                                    final prefs =
-                                        await SharedPreferences.getInstance();
-                                    String userId =
-                                        prefs.getString('userId') ?? '';
-
-                                    if (userId.isEmpty) {
-                                       showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text("Login Required"),
-                                          content: const Text(
-                                            "Please login first",
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              child: const Text("Cancel",style: TextStyle(color: Colors.black),),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        Signin(),
-                                                  ),
-                                                );
-                                              },
-                                              child: const Text("Login",style: TextStyle(color: Colors.green),),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            MyBloodDetailsPage(userId: userId),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const Divider(height: 0),
-                                _buildProfileOption(
+                                  
                                   icon: Icons.note_add_outlined,
                                   title: 'Prescription',
                                   subtitle: 'About prescription',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
                                   onTap: () async {
                                     final prefs =
                                         await SharedPreferences.getInstance();
@@ -516,15 +536,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                       showDialog(
                                         context: context,
                                         builder: (context) => AlertDialog(
-                                          title: const Text("Login Required"),
-                                          content: const Text(
+                                          title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
+                                          content: Text(
                                             "Please login first",
+                                            style: TextStyle(fontSize: screenWidth * 0.04),
                                           ),
                                           actions: [
                                             TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(context),
-                                              child: const Text("Cancel",style: TextStyle(color: Colors.black),),
+                                              child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
                                             ),
                                             TextButton(
                                               onPressed: () {
@@ -538,7 +559,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                                   ),
                                                 );
                                               },
-                                              child: const Text("Login",style: TextStyle(color: Colors.green),),
+                                              child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
                                             ),
                                           ],
                                         ),
@@ -557,81 +578,200 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                     );
                                   },
                                 ),
-                                 const Divider(height: 0),
+                                     const Divider(height: 0),
+                                     _buildProfileOption(
+                                      icon: Icons.note_sharp,
+                                      title: 'Lab Report',
+                                      subtitle: 'Lab report details',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: () async {
+                                        final prefs =
+                                            await SharedPreferences.getInstance();
+                                        String userId =
+                                            prefs.getString('userId') ?? '';
 
-                                _buildProfileOption(
-                                  icon: Icons.settings_outlined,
-                                  title: 'Settings',
-                                  subtitle: 'App settings and preferences',
-                                  onTap: _navigateToSettings,
+                                        if (userId.isEmpty) {
+                                           showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
+                                              content: Text(
+                                                "Please login first",
+                                                style: TextStyle(fontSize: screenWidth * 0.04),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            Signin(),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => const LabReport(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const Divider(height: 0),
+                                      _buildProfileOption(
+                                      icon: Icons.history_outlined,
+                                      title: 'My History',
+                                      subtitle: 'view details',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: () async {
+                                        final prefs =
+                                            await SharedPreferences.getInstance();
+                                        String userId =
+                                            prefs.getString('userId') ?? '';
+
+                                        if (userId.isEmpty) {
+                                           showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
+                                              content: Text(
+                                                "Please login first",
+                                                style: TextStyle(fontSize: screenWidth * 0.04),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            Signin(),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => const HistoryScreen(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const Divider(height: 0),
+
+                                    _buildProfileOption(
+                                      icon: Icons.settings_outlined,
+                                      title: 'Settings',
+                                      subtitle: 'App settings and preferences',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: _navigateToSettings,
+                                    ),
+                                    const Divider(height: 0),
+                                    _buildProfileOption(
+                                      icon: Icons.lock_outline,
+                                      title: 'Privacy',
+                                      subtitle: 'Privacy policy and terms',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: _showPrivacyDialog,
+                                    ),
+                                    const Divider(height: 0),
+                                    _buildProfileOption(
+                                      icon: Icons.info_outline,
+                                      title: 'About',
+                                      subtitle: 'About this app',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: _showAboutDialog,
+                                    ),
+                                  ],
                                 ),
-                                const Divider(height: 0),
-                                _buildProfileOption(
-                                  icon: Icons.lock_outline,
-                                  title: 'Privacy',
-                                  subtitle: 'Privacy policy and terms',
-                                  onTap: _showPrivacyDialog,
-                                ),
-                                const Divider(height: 0),
-                                _buildProfileOption(
-                                  icon: Icons.info_outline,
-                                  title: 'About',
-                                  subtitle: 'About this app',
-                                  onTap: _showAboutDialog,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          // Support Section
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Support',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF28A745),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Support Card
-                          Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildProfileOption(
-                                  icon: Icons.headset_mic_outlined,
-                                  title: 'Contact Us',
-                                  subtitle: 'Get help and support',
-                                  onTap: _showContactDialog,
+                              SizedBox(height: screenHeight * 0.025),
+                              // Support Section
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Support',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.045,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF28A745),
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          // Logout Button Removed from Profile Page
-                          // Logout functionality is now in Settings page
-                          const SizedBox(height: 20),
-                          // App Version
-                          Text(
-                            'Version 1.0.0',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
-                            ),
-                          ),
+                              ),
+                              SizedBox(height: screenHeight * 0.012),
 
-                          const SizedBox(height: 20),
-                        ],
-                      ),
+                              // Support Card
+                              Card(
+                                elevation: screenWidth * 0.005,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(screenWidth * 0.0375),
+                                ),
+                                child: Column(
+                                  children: [
+                                    _buildProfileOption(
+                                      icon: Icons.headset_mic_outlined,
+                                      title: 'Contact Us',
+                                      subtitle: 'Get help and support',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: _showContactDialog,
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              SizedBox(height: screenHeight * 0.025),
+
+                              // App Version
+                              Text(
+                                'Version 1.0.0',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: screenWidth * 0.03,
+                                ),
+                              ),
+
+                              SizedBox(height: screenHeight * 0.03),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -643,23 +783,39 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    required double screenWidth,
+    required double screenHeight,
   }) {
     return ListTile(
       leading: Container(
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.all(screenWidth * 0.02),
         decoration: BoxDecoration(
           color: const Color(0xFF28A745).withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(screenWidth * 0.025),
         ),
-        child: Icon(icon, color: const Color(0xFF28A745)),
+        child: Icon(icon, color: const Color(0xFF28A745), size: screenWidth * 0.055),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        title, 
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: screenWidth * 0.04,
+        ),
+      ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+        style: TextStyle(
+          color: Colors.grey[600], 
+          fontSize: screenWidth * 0.035,
+        ),
       ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      trailing: Icon(Icons.arrow_forward_ios, size: screenWidth * 0.04),
       onTap: onTap,
+      dense: screenHeight < 600 ? true : false,
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.04,
+        vertical: screenHeight * 0.005,
+      ),
     );
   }
 }

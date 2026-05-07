@@ -1,93 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:hosta/presentation/screens/doctor/doctors.dart';
-import '../../../services/api_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/providers/specialities-provider.dart';
 
-class Specialties extends StatefulWidget {
+class Specialties extends ConsumerStatefulWidget {
   const Specialties({super.key});
 
   @override
-  State<Specialties> createState() => _SpecialitesState();
+  ConsumerState<Specialties> createState() => _SpecialitesState();
 }
 
-class _SpecialitesState extends State<Specialties> {
-  String searchQuery = '';
-  bool isLoading = false;
-  bool isLoadingSpecialties = true; // For loading specialties
-  List<dynamic> hospitalList = [];
-  List<dynamic> specialtiesList = []; // To store specialties from API
-
-  final ApiService _apiService = ApiService();
-
+class _SpecialitesState extends ConsumerState<Specialties> {
   @override
   void initState() {
     super.initState();
-    _fetchSpecialties();
+    // Trigger specialties fetch
+    ref.read(specialtiesProvider);
   }
 
-  // Fetch specialties from API
-  Future<void> _fetchSpecialties() async {
-    try {
-      setState(() {
-        isLoadingSpecialties = true;
-      });
-
-      final response = await _apiService.getAllSpecility();
-      
-      if (response.statusCode == 200 && response.data != null) {
-        // Handle different response formats
-        dynamic specialtyData;
-        
-        if (response.data is Map) {
-          // If response is a map, check for common keys
-          if (response.data['specialties'] != null) {
-            specialtyData = response.data['specialties'];
-          } else if (response.data['data'] != null) {
-            specialtyData = response.data['data'];
-          } else {
-            // If no specific key, use the entire response as list
-            specialtyData = response.data is List ? response.data : [];
-          }
-        } else if (response.data is List) {
-          specialtyData = response.data;
-        } else {
-          specialtyData = [];
-        }
-        
-        final specialtyList = specialtyData is List ? specialtyData : [];
-        
-        setState(() {
-          specialtiesList = specialtyList;
-        });
-        
-        print("✅ Loaded ${specialtyList.length} specialties from API");
-      } else {
-        setState(() {
-          specialtiesList = [];
-        });
-        print("❌ Failed to load specialties: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("❌ Error loading specialties: $e");
-      print("❌ Error type: ${e.runtimeType}");
-      setState(() {
-        specialtiesList = [];
-      });
-    } finally {
-      setState(() {
-        isLoadingSpecialties = false;
-      });
-    }
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-
-    // 🔍 Filter specialties from API data
-    final filteredData = specialtiesList.where((specialty) {
-      final name = (specialty['name'] ?? '').toString().toLowerCase();
-      return name.contains(searchQuery.toLowerCase());
-    }).toList();
+    final searchQuery = ref.watch(searchQueryProvider);
+    final filteredSpecialties = ref.watch(filteredSpecialtiesProvider);
+    final specialtiesAsync = ref.watch(specialtiesProvider);
+    final hospitalsLoading = ref.watch(hospitalsLoadingProvider);
+    final hospitalsForSpecialty = ref.watch(hospitalsForSpecialtyProvider);
+    final selectedSpecialty = ref.watch(selectedSpecialtyProvider);
+    final hospitalOps = ref.read(hospitalOperationsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
@@ -109,7 +57,9 @@ class _SpecialitesState extends State<Specialties> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _fetchSpecialties,
+            onPressed: () {
+              ref.invalidate(specialtiesProvider);
+            },
             tooltip: 'Refresh',
           ),
         ],
@@ -123,9 +73,7 @@ class _SpecialitesState extends State<Specialties> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: TextField(
                 onChanged: (value) {
-                  setState(() {
-                    searchQuery = value;
-                  });
+                  ref.read(searchQueryProvider.notifier).state = value;
                 },
                 decoration: InputDecoration(
                   hintText: 'Search specialties...',
@@ -143,8 +91,68 @@ class _SpecialitesState extends State<Specialties> {
             ),
 
             // ===== Grid =====
-            if (isLoadingSpecialties)
-              const Expanded(
+            specialtiesAsync.when(
+              data: (specialties) {
+                if (filteredSpecialties.isEmpty) {
+                  return const Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search_off, size: 60, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            "No specialties found",
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                return Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 1.1,
+                        ),
+                        itemCount: filteredSpecialties.length,
+                        itemBuilder: (context, index) {
+                          final specialty = filteredSpecialties[index];
+                          final name = specialty['name']?.toString() ?? 'Unknown';
+                          final picture = specialty['picture'] ?? {};
+                          final imageUrl = picture['imageUrl']?.toString() ?? '';
+                          
+                          return GestureDetector(
+                            onTap: () async {
+                              try {
+                                await hospitalOps.fetchHospitalsForSpecialty(name);
+                                if (mounted) {
+                                  _showHospitalPopup(context, name);
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  _showErrorSnackbar("Error loading hospitals: $e");
+                                }
+                              }
+                            },
+                            child: _buildCard(name, imageUrl, width),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
+              loading: () => const Expanded(
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -158,59 +166,39 @@ class _SpecialitesState extends State<Specialties> {
                     ],
                   ),
                 ),
-              )
-            else if (specialtiesList.isEmpty && !isLoadingSpecialties)
-              const Expanded(
+              ),
+              error: (error, stack) => Expanded(
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.error_outline, size: 60, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
+                      const Icon(Icons.error_outline, size: 60, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text(
                         "No specialties available",
                         style: TextStyle(fontSize: 16, color: Colors.grey),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
-                        "Check your connection or try again later",
-                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                        "Error: ${error.toString()}",
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
                         textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          ref.invalidate(specialtiesProvider);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                        ),
+                        child: const Text("Retry"),
                       ),
                     ],
                   ),
                 ),
-              )
-            else
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 1.1, // Increased for better text fit
-                      ),
-                      itemCount: filteredData.length,
-                      itemBuilder: (context, index) {
-                        final specialty = filteredData[index];
-                        final name = specialty['name']?.toString() ?? 'Unknown';
-                        final picture = specialty['picture'] ?? {};
-                        final imageUrl = picture['imageUrl']?.toString() ?? '';
-                        
-                        return GestureDetector(
-                          onTap: () => _fetchAndShowHospitals(context, name),
-                          child: _buildCard(name, imageUrl, width),
-                        );
-                      },
-                    ),
-                  ),
-                ),
               ),
+            ),
           ],
         ),
       ),
@@ -307,137 +295,11 @@ class _SpecialitesState extends State<Specialties> {
     );
   }
 
-  // ===== Fetch Hospitals from API and Show Popup =====
-  Future<void> _fetchAndShowHospitals(BuildContext context, String specialtyName) async {
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      final response = await _apiService.getAllHospitalsSpeciality(specialtyName);
-      
-      if (response.statusCode == 200 && response.data != null) {
-        // Handle different response formats
-        dynamic hospitalData;
-        
-        if (response.data is Map) {
-          // If response is a map, check for common keys
-          if (response.data['hospitals'] != null) {
-            hospitalData = response.data['hospitals'];
-          } else if (response.data['data'] != null) {
-            hospitalData = response.data['data'];
-          } else {
-            // If no specific key, use the entire response as list
-            hospitalData = response.data is List ? response.data : [];
-          }
-        } else if (response.data is List) {
-          hospitalData = response.data;
-        } else {
-          hospitalData = [];
-        }
-        
-        final hospitalListData = hospitalData is List ? hospitalData : [];
-        
-        setState(() {
-          hospitalList = hospitalListData;
-        });
-        
-        print("✅ Loaded ${hospitalListData.length} hospitals for $specialtyName");
-        _showHospitalPopup(context, specialtyName);
-      } else {
-        setState(() {
-          hospitalList = [];
-        });
-        _showErrorSnackbar(context, "Failed to load hospitals");
-        print("❌ Failed to load hospitals: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("❌ Error fetching hospitals: $e");
-      setState(() {
-        hospitalList = [];
-      });
-      _showErrorSnackbar(context, "Error: $e");
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  void _showErrorSnackbar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  // ===== Filter hospitals by specialty =====
-  List<dynamic> _filterHospitalsBySpecialty(String specialtyName) {
-    return hospitalList.where((hospital) {
-      final specialties = hospital['specialties'] as List? ?? [];
-      return specialties.any((specialty) => 
-        (specialty['name'] as String?)?.toLowerCase().contains(specialtyName.toLowerCase()) ?? false
-      );
-    }).toList();
-  }
-
-  // ===== Get total doctors count for a hospital in specific specialty =====
-  int _getDoctorsCountForSpecialty(Map<String, dynamic> hospital, String specialtyName) {
-    try {
-      final specialties = hospital['specialties'] as List? ?? [];
-      for (var specialty in specialties) {
-        final specialtyMap = specialty as Map<String, dynamic>;
-        if ((specialtyMap['name'] as String?)?.toLowerCase().contains(specialtyName.toLowerCase()) ?? false) {
-          final doctors = specialtyMap['doctors'] as List? ?? [];
-          return doctors.length;
-        }
-      }
-      return 0;
-    } catch (e) {
-      print("Error getting doctors count: $e");
-      return 0;
-    }
-  }
-
-  // ===== Get all doctors count for hospital =====
-  int _getTotalDoctorsCount(Map<String, dynamic> hospital) {
-    try {
-      final specialties = hospital['specialties'] as List? ?? [];
-      int totalDoctors = 0;
-      for (var specialty in specialties) {
-        final specialtyMap = specialty as Map<String, dynamic>;
-        final doctors = specialtyMap['doctors'] as List? ?? [];
-        totalDoctors += doctors.length;
-      }
-      return totalDoctors;
-    } catch (e) {
-      print("Error getting total doctors count: $e");
-      return 0;
-    }
-  }
-
-  // ===== Navigate to Doctors Page =====
-  void _navigateToDoctorsPage(BuildContext context, String hospitalId, String specialtyName, String hospitalName) {
-    // Close the bottom sheet first
-    Navigator.pop(context);
-    
-    // Then navigate to doctors page
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Doctors(
-          hospitalId: hospitalId,
-          specialty: specialtyName,
-        ),
-      ),
-    );
-  }
-
-  // ===== Bottom Sheet Popup with API Data =====
   void _showHospitalPopup(BuildContext context, String specialtyName) {
-    final filteredHospitals = _filterHospitalsBySpecialty(specialtyName);
+    final hospitalOps = ref.read(hospitalOperationsProvider);
+    final hospitals = ref.read(hospitalsForSpecialtyProvider);
+    final isLoading = ref.read(hospitalsLoadingProvider);
+    final filteredHospitals = hospitalOps.filterHospitalsBySpecialty(hospitals, specialtyName);
 
     showModalBottomSheet(
       context: context,
@@ -462,7 +324,6 @@ class _SpecialitesState extends State<Specialties> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Wrap specialty name in Expanded to prevent overflow
                         Expanded(
                           child: Text(
                             "${specialtyName.toUpperCase()} HOSPITALS",
@@ -553,16 +414,16 @@ class _SpecialitesState extends State<Specialties> {
     );
   }
 
-  // ===== Build Hospital Card from API Data =====
   Widget _buildHospitalCard(BuildContext context, Map<String, dynamic> hospital, String specialtyName) {
+    final hospitalOps = ref.read(hospitalOperationsProvider);
     final imageUrl = (hospital['image'] as Map<String, dynamic>?)?['imageUrl'] as String? ?? '';
     final hospitalName = hospital['name'] as String? ?? 'Unknown Hospital';
     final address = hospital['address'] as String? ?? '';
     final phone = hospital['phone'] as String? ?? '';
     final hospitalId = hospital['_id'] as String? ?? '';
     
-    final specialtyDoctorsCount = _getDoctorsCountForSpecialty(hospital, specialtyName);
-    final totalDoctorsCount = _getTotalDoctorsCount(hospital);
+    final specialtyDoctorsCount = hospitalOps.getDoctorsCountForSpecialty(hospital, specialtyName);
+    final totalDoctorsCount = hospitalOps.getTotalDoctorsCount(hospital);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -571,9 +432,9 @@ class _SpecialitesState extends State<Specialties> {
       child: InkWell(
         onTap: () {
           if (hospitalId.isNotEmpty) {
-            _navigateToDoctorsPage(context, hospitalId, specialtyName, hospitalName);
+            hospitalOps.navigateToDoctorsPage(context, hospitalId, specialtyName, hospitalName);
           } else {
-            _showErrorSnackbar(context, "Hospital ID not available");
+            _showErrorSnackbar("Hospital ID not available");
           }
         },
         borderRadius: BorderRadius.circular(12),
@@ -694,7 +555,6 @@ class _SpecialitesState extends State<Specialties> {
     );
   }
 
-  // ===== Build Hospital Avatar with proper error handling =====
   Widget _buildHospitalAvatar(String imageUrl) {
     if (imageUrl.isNotEmpty) {
       return Container(
