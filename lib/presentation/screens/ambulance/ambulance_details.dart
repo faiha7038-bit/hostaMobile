@@ -50,9 +50,7 @@ class AmbulanceDetailsPage extends ConsumerWidget {
                 ),
               ),
             ),
-
             SizedBox(height: screenHeight * 0.02),
-
             Padding(
               padding: EdgeInsets.all(screenWidth * 0.04),
               child: Column(
@@ -89,17 +87,22 @@ class AmbulanceDetailsPage extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ✅ FIXED ROW
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "KL-11-AB-1234",
-                style: TextStyle(
-                  fontSize: screenWidth * 0.045,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  "KL-11-AB-1234",
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.045,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              SizedBox(width: screenWidth * 0.02),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     state.isAvailable ? "Available" : "Not Available",
