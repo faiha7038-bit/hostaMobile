@@ -58,26 +58,65 @@ class UserNotifier extends StateNotifier<UserState> {
   }
 }
 
-// Hospital details provider
 final hospitalDetailsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, hospitalId) async {
-  final apiService = ApiService();
-  final response = await apiService.getAHospitals(hospitalId);
-  return response.data;
+  final response = await ApiService().getAHospitals(hospitalId);
+  final rawData = response.data;
+
+  Map<String, dynamic> extractHospital(dynamic data) {
+    if (data == null) throw Exception('No data');
+    
+    // Case 1: { success: true, data: [{...}] }
+    if (data is Map && data.containsKey('data')) {
+      final inner = data['data'];
+      if (inner is List && inner.isNotEmpty) {
+        // Convert first element to Map<String, dynamic>
+        return Map<String, dynamic>.from(inner[0] as Map);
+      } else if (inner is Map) {
+        return Map<String, dynamic>.from(inner);
+      }
+    }
+    
+    // Case 2: Direct array [{...}]
+    if (data is List && data.isNotEmpty) {
+      return Map<String, dynamic>.from(data[0] as Map);
+    }
+    
+    // Case 3: Direct object {...}
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    
+    throw Exception('Unexpected format: ${data.runtimeType}');
+  }
+
+  return extractHospital(rawData);
 });
 
-// Hospital reviews provider
 final hospitalReviewsProvider = FutureProvider.family<List<dynamic>, String>((ref, hospitalId) async {
+  print('🟢 Fetching reviews for hospital ID: $hospitalId');
   final apiService = ApiService();
-  final response = await apiService.getAHospitalsReview(hospitalId);
-  
-  if (response.data != null) {
-    if (response.data is Map && response.data.containsKey("data")) {
-      return response.data["data"] ?? [];
-    } else if (response.data is List) {
-      return response.data;
+  try {
+    final response = await apiService.getAHospitalsReview(hospitalId);
+    print('✅ Reviews API response: ${response.data}');
+    
+    final rawData = response.data;
+    List<dynamic> reviews = [];
+    
+    if (rawData is Map<String, dynamic>) {
+      if (rawData.containsKey('data')) {
+        reviews = rawData['data'] as List<dynamic>? ?? [];
+      } else if (rawData.containsKey('reviews')) {
+        reviews = rawData['reviews'] as List<dynamic>? ?? [];
+      }
+    } else if (rawData is List) {
+      reviews = rawData;
     }
+    print('📋 Extracted reviews count: ${reviews.length}');
+    return reviews;
+  } catch (e, stack) {
+    print('❌ Reviews error: $e');
+    return []; // UI crash avoid cheyyan
   }
-  return [];
 });
 
 // Review loading state provider

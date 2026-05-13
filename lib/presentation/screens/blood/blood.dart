@@ -68,22 +68,34 @@ class _BloodState extends State<Blood> {
     }
   }
 
-  Future<void> _fetchDonors() async {
-    try {
-      setState(() => isLoading = true);
+Future<void> _fetchDonors() async {
+  print("🔵 _fetchDonors called");
+  try {
+    setState(() => isLoading = true);
 
-      final response = await _apiService.getAllDonors();
+    final response = await _apiService.getAllDonors();
+    print("📡 Status: ${response.statusCode}");
+    print("📦 Raw data: ${response.data}");
 
-      if (response.statusCode == 200 && response.data != null) {
-        List donorList = [];
+    if (response.statusCode == 200 && response.data != null) {
+      List donorList = [];
 
-        if (response.data is Map && response.data['donors'] != null) {
-          donorList = response.data['donors'];
-        } else if (response.data is List) {
-          donorList = response.data;
-        }
+      // ✅ Backend response ൽ 'data' ആണ് key
+      if (response.data is Map && response.data['data'] != null) {
+        donorList = response.data['data'];
+      }
+      // Fallback (old format)
+      else if (response.data is Map && response.data['donors'] != null) {
+        donorList = response.data['donors'];
+      }
+      else if (response.data is List) {
+        donorList = response.data;
+      }
 
-        // SAVE TO LOCAL
+      print("✅ Donors found: ${donorList.length}");
+
+      if (donorList.isNotEmpty) {
+        // Cache ൽ save ചെയ്യുക
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('cached_donors', jsonEncode(donorList));
 
@@ -91,32 +103,39 @@ class _BloodState extends State<Blood> {
           donors = donorList;
           _extractLocationData(donorList);
         });
-      }
-    } catch (e) {
-      print("❌ API failed, loading from cache");
-
-      final prefs = await SharedPreferences.getInstance();
-      final cachedData = prefs.getString('cached_donors');
-
-      if (cachedData != null) {
-        final donorList = jsonDecode(cachedData);
-        setState(() {
-          donors = donorList;
-          _extractLocationData(donorList);
-        });
       } else {
-        setState(() {
-          donors = [];
-          countries = [];
-          states = [];
-          districts = [];
-          places = [];
-        });
+        setState(() => donors = []);
       }
-    } finally {
-      setState(() => isLoading = false);
+    } else {
+      // Response not OK
+      setState(() => donors = []);
     }
+  } catch (e, stack) {
+    print("❌ API error: $e");
+    print(stack);
+    // Cache ൽ നിന്ന് load ചെയ്യുക
+    final prefs = await SharedPreferences.getInstance();
+    final cachedData = prefs.getString('cached_donors');
+    if (cachedData != null) {
+      final donorList = jsonDecode(cachedData);
+      setState(() {
+        donors = donorList;
+        _extractLocationData(donorList);
+      });
+    } else {
+      // No cache, empty list (UI will show "Check network")
+      setState(() {
+        donors = [];
+        countries = [];
+        states = [];
+        districts = [];
+        places = [];
+      });
+    }
+  } finally {
+    setState(() => isLoading = false);
   }
+}
 
   void _extractLocationData(List<dynamic> donorList) {
     final uniqueCountries = <String>{};

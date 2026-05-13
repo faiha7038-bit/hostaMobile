@@ -1,5 +1,6 @@
 import java.util.Properties
 import java.io.FileInputStream
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
@@ -25,10 +26,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_8
     }
 
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-
     defaultConfig {
         applicationId = "com.zorrowtech.hostamanagers"
         minSdk = flutter.minSdkVersion.toInt()
@@ -46,7 +43,7 @@ android {
             storePassword = keystoreProperties["storePassword"] as? String ?: "android"
         }
     }
-    
+
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
@@ -54,6 +51,12 @@ android {
         debug {
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_1_8)
     }
 }
 
@@ -66,8 +69,3 @@ dependencies {
     implementation("androidx.window:window:1.0.0")
     implementation("androidx.window:window-java:1.0.0")
 }
-
-// ========== ADD THIS AT THE BOTTOM ==========
-// Workaround for flutter_app_badger missing namespace
-
-// ========== END OF WORKAROUND ==========

@@ -77,17 +77,22 @@ class DonorSection extends StatelessWidget {
 
   List<dynamic> _getFilteredDonors() {
     final filtered = donors.where((donor) {
-      final user = donor['userId'] ?? {};
+      // ✅ donor is a Map; userId is an int, not a Map
       final address = donor['address'] ?? {};
 
-      final name = (user['name'] ?? '').toLowerCase();
-      final bloodGroup = (donor['bloodGroup'] ?? '');
+      final donorId = (donor['donorId'] ?? '').toString().toLowerCase();
+      final phone = (donor['phone'] ?? '').toString().toLowerCase();
+      final bloodGroup = (donor['bloodGroup'] ?? '').toString();
       final country = (address['country'] ?? '').toString().trim();
       final state = (address['state'] ?? '').toString().trim();
       final district = (address['district'] ?? '').toString().trim();
       final place = (address['place'] ?? '').toString().trim();
 
-      final matchesSearch = name.contains(searchQuery.toLowerCase());
+      // Search query matches donorId or phone (since no name field)
+      final matchesSearch = searchQuery.isEmpty ||
+          donorId.contains(searchQuery.toLowerCase()) ||
+          phone.contains(searchQuery.toLowerCase());
+
       final matchesCountry =
           selectedCountry.isEmpty || country == selectedCountry;
       final matchesState = selectedState.isEmpty || state == selectedState;
@@ -99,15 +104,12 @@ class DonorSection extends StatelessWidget {
           selectedBloodGroup == "All" ||
           bloodGroup == selectedBloodGroup;
 
-      final isMatch =
-          matchesSearch &&
+      return matchesSearch &&
           matchesCountry &&
           matchesState &&
           matchesDistrict &&
           matchesPlace &&
           matchesBlood;
-
-      return isMatch;
     }).toList();
 
     return filtered;
@@ -166,11 +168,15 @@ class DonorSection extends StatelessWidget {
     double screenWidth,
     double screenHeight,
   ) {
-    final user = donor['userId'] ?? {};
     final address = donor['address'] ?? {};
-
+    final phone = donor['phone'] ?? '';
     final dateOfBirth = donor['dateOfBirth']?.toString() ?? '';
     final age = dateOfBirth.isNotEmpty ? calculateAge(dateOfBirth) : 0;
+    final donorId = donor['donorId'] ?? 'Unknown';
+    final bloodGroup = donor['bloodGroup'] ?? '?';
+
+    // Display name is missing – show donorId instead
+    final displayName = 'Donor $donorId';
 
     return Container(
       margin: EdgeInsets.only(bottom: screenHeight * 0.015),
@@ -192,7 +198,7 @@ class DonorSection extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              donor["bloodGroup"] ?? "",
+              bloodGroup,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: screenWidth * 0.04,
@@ -206,7 +212,7 @@ class DonorSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user["name"] ?? "Unknown",
+                  displayName,
                   style: TextStyle(
                     fontSize: screenWidth * 0.04,
                     fontWeight: FontWeight.bold,
@@ -225,18 +231,19 @@ class DonorSection extends StatelessWidget {
                     ),
                   ),
                 SizedBox(height: screenHeight * 0.005),
-                Text(
-                  address["place"] ?? "",
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.0325,
-                    color: Colors.black54,
+                if (address['place'] != null && address['place'].toString().isNotEmpty)
+                  Text(
+                    address['place'],
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.0325,
+                      color: Colors.black54,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
                 SizedBox(height: screenHeight * 0.0025),
                 Text(
-                  "${address["district"] ?? ""}, ${address["state"] ?? ""}, ${address["country"] ?? ""}",
+                  "${address['district'] ?? ''} ${address['state'] ?? ''} ${address['country'] ?? ''}".trim(),
                   style: TextStyle(
                     fontSize: screenWidth * 0.03,
                     color: Colors.black45,
@@ -248,7 +255,9 @@ class DonorSection extends StatelessWidget {
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () => onMakePhoneCall(user["phone"] ?? ""),
+            onPressed: phone.toString().isNotEmpty
+                ? () => onMakePhoneCall(phone.toString())
+                : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               padding: EdgeInsets.symmetric(

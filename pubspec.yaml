@@ -54,7 +54,7 @@ dependencies:
   app_badge_plus: ^1.1.2
   permission_handler: ^12.0.1
   sms_autofill: ^2.3.0
-
+  dio_smart_retry: ^7.0.1
   
   # Firebase packages - UPDATED VERSIONS
   cupertino_icons: ^1.0.8

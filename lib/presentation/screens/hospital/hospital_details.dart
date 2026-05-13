@@ -29,12 +29,20 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
   late Map<String, dynamic> hospital;
   bool isLoading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    hospital = widget.hospital;
-    _initializeData();
+@override
+void initState() {
+  super.initState();
+  if (widget.hospitalId == null || widget.hospitalId.isEmpty) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Invalid hospital ID")),
+      );
+      Navigator.pop(context);
+    });
+    return;
   }
+  _initializeData();
+}
 
   Future<void> _initializeData() async {
     await ref.read(userProvider.notifier).initializeUser();
@@ -190,17 +198,17 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
     }
   }
 
-  void _navigateToDoctorsPage(String specialtyName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Doctors(
-          hospitalId: widget.hospitalId,
-          specialty: specialtyName,
-        ),
+ void _navigateToDoctorsPage(String hospitalId, String specialtyName) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => Doctors(
+        hospitalId: hospitalId,      // use passed hospitalId
+        specialty: specialtyName,
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _navigateToLogin() async {
     final result = await Navigator.push(
@@ -239,149 +247,158 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    
-    // Watch for hospital details changes
-    final hospitalDetailsAsync = ref.watch(hospitalDetailsProvider(widget.hospitalId));
-    final reviewsAsync = ref.watch(hospitalReviewsProvider(widget.hospitalId));
-    final isReviewLoading = ref.watch(reviewLoadingProvider);
-    final userState = ref.watch(userProvider);
+@override
+Widget build(BuildContext context) {
+  final hospitalAsync = ref.watch(hospitalDetailsProvider(widget.hospitalId));
+  final reviewsAsync = ref.watch(hospitalReviewsProvider(widget.hospitalId));
+  final userState = ref.watch(userProvider);
+  final isReviewLoading = ref.watch(reviewLoadingProvider);  // ✅ add this
 
-    if (isLoading || userState.isLoading) {
-      return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Colors.green,
-            strokeWidth: screenWidth * 0.008,
-          ),
+  return hospitalAsync.when(
+    loading: () => Scaffold(
+      body: Center(child: CircularProgressIndicator(color: Colors.green)),
+    ),
+    error: (error, stack) => Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("Error loading hospital data: $error"),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(hospitalDetailsProvider(widget.hospitalId)),
+              child: Text("Retry"),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    ),
+    data: (hospitalData) {
+      // ✅ Get screen size inside builder
+      final screenWidth = MediaQuery.of(context).size.width;
+      final screenHeight = MediaQuery.of(context).size.height;
+      
+      // ✅ Extract image URL safely (backend may not have image field)
+      final imageUrl = hospitalData["image"] != null 
+          ? (hospitalData["image"]["imageUrl"] ?? "")
+          : "";
 
-    final imageUrl = hospital["image"]?["imageUrl"] ?? "";
-
-    return DefaultTabController(
-      length: 5,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFECFDF5),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Top Image
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(screenWidth * 0.05)),
-                    child: imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            height: screenHeight * 0.33,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Image.asset(
-                                'images/hospital.jpg',
-                                height: screenHeight * 0.33,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              );
-                            },
-                          )
-                        : Image.asset(
-                            'images/hospital.jpg',
-                            height: screenHeight * 0.33,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                  ),
-                  Positioned(
-                    top: screenHeight * 0.015,
-                    left: screenWidth * 0.03,
-                    child: CircleAvatar(
-                      backgroundColor: Colors.black45,
-                      radius: screenWidth * 0.06,
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: screenWidth * 0.065,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              // Tabs
-              SizedBox(height: screenHeight * 0.01),
-              TabBar(
-                isScrollable: true,
-                labelColor: Colors.green,
-                unselectedLabelColor: Colors.black,
-                indicatorColor: Colors.green,
-                labelStyle: TextStyle(
-                  fontSize: screenWidth * 0.0375,
-                  fontWeight: FontWeight.bold,
-                ),
-                unselectedLabelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                tabs: const [
-                  Tab(text: "Information"),
-                  Tab(text: "Specialties"),
-                  Tab(text: "Working Hours"),
-                  Tab(text: "Location"),
-                  Tab(text: "Reviews"),
-                ],
-              ),
-
-              // Tab Views
-              Expanded(
-                child: TabBarView(
+      return DefaultTabController(
+        length: 5,
+        child: Scaffold(
+          backgroundColor: const Color(0xFFECFDF5),
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Top Image
+                Stack(
                   children: [
-                    InfoTab(hospital: hospital, makePhoneCall: _makePhoneCall),
-                    SpecialtiesTab(
-                      hospital: hospital,
-                      onSpecialtyTap: _navigateToDoctorsPage,
+                    ClipRRect(
+                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(screenWidth * 0.05)),
+                      child: imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              height: screenHeight * 0.33,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Image.asset(
+                                  'images/hospital.jpg',
+                                  height: screenHeight * 0.33,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              'images/hospital.jpg',
+                              height: screenHeight * 0.33,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
                     ),
-                    HoursTab(
-                      hospital: hospital,
-                      formatTime: _formatTime,
-                    ),
-                    LocationTab(
-                      hospital: hospital,
-                      onOpenMaps: _openMaps,
-                    ),
-                    ReviewsTab(
-                      hospitalId: widget.hospitalId,
-                      reviews: reviewsAsync.when(
-                        data: (reviews) => reviews,
-                        loading: () => [],
-                        error: (_, __) => [],
+                    Positioned(
+                      top: screenHeight * 0.015,
+                      left: screenWidth * 0.03,
+                      child: CircleAvatar(
+                        backgroundColor: Colors.black45,
+                        radius: screenWidth * 0.06,
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.arrow_back_ios_new,
+                            color: Colors.white,
+                            size: screenWidth * 0.065,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
                       ),
-                      currentUserId: userState.userId,
-                      currentUserName: userState.userName,
-                      currentUserEmail: userState.userEmail,
-                      isReviewLoading: isReviewLoading,
-                      onCreateReview: () async {
-                        // This will be handled by the ReviewsTab's internal state
-                      },
-                      onUpdateReview: (reviewId) {},
-                      onDeleteReview: _deleteReview,
-                      onNavigateToLogin: _navigateToLogin,
-                      onInitializeUser: () async {
-                        await ref.read(userProvider.notifier).initializeUser();
-                      },
                     ),
                   ],
                 ),
-              ),
-            ],
+                SizedBox(height: screenHeight * 0.01),
+                TabBar(
+                  isScrollable: true,
+                  labelColor: Colors.green,
+                  unselectedLabelColor: Colors.black,
+                  indicatorColor: Colors.green,
+                  labelStyle: TextStyle(
+                    fontSize: screenWidth * 0.0375,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  unselectedLabelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                  tabs: const [
+                    Tab(text: "Information"),
+                    Tab(text: "Specialties"),
+                    Tab(text: "Working Hours"),
+                    Tab(text: "Location"),
+                    Tab(text: "Reviews"),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      InfoTab(hospital: hospitalData, makePhoneCall: _makePhoneCall),
+                      SpecialtiesTab(
+                        hospital: hospitalData,
+                        onSpecialtyTap: _navigateToDoctorsPage,
+                      ),
+                      HoursTab(
+                        hospital: hospitalData,
+                        formatTime: _formatTime,
+                      ),
+                      LocationTab(
+                        hospital: hospitalData,
+                        onOpenMaps: _openMaps,
+                      ),
+                      ReviewsTab(
+                        hospitalId: widget.hospitalId,
+                        reviews: reviewsAsync.when(
+                          data: (reviews) => reviews,
+                          loading: () => [],
+                          error: (_, __) => [],
+                        ),
+                        currentUserId: userState.userId,
+                        currentUserName: userState.userName,
+                        currentUserEmail: userState.userEmail,
+                        isReviewLoading: isReviewLoading,
+                        onCreateReview: () async {
+                          // ReviewsTab handles internally
+                        },
+                        onUpdateReview: (reviewId) {},
+                        onDeleteReview: _deleteReview,
+                        onNavigateToLogin: _navigateToLogin,
+                        onInitializeUser: () async {
+                          await ref.read(userProvider.notifier).initializeUser();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
 }

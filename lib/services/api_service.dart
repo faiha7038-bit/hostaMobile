@@ -4,8 +4,27 @@ import 'package:dio/dio.dart';
 // import 'package:hosta/data/specialty_data.dart';
 import 'dart:io';
 
+import 'package:dio_smart_retry/dio_smart_retry.dart';
+
 class ApiService {
-final Dio _dio = Dio(BaseOptions(baseUrl: "https://zorrowtek.in"));
+  late final Dio _dio;   // ✅ change from final Dio _dio = ... to late final
+
+  // ✅ Add constructor
+  ApiService() {
+    _dio = Dio(BaseOptions(baseUrl: "https://zorrowtek.in"));
+    
+    // ✅ Add retry interceptor
+    _dio.interceptors.add(RetryInterceptor(
+      dio: _dio,
+      retries: 3,
+      retryDelays: const [
+        Duration(seconds: 1),
+        Duration(seconds: 2),
+        Duration(seconds: 3),
+      ],
+      retryableExtraStatuses: {429},
+    ));
+  }
 // http://10.0.2.2:3000
 // https://www.zorrowtek.in
 
@@ -51,7 +70,7 @@ Future<Response> getAllCarousel({
   // GET all hospitals
   Future<Response> getAllHospitals() async {
     return await _dio.get(
-    '/api/all/hospitals'
+    '/api/hospital'
       // "/hospital"
       );
 
@@ -60,7 +79,7 @@ Future<Response> getAllCarousel({
    // GET a hospitals
   Future<Response> getAHospitals(String id) async {
     return await _dio.get(
-      '/api/hospitals/$id'
+      '/api/hospital/$id'
       // "/hospital/$id"
       );
   }
@@ -105,17 +124,23 @@ Future<Response> getAllCarousel({
 
   // GET single donor
   Future<Response> getADonor(String id) async {
-    return await _dio.get('/api/donors/users/$id');
+    return await _dio.get('/api/donors/$id');
   }
 
   // CREATE donor
   Future<Response> createADonor(Map<String, dynamic> data) async {
     return await _dio.post('/api/donors', data: data);
   }
-
+// UPDATE donor
+Future<Response> updateDonor(String id, Map<String, dynamic> data) async {
+  return await _dio.put('/api/donors/$id', data: data);
+}
   // DELETE donor
   Future<Response> deleteDonor(String id) async {
-    return await _dio.delete('/api/donors/$id');
+    return await _dio.delete(
+      //'/api/donors/$id'
+      "/api/ambulance/$id"
+      );
   }
 
   // LOGIN
@@ -224,9 +249,18 @@ Future<Response> getAllCarousel({
     
   }
   //  GET MY AMBULANCE 
-Future<Response> getMyAmbulance(String userId) async {
-  return await _dio.get('/api/ambulance/user/$userId');
+Future<Response> getMyAmbulance(String id) async {
+  return await _dio.get('/api/ambulance/$id');
 }
+// DELETE ambulance
+Future<Response> deleteAmbulance(String id) async {
+  return await _dio.delete('/api/ambulance/$id');
+}
+// EDIT ambulance
+Future<Response> editAmbulance(String id, Map<String, dynamic> updatedData) async {
+  return await _dio.put('/api/ambulance/$id', data: updatedData);
+}
+
 
   // GET Notifications
   Future<Response> getAllNotificationRead(String id) async {
@@ -249,7 +283,7 @@ Future<Response> getMyAmbulance(String userId) async {
 
   // GET bookings
   Future<Response> getAllBookings(String id) async {
-    return await _dio.get('/api/bookings/user/$id');
+    return await _dio.get('/api/booking/id');
   }
 
   // UPDATE booking
@@ -267,11 +301,18 @@ Future<Response> getMyAmbulance(String userId) async {
 
  Future<Response> getDoctors({required String id, required String specialty}) async {
   return await _dio.get(
-    '/api/hospital/doctors',
+    '/api/doctor',
     queryParameters: {
       'id': id,
       'speciality': specialty,
     },
+  );
+}
+// GET all doctors for a specific hospital (no specialty filter)
+Future<Response> getDoctorsByHospital(String hospitalId) async {
+  return await _dio.get(
+    '/api/doctor',
+    queryParameters: {'hospitalId': hospitalId},
   );
 }
 

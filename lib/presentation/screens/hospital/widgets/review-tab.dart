@@ -324,8 +324,9 @@ class _ReviewsTabState extends State<ReviewsTab> {
                         ),
                       )
                     : ListView.builder(
-                        shrinkWrap: true,
-                        physics: const ClampingScrollPhysics(),
+                        // ✅ FIX: shrinkWrap false, AlwaysScrollableScrollPhysics
+                        shrinkWrap: false,
+                        physics: const AlwaysScrollableScrollPhysics(),
                         itemCount: widget.reviews.length,
                         itemBuilder: (context, index) {
                           final review = widget.reviews[index];

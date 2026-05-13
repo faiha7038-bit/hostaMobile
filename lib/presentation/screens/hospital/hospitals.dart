@@ -29,15 +29,41 @@ class _HospitalsState extends State<Hospitals> {
 
   Future<void> _fetchHospitals() async {
     try {
-      final response = await ApiService().getFilter(widget.type);
+      setState(() => isLoading = true);
+
+      // Fetch ALL hospitals (no type filter)
+      final response = await ApiService().getAllHospitals();
+
       setState(() {
-        hospitals = response.data;
+        List allHospitals = [];
+        if (response.data is Map && response.data['data'] is List) {
+          allHospitals = response.data['data'];
+        } else if (response.data is List) {
+          allHospitals = response.data;
+        }
+
+        // Filter by type on client side
+        hospitals = allHospitals.where((hospital) {
+          final hospitalType = hospital['type']?.toString().toLowerCase() ?? '';
+          return hospitalType == widget.type.toLowerCase();
+        }).toList();
+
+        print(
+            "✅ Total: ${allHospitals.length}, Filtered (${widget.type}): ${hospitals.length}");
         isLoading = false;
       });
     } catch (e) {
+      print("❌ Error: $e");
       setState(() => isLoading = false);
-      print("Error fetching hospitals: $e");
     }
+  }
+
+  // 👇 Helper method (kept as is, not used now but harmless)
+  String _mapTypeToBackend(String frontendType) {
+    if (frontendType.toLowerCase() == 'allopathy') {
+      return 'alopathy';
+    }
+    return frontendType;
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
@@ -49,7 +75,7 @@ class _HospitalsState extends State<Hospitals> {
 
   Future<void> _ensureLocationEnabled() async {
     final screenWidth = MediaQuery.of(context).size.width;
-    
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       _showLocationDialog("Please enable your location services.", screenWidth);
@@ -67,7 +93,8 @@ class _HospitalsState extends State<Hospitals> {
 
     if (permission == LocationPermission.deniedForever) {
       _showLocationDialog(
-          "Location permission permanently denied. Enable it from app settings.", screenWidth);
+          "Location permission permanently denied. Enable it from app settings.",
+          screenWidth);
       return;
     }
 
@@ -102,13 +129,11 @@ class _HospitalsState extends State<Hospitals> {
   }
 
   bool _isOpenNow(Map<String, dynamic> hospital) {
-    // Check for working_hours_clinic first (new format)
     final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
     if (workingHoursClinic != null && workingHoursClinic.isNotEmpty) {
       return _isOpenNowNewFormat(hospital);
     }
 
-    // Fall back to working_hours (old format)
     final workingHours = hospital["working_hours"] as List<dynamic>?;
     if (workingHours == null || workingHours.isEmpty) return false;
 
@@ -140,9 +165,9 @@ class _HospitalsState extends State<Hospitals> {
       int openMinutes = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
 
       final closeParts = close.split(":");
-      int closeMinutes = int.parse(closeParts[0]) * 60 + int.parse(closeParts[1]);
+      int closeMinutes = int.parse(closeParts[0]) * 60 +
+          int.parse(closeParts[1]);
 
-      // Handle overnight shifts
       if (closeMinutes < openMinutes) {
         return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
       } else {
@@ -178,32 +203,39 @@ class _HospitalsState extends State<Hospitals> {
     final morningSession = todayHours["morning_session"];
     final eveningSession = todayHours["evening_session"];
 
-    // Check if current time falls within morning or evening session
     try {
       int nowMinutes = now.hour * 60 + now.minute;
 
-      // Check morning session
-      if (morningSession != null && morningSession["open"] != null && morningSession["open"]!.isNotEmpty) {
+      if (morningSession != null &&
+          morningSession["open"] != null &&
+          morningSession["open"]!.isNotEmpty) {
         final morningOpen = morningSession["open"].split(":");
         final morningClose = morningSession["close"].split(":");
-        
-        int morningOpenMinutes = int.parse(morningOpen[0]) * 60 + int.parse(morningOpen[1]);
-        int morningCloseMinutes = int.parse(morningClose[0]) * 60 + int.parse(morningClose[1]);
 
-        if (nowMinutes >= morningOpenMinutes && nowMinutes <= morningCloseMinutes) {
+        int morningOpenMinutes = int.parse(morningOpen[0]) * 60 +
+            int.parse(morningOpen[1]);
+        int morningCloseMinutes = int.parse(morningClose[0]) * 60 +
+            int.parse(morningClose[1]);
+
+        if (nowMinutes >= morningOpenMinutes &&
+            nowMinutes <= morningCloseMinutes) {
           return true;
         }
       }
 
-      // Check evening session
-      if (eveningSession != null && eveningSession["open"] != null && eveningSession["open"]!.isNotEmpty) {
+      if (eveningSession != null &&
+          eveningSession["open"] != null &&
+          eveningSession["open"]!.isNotEmpty) {
         final eveningOpen = eveningSession["open"].split(":");
         final eveningClose = eveningSession["close"].split(":");
-        
-        int eveningOpenMinutes = int.parse(eveningOpen[0]) * 60 + int.parse(eveningOpen[1]);
-        int eveningCloseMinutes = int.parse(eveningClose[0]) * 60 + int.parse(eveningClose[1]);
 
-        if (nowMinutes >= eveningOpenMinutes && nowMinutes <= eveningCloseMinutes) {
+        int eveningOpenMinutes = int.parse(eveningOpen[0]) * 60 +
+            int.parse(eveningOpen[1]);
+        int eveningCloseMinutes = int.parse(eveningClose[0]) * 60 +
+            int.parse(eveningClose[1]);
+
+        if (nowMinutes >= eveningOpenMinutes &&
+            nowMinutes <= eveningCloseMinutes) {
           return true;
         }
       }
@@ -241,30 +273,45 @@ class _HospitalsState extends State<Hospitals> {
 
   void _navigateToHospitalDetails(dynamic hospital) {
     Navigator.push(
-      context, 
+      context,
       MaterialPageRoute(
         builder: (context) => HospitalDetailsPage(
-          hospitalId: hospital["_id"], // Pass the hospital ID
-          hospital: hospital, // Pass the entire hospital data
+          hospitalId: hospital["hospitalId"],
+          hospital: hospital,
         ),
       ),
     );
   }
 
-  // ========== FIXED SEARCH LOGIC - REMOVE ALL SPACES ==========
-  
+  // ========== FIXED SEARCH LOGIC - HANDLES ADDRESS MAP ==========
   bool _matchesSearchQuery(Map<String, dynamic> hospital) {
     if (searchQuery.isEmpty) return true;
-    
-    // Remove ALL spaces from search query and convert to lowercase
+
     final cleanQuery = searchQuery.replaceAll(' ', '').toLowerCase();
-    
-    // Remove ALL spaces from hospital name and address and convert to lowercase
-    final hospitalName = (hospital["name"] ?? '').toString().replaceAll(' ', '').toLowerCase();
-    final hospitalAddress = (hospital["address"] ?? '').toString().replaceAll(' ', '').toLowerCase();
-    
-    // Check if clean query exists in clean hospital name OR address
-    return hospitalName.contains(cleanQuery) || hospitalAddress.contains(cleanQuery);
+    final hospitalName = (hospital["name"] ?? '')
+        .toString()
+        .replaceAll(' ', '')
+        .toLowerCase();
+
+    // Convert address (Map or String) to plain string for searching
+    String getAddressString(dynamic addr) {
+      if (addr == null) return '';
+      if (addr is String) return addr;
+      if (addr is Map) {
+        final parts = <String>[];
+        if (addr['place'] != null) parts.add(addr['place'].toString());
+        if (addr['district'] != null) parts.add(addr['district'].toString());
+        if (addr['state'] != null) parts.add(addr['state'].toString());
+        return parts.join(' ');
+      }
+      return '';
+    }
+
+    final rawAddress = getAddressString(hospital["address"]);
+    final hospitalAddress = rawAddress.replaceAll(' ', '').toLowerCase();
+
+    return hospitalName.contains(cleanQuery) ||
+        hospitalAddress.contains(cleanQuery);
   }
 
   // ========== BUILD METHODS ==========
@@ -273,7 +320,7 @@ class _HospitalsState extends State<Hospitals> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    
+
     if (isLoading) {
       return Scaffold(
         backgroundColor: const Color(0xFFECFDF5),
@@ -315,7 +362,7 @@ class _HospitalsState extends State<Hospitals> {
         title: Text(
           "${widget.type} Hospitals",
           style: TextStyle(
-            fontWeight: FontWeight.bold, 
+            fontWeight: FontWeight.bold,
             color: Colors.white,
             fontSize: screenWidth * 0.05,
           ),
@@ -334,7 +381,7 @@ class _HospitalsState extends State<Hospitals> {
       body: SafeArea(
         child: Column(
           children: [
-            // --- Search Box ---
+            // Search Box
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: screenWidth * 0.04,
@@ -356,12 +403,12 @@ class _HospitalsState extends State<Hospitals> {
                     borderRadius: BorderRadius.circular(screenWidth * 0.03),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: EdgeInsets.symmetric(vertical: screenHeight * 0.0125),
+                  contentPadding:
+                      EdgeInsets.symmetric(vertical: screenHeight * 0.0125),
                 ),
               ),
             ),
-
-            // --- Filter Chips ---
+            // Filter Chips
             Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: screenWidth * 0.04,
@@ -405,8 +452,7 @@ class _HospitalsState extends State<Hospitals> {
                 ],
               ),
             ),
-
-            // --- Results Count ---
+            // Results Count
             if (searchQuery.isNotEmpty)
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
@@ -422,8 +468,7 @@ class _HospitalsState extends State<Hospitals> {
                   ],
                 ),
               ),
-
-            // --- List ---
+            // List
             Expanded(
               child: filteredHospitals.isEmpty
                   ? _buildEmptyState(screenWidth, screenHeight)
@@ -431,8 +476,10 @@ class _HospitalsState extends State<Hospitals> {
                       padding: EdgeInsets.all(screenWidth * 0.03),
                       itemCount: filteredHospitals.length,
                       itemBuilder: (context, index) => InkWell(
-                        onTap: () => _navigateToHospitalDetails(filteredHospitals[index]),
-                        child: _buildHospitalCard(filteredHospitals[index], screenWidth, screenHeight),
+                        onTap: () => _navigateToHospitalDetails(
+                            filteredHospitals[index]),
+                        child: _buildHospitalCard(filteredHospitals[index],
+                            screenWidth, screenHeight),
                       ),
                     ),
             ),
@@ -487,10 +534,30 @@ class _HospitalsState extends State<Hospitals> {
     );
   }
 
-  Widget _buildHospitalCard(dynamic hospital, double screenWidth, double screenHeight) {
+  // ========== FIXED HOSPITAL CARD - HANDLES ADDRESS MAP ==========
+  Widget _buildHospitalCard(dynamic hospital, double screenWidth,
+      double screenHeight) {
     final imageUrl = hospital["image"]?["imageUrl"] ?? "";
     final name = hospital["name"] ?? "Unknown Hospital";
-    final address = hospital["address"] ?? "";
+
+    // Convert address (Map or String) to readable String
+    String getAddress(dynamic addr) {
+      if (addr == null) return "";
+      if (addr is String) return addr;
+      if (addr is Map) {
+        final parts = <String>[];
+        if (addr['place'] != null && addr['place'].toString().isNotEmpty)
+          parts.add(addr['place']);
+        if (addr['district'] != null && addr['district'].toString().isNotEmpty)
+          parts.add(addr['district']);
+        if (addr['state'] != null && addr['state'].toString().isNotEmpty)
+          parts.add(addr['state']);
+        return parts.join(', ');
+      }
+      return "";
+    }
+
+    final address = getAddress(hospital["address"]);
     final phone = hospital["phone"] ?? "";
     final lat = (hospital["latitude"] ?? 0).toDouble();
     final lon = (hospital["longitude"] ?? 0).toDouble();
@@ -508,7 +575,8 @@ class _HospitalsState extends State<Hospitals> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(screenWidth * 0.035)),
+            borderRadius: BorderRadius.vertical(
+                top: Radius.circular(screenWidth * 0.035)),
             child: imageUrl.isNotEmpty
                 ? Image.network(
                     imageUrl,

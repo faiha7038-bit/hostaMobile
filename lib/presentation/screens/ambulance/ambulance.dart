@@ -72,87 +72,91 @@ void initState() {
       );
     }
   }
+  String _normalize(String? value) {
+  if (value == null || value.trim().isEmpty) return '';
+  final trimmed = value.trim();
+  return trimmed[0].toUpperCase() + trimmed.substring(1).toLowerCase();
+}
 
-  List<String> getFilteredCountries() {
-    final ambulanceList = ref.read(ambulanceListProvider);
-    final countries = <String>[];
-    for (final ambulance in ambulanceList) {
-      final address = ambulance['address'] ?? {};
-      final country = address['country']?.toString().trim() ?? '';
-      
-      if (country.isNotEmpty && !countries.contains(country)) {
-        countries.add(country);
-      }
-    }
-    countries.sort();
-    return countries;
+List<String> getFilteredCountries() {
+  final ambulanceList = ref.read(ambulanceListProvider);
+  final countries = <String>{};
+  for (final ambulance in ambulanceList) {
+    final address = ambulance['address'] ?? {};
+    final rawCountry = address['country']?.toString().trim() ?? '';
+    final country = _normalize(rawCountry);
+    if (country.isNotEmpty) countries.add(country);
   }
+  return countries.toList()..sort();
+}
 
-  List<String> getFilteredStates(String country) {
-    if (country.isEmpty) return [];
-    
-    final ambulanceList = ref.read(ambulanceListProvider);
-    final filteredStates = <String>[];
-    for (final ambulance in ambulanceList) {
-      final address = ambulance['address'] ?? {};
-      final ambulanceCountry = address['country']?.toString().trim() ?? '';
-      final state = address['state']?.toString().trim() ?? '';
-      
-      if (ambulanceCountry == country && 
-          state.isNotEmpty && 
-          !filteredStates.contains(state)) {
-        filteredStates.add(state);
-      }
+List<String> getFilteredStates(String country) {
+  if (country.isEmpty) return [];
+  final normalizedCountry = _normalize(country);
+  final ambulanceList = ref.read(ambulanceListProvider);
+  final filteredStates = <String>{};
+  for (final ambulance in ambulanceList) {
+    final address = ambulance['address'] ?? {};
+    final rawCountry = address['country']?.toString().trim() ?? '';
+    final ambulanceCountry = _normalize(rawCountry);
+    final rawState = address['state']?.toString().trim() ?? '';
+    final state = _normalize(rawState);
+    if (ambulanceCountry == normalizedCountry && state.isNotEmpty) {
+      filteredStates.add(state);
     }
-    filteredStates.sort();
-    return filteredStates;
   }
+  return filteredStates.toList()..sort();
+}
 
-  List<String> getFilteredDistricts(String country, String state) {
-    if (country.isEmpty || state.isEmpty) return [];
-    
-    final ambulanceList = ref.read(ambulanceListProvider);
-    final filteredDistricts = <String>[];
-    for (final ambulance in ambulanceList) {
-      final address = ambulance['address'] ?? {};
-      final ambulanceCountry = address['country']?.toString().trim() ?? '';
-      final ambulanceState = address['state']?.toString().trim() ?? '';
-      final district = address['district']?.toString().trim() ?? '';
-      
-      if (ambulanceCountry == country && 
-          ambulanceState == state && 
-          district.isNotEmpty && 
-          !filteredDistricts.contains(district)) {
-        filteredDistricts.add(district);
-      }
+List<String> getFilteredDistricts(String country, String state) {
+  if (country.isEmpty || state.isEmpty) return [];
+  final normalizedCountry = _normalize(country);
+  final normalizedState = _normalize(state);
+  final ambulanceList = ref.read(ambulanceListProvider);
+  final filteredDistricts = <String>{};
+  for (final ambulance in ambulanceList) {
+    final address = ambulance['address'] ?? {};
+    final rawCountry = address['country']?.toString().trim() ?? '';
+    final ambulanceCountry = _normalize(rawCountry);
+    final rawState = address['state']?.toString().trim() ?? '';
+    final ambulanceState = _normalize(rawState);
+    final rawDistrict = address['district']?.toString().trim() ?? '';
+    final district = _normalize(rawDistrict);
+    if (ambulanceCountry == normalizedCountry &&
+        ambulanceState == normalizedState &&
+        district.isNotEmpty) {
+      filteredDistricts.add(district);
     }
-    filteredDistricts.sort();
-    return filteredDistricts;
   }
+  return filteredDistricts.toList()..sort();
+}
 
-  List<String> getFilteredPlaces(String country, String state, String district) {
-    if (country.isEmpty || state.isEmpty || district.isEmpty) return [];
-    
-    final ambulanceList = ref.read(ambulanceListProvider);
-    final filteredPlaces = <String>[];
-    for (final ambulance in ambulanceList) {
-      final address = ambulance['address'] ?? {};
-      final ambulanceCountry = address['country']?.toString().trim() ?? '';
-      final ambulanceState = address['state']?.toString().trim() ?? '';
-      final ambulanceDistrict = address['district']?.toString().trim() ?? '';
-      final place = address['place']?.toString().trim() ?? '';
-      
-      if (ambulanceCountry == country && 
-          ambulanceState == state && 
-          ambulanceDistrict == district && 
-          place.isNotEmpty && 
-          !filteredPlaces.contains(place)) {
-        filteredPlaces.add(place);
-      }
+List<String> getFilteredPlaces(String country, String state, String district) {
+  if (country.isEmpty || state.isEmpty || district.isEmpty) return [];
+  final normalizedCountry = _normalize(country);
+  final normalizedState = _normalize(state);
+  final normalizedDistrict = _normalize(district);
+  final ambulanceList = ref.read(ambulanceListProvider);
+  final filteredPlaces = <String>{};
+  for (final ambulance in ambulanceList) {
+    final address = ambulance['address'] ?? {};
+    final rawCountry = address['country']?.toString().trim() ?? '';
+    final ambulanceCountry = _normalize(rawCountry);
+    final rawState = address['state']?.toString().trim() ?? '';
+    final ambulanceState = _normalize(rawState);
+    final rawDistrict = address['district']?.toString().trim() ?? '';
+    final ambulanceDistrict = _normalize(rawDistrict);
+    final rawPlace = address['place']?.toString().trim() ?? '';
+    final place = _normalize(rawPlace);
+    if (ambulanceCountry == normalizedCountry &&
+        ambulanceState == normalizedState &&
+        ambulanceDistrict == normalizedDistrict &&
+        place.isNotEmpty) {
+      filteredPlaces.add(place);
     }
-    filteredPlaces.sort();
-    return filteredPlaces;
   }
+  return filteredPlaces.toList()..sort();
+}
 
   void _refreshData() {
     ref.read(isLoadingProvider.notifier).state = true;
