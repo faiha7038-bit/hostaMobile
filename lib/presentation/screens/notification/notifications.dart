@@ -26,7 +26,7 @@ class _NotificationsState extends State<Notifications> {
   @override
   void initState() {
     super.initState();
-    _initializeNotifications();
+   // _initializeNotifications();
     _loadUserIdAndFetchNotifications();
   }
 
@@ -91,33 +91,35 @@ class _NotificationsState extends State<Notifications> {
       payload: notificationData.toString(),
     );
   }
+Future<void> _loadUserIdAndFetchNotifications() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final storedUserId = prefs.getString('userId');
 
-  Future<void> _loadUserIdAndFetchNotifications() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedUserId = prefs.getString('userId');
+    if (mounted) {
+      setState(() {
+        userId = storedUserId;
+      });
+    }
 
-      if (mounted) {
-        setState(() {
-          userId = storedUserId;
-        });
-      }
-
-      if (userId != null && userId!.isNotEmpty) {
-        await _fetchNotifications();
-        _setupSocketListener();
-      } else {
-        if (mounted) {
-          setState(() => isLoading = false);
-        }
-      }
-    } catch (e) {
-      print("❌ Error loading user ID: $e");
+    if (userId != null && userId!.isNotEmpty) {
+      // ✅ Move initialization HERE (only when user exists)
+      await _initializeNotifications();
+      
+      await _fetchNotifications();
+      _setupSocketListener();
+    } else {
       if (mounted) {
         setState(() => isLoading = false);
       }
     }
+  } catch (e) {
+    print("❌ Error loading user ID: $e");
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
+}
 
   Future<void> _fetchNotifications() async {
     if (userId == null || userId!.isEmpty) {
