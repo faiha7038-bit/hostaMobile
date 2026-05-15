@@ -165,18 +165,17 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                           final imageUrl = picture['imageUrl']?.toString() ?? '';
                           
                           return GestureDetector(
-                            onTap: () async {
-                              try {
-                                await hospitalOps.fetchHospitalsForSpecialty(name);
-                                if (mounted) {
-                                  _showHospitalPopup(context, name);
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  _showErrorSnackbar("Error loading hospitals: $e");
-                                }
-                              }
-                            },
+                        onTap: () async {
+  final originalSpecialtyName = specialty['name']?.toString() ?? '';  
+  try {
+    await hospitalOps.fetchHospitalsForSpecialty(originalSpecialtyName);
+    if (mounted) {
+      _showHospitalPopup(context, originalSpecialtyName);
+    }
+  } catch (e) {
+    // error handling
+  }
+},
                             child: _buildCard(name, imageUrl, screenWidth, screenHeight),
                           );
                         },
@@ -357,7 +356,7 @@ class _SpecialitesState extends ConsumerState<Specialties> {
     final hospitalOps = ref.read(hospitalOperationsProvider);
     final hospitals = ref.read(hospitalsForSpecialtyProvider);
     final isLoading = ref.read(hospitalsLoadingProvider);
-    final filteredHospitals = hospitalOps.filterHospitalsBySpecialty(hospitals, specialtyName);
+final hospitalsList = ref.watch(hospitalsForSpecialtyProvider);
 
     showModalBottomSheet(
       context: context,
@@ -416,7 +415,7 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
                     child: Text(
-                      "Found ${filteredHospitals.length} hospitals",
+                      "Found ${hospitalsList.length} hospitals",
                       style: TextStyle(
                         fontSize: screenWidth * 0.035,
                         color: Colors.grey,
@@ -434,7 +433,7 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                         strokeWidth: screenWidth * 0.008,
                       ),
                     )
-                  else if (filteredHospitals.isEmpty)
+                  else if (hospitalsList.isEmpty)
                     // --- No Hospitals Found ---
                     Expanded(
                       child: Center(
@@ -470,9 +469,9 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                     Expanded(
                       child: ListView.builder(
                         controller: scrollController,
-                        itemCount: filteredHospitals.length,
+                        itemCount: hospitalsList.length,
                         itemBuilder: (context, index) {
-                          final hospital = filteredHospitals[index];
+                          final hospital = hospitalsList[index];
                           return _buildHospitalCard(context, hospital, specialtyName, screenWidth, screenHeight);
                         },
                       ),
@@ -486,95 +485,181 @@ class _SpecialitesState extends ConsumerState<Specialties> {
     );
   }
 
-  Widget _buildHospitalCard(BuildContext context, Map<String, dynamic> hospital, String specialtyName, double screenWidth, double screenHeight) {
-    final hospitalOps = ref.read(hospitalOperationsProvider);
-    final imageUrl = (hospital['image'] as Map<String, dynamic>?)?['imageUrl'] as String? ?? '';
-    final hospitalName = hospital['name'] as String? ?? 'Unknown Hospital';
-    final address = hospital['address'] as String? ?? '';
-    final phone = hospital['phone'] as String? ?? '';
-    final hospitalId = hospital['_id'] as String? ?? '';
-    
-    final specialtyDoctorsCount = hospitalOps.getDoctorsCountForSpecialty(hospital, specialtyName);
-    final totalDoctorsCount = hospitalOps.getTotalDoctorsCount(hospital);
+Widget _buildHospitalCard(BuildContext context, Map<String, dynamic> hospital, String specialtyName, double screenWidth, double screenHeight) {
+  final hospitalOps = ref.read(hospitalOperationsProvider);
+  
+  // Handle image - could be a Map or null
+  String imageUrl = '';
+  final image = hospital['image'];
+  if (image is Map) {
+    imageUrl = image['imageUrl']?.toString() ?? '';
+  } else if (image is String) {
+    imageUrl = image;
+  }
+  
+  // Hospital name
+  final hospitalName = hospital['name']?.toString() ?? 'Hospital ${hospital['hospitalId']}';
+  
+  // Address - might be a Map or String
+  String addressText = '';
+  final address = hospital['address'];
+  if (address is Map) {
+    // Build a readable address from components
+    final parts = <String>[];
+    if (address['place'] != null) parts.add(address['place']);
+    if (address['district'] != null) parts.add(address['district']);
+    if (address['state'] != null) parts.add(address['state']);
+    if (address['pincode'] != null) parts.add(address['pincode'].toString());
+    addressText = parts.join(', ');
+  } else if (address is String) {
+    addressText = address;
+  }
+  
+  // Phone
+  final phone = hospital['phone']?.toString() ?? '';
+  
+  // Hospital ID - could be int or string
+ String hospitalId = '';
+// ✅ FIRST priority: numeric id field
+if (hospital['id'] != null) {
+  hospitalId = hospital['id'].toString();
+} else if (hospital['_id'] != null) {
+  hospitalId = hospital['_id'].toString();
+} else if (hospital['hospitalId'] != null) {
+  final rawId = hospital['hospitalId'].toString();
+  if (!rawId.startsWith('#')) {
+    hospitalId = rawId;
+  }
+}
+  
+  final specialtyDoctorsCount = hospitalOps.getDoctorsCountForSpecialty(hospital, specialtyName);
+  final totalDoctorsCount = hospitalOps.getTotalDoctorsCount(hospital);
 
-    return Card(
-      margin: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
-        vertical: screenHeight * 0.01,
-      ),
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.03)),
-      child: InkWell(
-        onTap: () {
-          if (hospitalId.isNotEmpty) {
-            hospitalOps.navigateToDoctorsPage(context, hospitalId, specialtyName, hospitalName);
-          } else {
-            _showErrorSnackbar("Hospital ID not available");
-          }
-        },
-        borderRadius: BorderRadius.circular(screenWidth * 0.03),
-        child: Container(
-          padding: EdgeInsets.all(screenWidth * 0.04),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Hospital Avatar
-              _buildHospitalAvatar(imageUrl, screenWidth),
-              SizedBox(width: screenWidth * 0.03),
-              
-              // Hospital Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Hospital Name
-                    Text(
-                      hospitalName,
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.04,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+  return Card(
+    margin: EdgeInsets.symmetric(
+      horizontal: screenWidth * 0.04,
+      vertical: screenHeight * 0.01,
+    ),
+    elevation: 3,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.03)),
+    child: InkWell(
+      onTap: () {
+        if (hospitalId.isNotEmpty) {
+          hospitalOps.navigateToDoctorsPage(context, hospitalId, specialtyName, hospitalName);
+        } else {
+          _showErrorSnackbar("Hospital ID not available");
+        }
+      },
+      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+      child: Container(
+        padding: EdgeInsets.all(screenWidth * 0.04),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Hospital Avatar
+            _buildHospitalAvatar(imageUrl, screenWidth),
+            SizedBox(width: screenWidth * 0.03),
+            
+            // Hospital Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Hospital Name
+                  Text(
+                    hospitalName,
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.04,
+                      fontWeight: FontWeight.bold,
                     ),
-                    SizedBox(height: screenHeight * 0.0075),
-                    
-                    // Specialty Doctors Count
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: screenHeight * 0.0075),
+                  
+                  // Specialty Doctors Count
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.medical_services,
+                        size: screenWidth * 0.035,
+                        color: Colors.green,
+                      ),
+                      SizedBox(width: screenWidth * 0.01),
+                      Expanded(
+                        child: Text(
+                          "$specialtyDoctorsCount $specialtyName doctors",
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.0325,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.green,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenHeight * 0.0025),
+                  
+                  // Total Doctors Count
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.people_alt_outlined,
+                        size: screenWidth * 0.035,
+                        color: Colors.grey[600],
+                      ),
+                      SizedBox(width: screenWidth * 0.01),
+                      Text(
+                        "$totalDoctorsCount total doctors",
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.03,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenHeight * 0.0075),
+                  
+                  // Address
+                  if (addressText.isNotEmpty)
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
-                          Icons.medical_services,
+                          Icons.location_on_outlined,
                           size: screenWidth * 0.035,
-                          color: Colors.green,
+                          color: Colors.grey[600],
                         ),
                         SizedBox(width: screenWidth * 0.01),
                         Expanded(
                           child: Text(
-                            "$specialtyDoctorsCount $specialtyName doctors",
+                            addressText,
                             style: TextStyle(
-                              fontSize: screenWidth * 0.0325,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.green,
+                              fontSize: screenWidth * 0.03,
+                              color: Colors.grey,
                             ),
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: screenHeight * 0.0025),
-                    
-                    // Total Doctors Count
+                  
+                  // Phone
+                  if (phone.isNotEmpty) ...[
+                    SizedBox(height: screenHeight * 0.005),
                     Row(
                       children: [
                         Icon(
-                          Icons.people_alt_outlined,
+                          Icons.phone,
                           size: screenWidth * 0.035,
                           color: Colors.grey[600],
                         ),
                         SizedBox(width: screenWidth * 0.01),
                         Text(
-                          "$totalDoctorsCount total doctors",
+                          phone,
                           style: TextStyle(
                             fontSize: screenWidth * 0.03,
                             color: Colors.grey,
@@ -582,73 +667,26 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                         ),
                       ],
                     ),
-                    SizedBox(height: screenHeight * 0.0075),
-                    
-                    // Address
-                    if (address.isNotEmpty)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: screenWidth * 0.035,
-                            color: Colors.grey[600],
-                          ),
-                          SizedBox(width: screenWidth * 0.01),
-                          Expanded(
-                            child: Text(
-                              address,
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.03,
-                                color: Colors.grey,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    
-                    // Phone
-                    if (phone.isNotEmpty) ...[
-                      SizedBox(height: screenHeight * 0.005),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.phone,
-                            size: screenWidth * 0.035,
-                            color: Colors.grey[600],
-                          ),
-                          SizedBox(width: screenWidth * 0.01),
-                          Text(
-                            phone,
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.03,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-              
-              // Forward Arrow
-              Padding(
-                padding: EdgeInsets.only(left: screenWidth * 0.02),
-                child: Icon(
-                  Icons.arrow_forward_ios,
-                  size: screenWidth * 0.04,
-                  color: Colors.grey,
-                ),
+            ),
+            
+            // Forward Arrow
+            Padding(
+              padding: EdgeInsets.only(left: screenWidth * 0.02),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                size: screenWidth * 0.04,
+                color: Colors.grey,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildHospitalAvatar(String imageUrl, double screenWidth) {
     if (imageUrl.isNotEmpty) {

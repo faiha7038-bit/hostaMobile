@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -271,13 +273,14 @@ class _HospitalsState extends State<Hospitals> {
         1000;
   }
 
-  void _navigateToHospitalDetails(dynamic hospital) {
+  void _navigateToHospitalDetails(  hospital) {
+    log("$hospital");
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => HospitalDetailsPage(
-          hospitalId: hospital["hospitalId"],
-          hospital: hospital,
+          hospitalId: hospital["id"].toString()
+          //hospital: hospital,
         ),
       ),
     );

@@ -88,7 +88,7 @@ class UserDataNotifier extends StateNotifier<UserDataState> {
       state = state.copyWith(isLoading: false);
     }
   }
-Future<void> loadProfile() async {
+Future<void> loadProfile({int retryCount = 0}) async {
   if (state.userId == null || state.userId!.isEmpty) {
     state = state.copyWith(isLoading: false);
     return;
@@ -100,20 +100,23 @@ Future<void> loadProfile() async {
     final innerData = userRes.data?['data'] ?? userRes.data;
     if (innerData == null) throw Exception("No user data");
 
-    final originalName = innerData['name']?.toString() ?? '';
-    final originalEmail = innerData['email']?.toString() ?? '';
-    final originalPhone = innerData['phone']?.toString() ?? '';
-
     state = state.copyWith(
       userData: innerData,
       isLoading: false,
-      originalName: originalName,
-      originalEmail: originalEmail,
-      originalPhone: originalPhone,
+      originalName: innerData['name']?.toString() ?? '',
+      originalEmail: innerData['email']?.toString() ?? '',
+      originalPhone: innerData['phone']?.toString() ?? '',
     );
   } catch (e) {
+    // Retry on 503 (server temporary error)
+    if (e is DioException && e.response?.statusCode == 503 && retryCount < 3) {
+      print("⚠️ Server busy (503), retrying in 2 seconds...");
+      await Future.delayed(Duration(seconds: 2));
+      return loadProfile(retryCount: retryCount + 1);
+    }
     print("❌ loadProfile error: $e");
     state = state.copyWith(isLoading: false);
+    // Optionally show a user message
   }
 }
 

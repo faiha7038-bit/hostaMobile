@@ -12,156 +12,159 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 final specialtiesProvider = FutureProvider<List<dynamic>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getAllSpecility();
-  
+
   if (response.statusCode == 200 && response.data != null) {
     dynamic specialtyData;
-    
     if (response.data is Map) {
-      if (response.data['specialties'] != null) {
-        specialtyData = response.data['specialties'];
-      } else if (response.data['data'] != null) {
-        specialtyData = response.data['data'];
-      } else {
-        specialtyData = response.data is List ? response.data : [];
-      }
+      specialtyData = response.data['specialties'] ?? response.data['data'] ?? [];
     } else if (response.data is List) {
       specialtyData = response.data;
     } else {
       specialtyData = [];
     }
-    
     return specialtyData is List ? specialtyData : [];
   }
-  
   return [];
 });
 
-// Search query provider
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-// Filtered specialties provider
 final filteredSpecialtiesProvider = Provider<List<dynamic>>((ref) {
   final specialties = ref.watch(specialtiesProvider);
   final searchQuery = ref.watch(searchQueryProvider);
-  
   return specialties.when(
-    data: (specialtyList) {
-      if (searchQuery.isEmpty) return specialtyList;
-      
-      return specialtyList.where((specialty) {
-        final name = (specialty['name'] ?? '').toString().toLowerCase();
-        return name.contains(searchQuery.toLowerCase());
-      }).toList();
-    },
+    data: (list) => searchQuery.isEmpty
+        ? list
+        : list.where((s) => (s['name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase())).toList(),
     loading: () => [],
     error: (_, __) => [],
   );
 });
 
-// Hospitals for specialty provider
-final hospitalsForSpecialtyProvider = StateProvider<List<dynamic>>((ref) => []);
-
-// Loading state for hospitals
+// Hospitals for specialty provider (full hospital objects + doctors list)
+final hospitalsForSpecialtyProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
 final hospitalsLoadingProvider = StateProvider<bool>((ref) => false);
-
-// Selected specialty name provider
 final selectedSpecialtyProvider = StateProvider<String>((ref) => '');
 
-// Hospital operations provider
-final hospitalOperationsProvider = Provider((ref) {
-  return HospitalOperations(ref);
-});
+final hospitalOperationsProvider = Provider((ref) => HospitalOperations(ref));
 
 class HospitalOperations {
   final Ref ref;
+  // Cache to avoid fetching same hospital multiple times
+  final Map<int, Map<String, dynamic>> _hospitalCache = {};
 
   HospitalOperations(this.ref);
 
   Future<void> fetchHospitalsForSpecialty(String specialtyName) async {
     ref.read(hospitalsLoadingProvider.notifier).state = true;
     ref.read(selectedSpecialtyProvider.notifier).state = specialtyName;
-    
+
     try {
       final apiService = ref.read(apiServiceProvider);
-      final response = await apiService.getAllHospitalsSpeciality(specialtyName);
-      
-      if (response.statusCode == 200 && response.data != null) {
-        dynamic hospitalData;
-        
-        if (response.data is Map) {
-          if (response.data['hospitals'] != null) {
-            hospitalData = response.data['hospitals'];
-          } else if (response.data['data'] != null) {
-            hospitalData = response.data['data'];
-          } else {
-            hospitalData = response.data is List ? response.data : [];
-          }
-        } else if (response.data is List) {
-          hospitalData = response.data;
-        } else {
-          hospitalData = [];
-        }
-        
-        final hospitalList = hospitalData is List ? hospitalData : [];
-        ref.read(hospitalsForSpecialtyProvider.notifier).state = hospitalList;
-        print("✅ Loaded ${hospitalList.length} hospitals for $specialtyName");
-      } else {
+      // Step 1: Fetch doctors for this specialty
+      final response = await apiService.getDoctors(speciality: specialtyName);
+
+      if (response.statusCode != 200 || response.data == null) {
         ref.read(hospitalsForSpecialtyProvider.notifier).state = [];
-        print("❌ Failed to load hospitals: ${response.statusCode}");
+        print("❌ Failed to load doctors: ${response.statusCode}");
+        return;
       }
+
+      List<dynamic> doctorsData = [];
+      if (response.data is List) {
+        doctorsData = response.data;
+      } else if (response.data is Map && response.data['data'] != null) {
+        doctorsData = response.data['data'] as List;
+      }
+
+      final targetSpecialty = specialtyName.trim().toLowerCase();
+      // Group doctors by hospitalId (only those with matching department)
+      final Map<int, List<dynamic>> hospitalDoctorsMap = {};
+      for (var doctor in doctorsData) {
+        final department = (doctor['department'] as String?)?.trim().toLowerCase() ?? '';
+        if (department == targetSpecialty) {
+          final hospitalId = doctor['hospitalId'] as int?;
+          if (hospitalId != null) {
+            hospitalDoctorsMap.putIfAbsent(hospitalId, () => []);
+            hospitalDoctorsMap[hospitalId]!.add(doctor);
+          }
+        }
+      }
+
+      if (hospitalDoctorsMap.isEmpty) {
+        ref.read(hospitalsForSpecialtyProvider.notifier).state = [];
+        print("⚠️ No hospitals found for $specialtyName");
+        return;
+      }
+
+      // Step 2: Fetch full hospital details for each unique hospitalId
+      final List<Map<String, dynamic>> hospitalList = [];
+      for (var entry in hospitalDoctorsMap.entries) {
+        final hospitalId = entry.key;
+        final doctors = entry.value;
+
+        Map<String, dynamic> hospitalDetails;
+        if (_hospitalCache.containsKey(hospitalId)) {
+          hospitalDetails = _hospitalCache[hospitalId]!;
+        } else {
+          try {
+            final hospitalResponse = await apiService.getAHospitals(hospitalId.toString());
+            if (hospitalResponse.statusCode == 200 && hospitalResponse.data != null) {
+              dynamic data = hospitalResponse.data;
+              if (data is Map && data['data'] != null) {
+                hospitalDetails = Map<String, dynamic>.from(data['data']);
+              } else if (data is Map) {
+                hospitalDetails = Map<String, dynamic>.from(data);
+              } else {
+                hospitalDetails = {'_id': hospitalId.toString(), 'name': 'Hospital $hospitalId'};
+              }
+              _hospitalCache[hospitalId] = hospitalDetails;
+            } else {
+              hospitalDetails = {'_id': hospitalId.toString(), 'name': 'Hospital $hospitalId'};
+            }
+          } catch (e) {
+            print("⚠️ Failed to fetch hospital $hospitalId: $e");
+            hospitalDetails = {'_id': hospitalId.toString(), 'name': 'Hospital $hospitalId'};
+          }
+        }
+
+        hospitalList.add({
+          ...hospitalDetails,
+          'doctorsForSpecialty': doctors,
+        });
+      }
+
+      ref.read(hospitalsForSpecialtyProvider.notifier).state = hospitalList;
+      print("✅ Loaded ${hospitalList.length} hospitals for $specialtyName");
     } catch (e) {
-      print("❌ Error fetching hospitals: $e");
+      print("❌ Error in fetchHospitalsForSpecialty: $e");
       ref.read(hospitalsForSpecialtyProvider.notifier).state = [];
-      rethrow;
     } finally {
       ref.read(hospitalsLoadingProvider.notifier).state = false;
     }
   }
 
-  List<dynamic> filterHospitalsBySpecialty(List<dynamic> hospitals, String specialtyName) {
-    return hospitals.where((hospital) {
-      final specialties = hospital['specialties'] as List? ?? [];
-      return specialties.any((specialty) => 
-        (specialty['name'] as String?)?.toLowerCase().contains(specialtyName.toLowerCase()) ?? false
-      );
-    }).toList();
-  }
-
   int getDoctorsCountForSpecialty(Map<String, dynamic> hospital, String specialtyName) {
-    try {
-      final specialties = hospital['specialties'] as List? ?? [];
-      for (var specialty in specialties) {
-        final specialtyMap = specialty as Map<String, dynamic>;
-        if ((specialtyMap['name'] as String?)?.toLowerCase().contains(specialtyName.toLowerCase()) ?? false) {
-          final doctors = specialtyMap['doctors'] as List? ?? [];
-          return doctors.length;
-        }
-      }
-      return 0;
-    } catch (e) {
-      print("Error getting doctors count: $e");
-      return 0;
-    }
+    final doctors = hospital['doctorsForSpecialty'] as List? ?? [];
+    return doctors.length;
   }
 
   int getTotalDoctorsCount(Map<String, dynamic> hospital) {
-    try {
-      final specialties = hospital['specialties'] as List? ?? [];
-      int totalDoctors = 0;
-      for (var specialty in specialties) {
-        final specialtyMap = specialty as Map<String, dynamic>;
-        final doctors = specialtyMap['doctors'] as List? ?? [];
-        totalDoctors += doctors.length;
+    // If hospital has 'specialties' array, sum all doctors; otherwise return specialty doctors count
+    final specialties = hospital['specialties'] as List? ?? [];
+    if (specialties.isNotEmpty) {
+      int total = 0;
+      for (var spec in specialties) {
+        total += (spec['doctors'] as List? ?? []).length;
       }
-      return totalDoctors;
-    } catch (e) {
-      print("Error getting total doctors count: $e");
-      return 0;
+      return total;
     }
+    // Fallback: just return count of doctors for this specialty
+    return (hospital['doctorsForSpecialty'] as List? ?? []).length;
   }
 
   void navigateToDoctorsPage(BuildContext context, String hospitalId, String specialtyName, String hospitalName) {
-    Navigator.pop(context);
+    Navigator.pop(context); // Close bottom sheet
     Navigator.push(
       context,
       MaterialPageRoute(

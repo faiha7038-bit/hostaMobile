@@ -88,15 +88,23 @@ class HomeState {
 // Home notifier
 class HomeNotifier extends StateNotifier<HomeState> {
   Timer? _refreshTimer;
-
+ bool _isInitialized = false;
   HomeNotifier() : super(HomeState());
 
-  void init() {
-    _checkLocationStatus();
-    _getLocationAndFetchData();
-    _startAutoRefresh();
+  // void init() {
+  //   _checkLocationStatus();
+  //   _getLocationAndFetchData();
+  //   _startAutoRefresh();
 
-  }
+  // }
+  Future<void> init() async {  // ← async ചേർത്തു
+  if (_isInitialized) return;  // ← ഈ line add ചെയ്യുക
+  _isInitialized = true;  // ← ഈ line add ചെയ്യുക
+  
+  await _checkLocationStatus();  // ← await ചേർത്തു
+  await _getLocationAndFetchData();  // ← await ചേർത്തു
+  _startAutoRefresh();
+}
 
   void dispose() {
     if (_refreshTimer != null) {
@@ -332,7 +340,7 @@ class Home extends ConsumerStatefulWidget {
 }
 
 class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
-  late final HomeNotifier _homeNotifier;  // Store the notifier reference
+ // late final HomeNotifier _homeNotifier;  // Store the notifier reference
   final List<Map<String, dynamic>> products = [
     {
       "name": "Hospitals",
@@ -367,30 +375,58 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // Store the notifier reference here
-    _homeNotifier = ref.read(homeProvider.notifier);
-    _homeNotifier.init();
-
+   // _homeNotifier = ref.read(homeProvider.notifier);
+   // _homeNotifier.init();
+ WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) {
+      ref.read(homeProvider.notifier).init();
+    }
+  });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     // Use the stored reference, NOT ref.read()
-    _homeNotifier.dispose();
+    //_homeNotifier.dispose();
+     //ref.read(homeProvider.notifier).dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // This is safe because the widget is still mounted when this runs
+          WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(homeProvider.notifier).refreshOnResume();
       }
+    });  
     }
   }
+  
 
+  Future<void> _navigateToDoctors(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    String? hospitalId = prefs.getString('selected_hospital_id');
 
+     String finalHospitalId = hospitalId ?? '4';
+
+    if (hospitalId == null || hospitalId.isEmpty) {
+      hospitalId = '4';
+    }
+    
+    if (!mounted) return;
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Doctors(
+          hospitalId: finalHospitalId,
+          specialty: '',
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

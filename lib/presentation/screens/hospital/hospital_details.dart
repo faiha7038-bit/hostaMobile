@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
@@ -13,12 +15,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 class HospitalDetailsPage extends ConsumerStatefulWidget {
   final String hospitalId;
-  final Map<String, dynamic> hospital;
+ // final Map<String, dynamic> hospital;
 
   const HospitalDetailsPage({
     super.key,
     required this.hospitalId,
-    required this.hospital,
+   // required this.hospital,
   });
 
   @override
@@ -273,6 +275,7 @@ Widget build(BuildContext context) {
       ),
     ),
     data: (hospitalData) {
+      log("🏥 Hospital data: id=${hospitalData['id']}, name=${hospitalData['name']}, hospitalId=${hospitalData['hospitalId']}");
       // ✅ Get screen size inside builder
       final screenWidth = MediaQuery.of(context).size.width;
       final screenHeight = MediaQuery.of(context).size.height;

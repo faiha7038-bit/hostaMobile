@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
@@ -60,7 +62,10 @@ class UserNotifier extends StateNotifier<UserState> {
 
 final hospitalDetailsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, hospitalId) async {
   final response = await ApiService().getAHospitals(hospitalId);
+  print("reeee:${response}");
   final rawData = response.data;
+  print("$rawData");
+  print("jjjj");
 
   Map<String, dynamic> extractHospital(dynamic data) {
     if (data == null) throw Exception('No data');

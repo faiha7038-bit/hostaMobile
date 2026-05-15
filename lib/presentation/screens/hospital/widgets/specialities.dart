@@ -1,9 +1,11 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:hosta/services/api_service.dart';
 
 class SpecialtiesTab extends StatefulWidget {
   final Map<String, dynamic> hospital;
-  final Function(String, String) onSpecialtyTap;  // now passes hospitalId + department
+  final Function(String, String)
+  onSpecialtyTap; // now passes hospitalId + department
 
   const SpecialtiesTab({
     super.key,
@@ -25,41 +27,47 @@ class _SpecialtiesTabState extends State<SpecialtiesTab> {
     _specialtiesFuture = _fetchDoctorsGroupedByDepartment();
   }
 
-  Future<Map<String, List<dynamic>>> _fetchDoctorsGroupedByDepartment() async {
-    try {
-      // Get hospitalId from hospital object (use 'hospitalId' or 'id')
-      final hospitalId = widget.hospital['hospitalId'] ?? widget.hospital['id'];
-      if (hospitalId == null) {
-        print('❌ No hospital ID found');
-        return {};
-      }
-
-      // Call your existing endpoint: /doctor?hospitalId=...
-     final response = await _apiService.getDoctors(hospitalId: hospitalId);
-      List<dynamic> doctors = [];
-
-      // Parse response (adjust based on your actual API structure)
-      if (response.data is Map && response.data['data'] is List) {
-        doctors = response.data['data'];
-      } else if (response.data is List) {
-        doctors = response.data;
-      }
-
-      // Group doctors by department
-      Map<String, List<dynamic>> grouped = {};
-      for (var doctor in doctors) {
-        String department = doctor['department'] ?? 'Other';
-        if (!grouped.containsKey(department)) {
-          grouped[department] = [];
-        }
-        grouped[department]!.add(doctor);
-      }
-      return grouped;
-    } catch (e) {
-      print('❌ Error fetching doctors: $e');
+ Future<Map<String, List<dynamic>>> _fetchDoctorsGroupedByDepartment() async {
+  print('🔵 Fetching doctors...');
+  try {
+    // ✅ FIX: extract numeric ID only
+    final numericId = widget.hospital['id'] ?? widget.hospital['hospitalId'];
+    if (numericId == null) {
+      print('❌ No hospital ID field found');
       return {};
     }
+    final hospitalId = numericId is int ? numericId.toString() : 
+                       (numericId is String && int.tryParse(numericId) != null) ? numericId : null;
+    if (hospitalId == null) {
+      print('❌ Hospital ID is not numeric: $numericId');
+      return {};
+    }
+    
+    print('🔵 hospitalId = $hospitalId');
+    
+    final response = await _apiService.getDoctors(hospitalId: hospitalId);
+    print('🔵 Status: ${response.statusCode}');
+    
+    List<dynamic> doctors = [];
+    if (response.data is Map && response.data['data'] is List) {
+      doctors = response.data['data'];
+    } else if (response.data is List) {
+      doctors = response.data;
+    }
+    print('🔵 Found ${doctors.length} doctors');
+    
+    Map<String, List<dynamic>> grouped = {};
+    for (var doctor in doctors) {
+      String department = doctor['department'] ?? 'Other';
+      grouped.putIfAbsent(department, () => []).add(doctor);
+    }
+    print('🔵 Grouped into ${grouped.length} departments');
+    return grouped;
+  } catch (e, stack) {
+    print('❌ Exception: $e\n$stack');
+    return {};
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -71,9 +79,7 @@ class _SpecialtiesTabState extends State<SpecialtiesTab> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
-            child: CircularProgressIndicator(
-              strokeWidth: screenWidth * 0.008,
-            ),
+            child: CircularProgressIndicator(strokeWidth: screenWidth * 0.008),
           );
         }
 
@@ -118,11 +124,15 @@ class _SpecialtiesTabState extends State<SpecialtiesTab> {
                 borderRadius: BorderRadius.circular(screenWidth * 0.03),
               ),
               child: InkWell(
-                onTap: () {
-                  // Pass hospitalId and department to parent
-                  final hospitalId = widget.hospital['hospitalId'] ?? widget.hospital['id'];
-                  widget.onSpecialtyTap(hospitalId.toString(), department);
-                },
+             onTap: () {
+  // ✅ Always use numeric 'id' field
+  final hospitalId = widget.hospital['id'];
+  if (hospitalId == null) {
+    print('❌ No numeric id found');
+    return;
+  }
+  widget.onSpecialtyTap(hospitalId.toString(), department);
+},
                 borderRadius: BorderRadius.circular(screenWidth * 0.03),
                 child: Padding(
                   padding: EdgeInsets.all(screenWidth * 0.04),
@@ -175,7 +185,9 @@ class _SpecialtiesTabState extends State<SpecialtiesTab> {
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.green[50],
-                                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                                borderRadius: BorderRadius.circular(
+                                  screenWidth * 0.03,
+                                ),
                               ),
                               child: Text(
                                 "View Doctors",
