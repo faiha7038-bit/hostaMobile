@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.zorrowtech.hostamanagers">
 
+
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -45,10 +47,11 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+    
 
  <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyA2yoMDvhHLgLc94IguuMcwvzOQNRmMD6Y"/>
+            android:value="AIzaSyCBY3TiTswSrxmfEKBnLGvSjkFAKLEGgfE"/>
 
         <!-- FCM Meta-data tags -->
         <meta-data
