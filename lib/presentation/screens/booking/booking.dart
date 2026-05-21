@@ -17,6 +17,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   @override
   void initState() {
     super.initState();
+      _checkToken();
+      
     print("📌 BookingScreen initState called");
     // Initialize data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {

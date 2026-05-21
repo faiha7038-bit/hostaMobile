@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<!-- <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
@@ -75,5 +75,176 @@
 		<false/>
 		<key>NSLocationWhenInUseUsageDescription</key>
 <string>This app needs access to location when open.</string>
+
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>We need your location to show map and nearby places.</string>
+
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+<string>We need your location to show map and nearby places.</string>
+
 	</dict>
-</plist>
+</plist> -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: MapSearchScreen(),
+    );
+  }
+}
+
+class MapSearchScreen extends StatefulWidget {
+  const MapSearchScreen({super.key});
+
+  @override
+  State<MapSearchScreen> createState() => _MapSearchScreenState();
+}
+
+class _MapSearchScreenState extends State<MapSearchScreen> {
+  final Completer<GoogleMapController> _controller =
+      Completer();
+
+  final TextEditingController latController =
+      TextEditingController();
+
+  final TextEditingController lngController =
+      TextEditingController();
+
+  LatLng currentPosition = const LatLng(20.5937, 78.9629); // India default
+
+  final Set<Marker> markers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _setMarker(currentPosition);
+  }
+
+  void _setMarker(LatLng position) {
+    markers.clear();
+
+    markers.add(
+      Marker(
+        markerId: const MarkerId("selected"),
+        position: position,
+        infoWindow: const InfoWindow(
+          title: "Selected Location",
+        ),
+      ),
+    );
+  }
+
+  Future<void> searchLocation() async {
+    try {
+      double lat = double.parse(latController.text.trim());
+      double lng = double.parse(lngController.text.trim());
+
+      LatLng newPosition = LatLng(lat, lng);
+
+      setState(() {
+        currentPosition = newPosition;
+        _setMarker(newPosition);
+      });
+
+      final GoogleMapController controller =
+          await _controller.future;
+
+      controller.animateCamera(
+        CameraUpdate.newLatLngZoom(newPosition, 16),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Invalid latitude/longitude"),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Search Lat/Lng on Map"),
+      ),
+      body: Column(
+        children: [
+          // INPUT SECTION
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                TextField(
+                  controller: latController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Latitude",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: lngController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Longitude",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: searchLocation,
+                    child: const Text("Search Location"),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // MAP
+          Expanded(
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: currentPosition,
+                zoom: 5,
+              ),
+              markers: markers,
+              onMapCreated:
+                  (GoogleMapController controller) {
+                _controller.complete(controller);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

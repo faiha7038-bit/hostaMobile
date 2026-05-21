@@ -75,7 +75,11 @@ dependencies:
   geocoding: ^4.0.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+<<<<<<< HEAD
   flutter_phone_direct_caller: ^2.2.1
+=======
+  latlong2: ^0.10.1
+>>>>>>> a0e5f70f8779c737555ffb835168c02cedab0ae4
   
 
 dev_dependencies:
