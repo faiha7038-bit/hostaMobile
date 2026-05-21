@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -43,7 +45,7 @@ class BookingState {
     return BookingState(
       selectedFilter: selectedFilter ?? this.selectedFilter,
       searchQuery: searchQuery ?? this.searchQuery,
-      selectedDate: selectedDate ?? this.selectedDate,
+      selectedDate: selectedDate,
       isLoading: isLoading ?? this.isLoading,
       userId: userId ?? this.userId,
       isSocketConnected: isSocketConnected ?? this.isSocketConnected,
@@ -62,6 +64,7 @@ final bookingStateProvider = StateNotifierProvider<BookingNotifier, BookingState
 });
 
 class BookingNotifier extends StateNotifier<BookingState> {
+  Timer? _debounce;
   IO.Socket? _socket;
   final ApiService _apiService = ApiService();
 
@@ -71,7 +74,7 @@ class BookingNotifier extends StateNotifier<BookingState> {
     ),
   );
 
-  void updateSelectedFilter(String filter) {
+  Future<void> updateSelectedFilter(String filter)async {
     state = state.copyWith(
       selectedFilter: filter,
       selectedDate: filter == "All" ? null : state.selectedDate,
@@ -80,18 +83,31 @@ class BookingNotifier extends StateNotifier<BookingState> {
     if (filter == "All") {
       state.searchController.clear();
     }
+     await fetchBookings();
   }
 
-  void updateSearchQuery(String query) {
-    state = state.copyWith(searchQuery: query);
-  }
+  Future<void> updateSearchQuery(String query) async {
+  state = state.copyWith(searchQuery: query);
+
+  _debounce?.cancel();
+
+  _debounce = Timer(
+    const Duration(milliseconds: 500),
+    () async {
+      await fetchBookings();
+    },
+  );
+}
 
   void updateSelectedDate(DateTime? date) {
     state = state.copyWith(selectedDate: date);
   }
 
   void clearSelectedDate() {
+     log("🔥 BEFORE: ${state.selectedDate}");
+
     state = state.copyWith(selectedDate: null);
+      log("🔥 AFTER: ${state.selectedDate}");
   }
 
   void setLoading(bool loading) {
@@ -110,16 +126,28 @@ class BookingNotifier extends StateNotifier<BookingState> {
     state = state.copyWith(bookings: bookings);
   }
 
-  void updateBookingStatus(String bookingId, String newStatus) {
-    final updatedBookings = state.bookings.map((booking) {
-      if (booking["id"] == bookingId) {
-        return {...booking, "status": newStatus};
-      }
-      return booking;
-    }).toList();
-    state = state.copyWith(bookings: updatedBookings);
-  }
+  // void updateBookingStatus(String bookingId, String newStatus) {
+  //   final updatedBookings = state.bookings.map((booking) {
+  //     if (booking["id"] == bookingId) {
+  //       return {...booking, "status": newStatus};
+  //     }
+  //     return booking;
+  //   }).toList();
+  //   state = state.copyWith(bookings: updatedBookings);
+  // }
+void updateBookingStatus(String bookingId, String newStatus) {
+  final updatedBookings = state.bookings.map((booking) {
+    if (booking["id"].toString() == bookingId.toString()) {
+      return {
+        ...booking,
+        "status": newStatus,
+      };
+    }
+    return booking;
+  }).toList();
 
+  state = state.copyWith(bookings: updatedBookings);
+}
   Future<void> initializeData() async {
     await loadUserIdAndFetchBookings();
     setupSocketListener();
@@ -175,11 +203,17 @@ Future<void> fetchBookings() async {
     return;
   }
 
-  setLoading(true);
+ // setLoading(true);
 
   try {
     final response = await _apiService.getAllBookings(
         userId: userId,
+        status: state.selectedFilter == "All"
+    ? null
+    : state.selectedFilter.toLowerCase() == "cancelled"
+        ? "cancel"
+        : state.selectedFilter.toLowerCase(),
+        doctorName: state.searchQuery.isEmpty?null:state.searchQuery
     );
     print("FULL RESPONSE = ${response.data}");
 List<Map<String, dynamic>> parsedBookings = [];
@@ -219,6 +253,8 @@ List<Map<String, dynamic>> parsedBookings = [];
 
 List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
   return bookingsData.map<Map<String, dynamic>>((b) {
+    log("BOOKING RAW = $b");
+log("CONSULTING TIME = ${b["consulting_time"]}");
     return {
       "id": b["id"]?.toString() ?? 
             b["bookingId"]?.toString() ?? 
@@ -244,10 +280,21 @@ List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
                    "General",
       "date": _parseDate(b["bookingDate"] ?? b["booking_date"] ?? b["date"]),
       "status": (b["status"] ?? "pending").toString().toLowerCase(),
-      "time": b["consultingTime"]?.toString() ?? 
-              b["time"]?.toString() ?? 
-              b["booking_time"]?.toString() ?? 
-              "N/A",
+      // "time": b["consultingTime"]?.toString() ?? 
+      //         b["time"]?.toString() ?? 
+      //         b["booking_time"]?.toString() ?? 
+      //         "N/A",
+      
+   
+
+      // TOKEN
+      "token": b["token"]?.toString() ?? "Not Assigned",
+      "time": b["consulting_time"]?.toString() ?? 
+        b["consultingTime"]?.toString() ?? 
+        b["time"]?.toString() ?? 
+        b["booking_time"]?.toString() ?? 
+        "",
+        
       "patient_name": b["patientName"]?.toString() ?? 
                       b["patient_name"]?.toString() ?? 
                       "",
@@ -257,9 +304,13 @@ List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
       "patient_place": b["patientPlace"]?.toString() ?? 
                        b["patient_place"]?.toString() ?? 
                        "",
+                       
     };
+    
   }).toList();
+  
 }
+
 
   
 
@@ -383,26 +434,32 @@ List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
     }
   }
 
-  Future<void> cancelBooking(Map<String, dynamic> booking) async {
-    final bookingId = booking["id"].toString();
-    final hospitalId = booking["hospital_id"].toString();
+ Future<void> cancelBooking(Map<String, dynamic> booking) async {
+  final bookingId = booking["id"].toString();
+  final hospitalId = booking["hospital_id"].toString();
 
-    if (bookingId.isEmpty || hospitalId.isEmpty) {
-      throw Exception("Invalid booking data");
-    }
-
-    try {
-      await _apiService.updateBooking(bookingId, hospitalId, {
-        "status": "cancel",
-      });
-      
-      updateBookingStatus(bookingId, "cancel");
-      await fetchBookings(); // Refresh to ensure consistency
-    } catch (e) {
-      print("❌ Error cancelling booking: $e");
-      rethrow;
-    }
+  if (bookingId.isEmpty || hospitalId.isEmpty) {
+    throw Exception("Invalid booking data");
   }
+
+  try {
+await _apiService.updateBooking(
+  bookingId,
+  {"status": "cancel"},
+);
+
+    updateBookingStatus(
+      bookingId,
+      "cancel",
+    );
+
+    await fetchBookings();
+
+  } catch (e) {
+    print("❌ Error cancelling booking: $e");
+    rethrow;
+  }
+}
 
   void refreshBookings() {
     fetchBookings();
@@ -428,29 +485,19 @@ List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
   }
 }
 
-// ─────────────────────────────────────────────
-//  HELPER PROVIDERS
-// ─────────────────────────────────────────────
 
-final filteredBookingsProvider = Provider<List<Map<String, dynamic>>>((ref) {
+final filteredBookingsProvider =
+    Provider<List<Map<String, dynamic>>>((ref) {
   final state = ref.watch(bookingStateProvider);
+
   final bookings = state.bookings;
-  final selectedFilter = state.selectedFilter;
-  final searchQuery = state.searchQuery;
-  final selectedDate = state.selectedDate;
+  final date = state.selectedDate;
 
   return bookings.where((b) {
-    final matchesFilter = selectedFilter == "All" ||
-        b["status"] == selectedFilter.toLowerCase();
-    final matchesSearch = b["hospital"].toString().toLowerCase().contains(
-          searchQuery.toLowerCase(),
-        ) ||
-        b["doctor"].toString().toLowerCase().contains(
-          searchQuery.toLowerCase(),
-        );
-    final matchesDate = selectedDate == null ||
-        b["date"] == DateFormat('yyyy-MM-dd').format(selectedDate);
-    return matchesFilter && matchesSearch && matchesDate;
+    final matchDate = date == null
+        ? true
+        : b["date"] == DateFormat('yyyy-MM-dd').format(date);
+
+    return matchDate;
   }).toList();
 });
-

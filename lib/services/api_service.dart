@@ -471,21 +471,38 @@ Future<Response> editAmbulance(String id, Map<String, dynamic> updatedData) asyn
 
 
 // GET bookings
-Future<Response> getAllBookings({String? userId}) async {
+Future<Response> getAllBookings({
+  String? userId,
+  String? status,
+  String? doctorName,
+}) async {
   final Map<String, dynamic> queryParams = {};
-  if (userId != null) queryParams['userId'] = userId;
 
-  print('📡 GET /api/booking with queryParams: $queryParams');
+  if (userId != null) queryParams['userId'] = userId;
+  if (status != null) queryParams['status'] = status;
+  if (doctorName != null) queryParams['doctor_name'] = doctorName;
+log("QUERY PARAMS = $queryParams");
+  log('📡 GET /api/booking with queryParams: $queryParams');
   return await _dio.get('/api/booking', queryParameters: queryParams);
+  
 }
 
   // UPDATE booking
-  Future<Response> updateBooking(String bookingId, String hospitalId, Map<String, dynamic> data) async {
-    print('📡 Updating booking: $bookingId for hospital: $hospitalId');
-    return await _dio.put('/api/booking/$bookingId/hospital/$hospitalId', data: data);
-  }
+  // Future<Response> updateBooking(String bookingId, String hospitalId, Map<String, dynamic> data) async {
+  //   print('📡 Updating booking: $bookingId for hospital: $hospitalId');
+  //   return await _dio.put('/api/booking/$bookingId/hospital/$hospitalId', data: data);
+  // }
 
-
+Future<Response> updateBooking(
+  String bookingId,
+  Map<String, dynamic> data,
+) async {
+  print('📡 Updating booking: $bookingId');
+  return await _dio.put(
+    '/api/booking/$bookingId',
+    data: data,
+  );
+}
 
 /// Get doctors with optional filters
 // Future<Response> getDoctors({
