@@ -33,7 +33,7 @@ void dispose() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _fetchAmbulances();
-     //  _refreshAmbulanceId();
+       _refreshAmbulanceId();
     });
   }
   
@@ -56,11 +56,12 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
     }
   }
 }
-// Future<void> _refreshAmbulanceId() async {
-//   final prefs = await SharedPreferences.getInstance();
-//   final id = prefs.getString('ambulanceId');
-//   ref.read(ambulanceIdProvider.notifier).state = id;
-// }
+Future<void> _refreshAmbulanceId() async {
+  final prefs = await SharedPreferences.getInstance();
+  final id = prefs.getString('ambulanceId');
+  ref.read(ambulanceIdProvider.notifier).state = id;
+  
+}
 
   void _handleAmbulanceRegister() async {
     final prefs = await SharedPreferences.getInstance();
@@ -71,6 +72,9 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
         context,
         MaterialPageRoute(builder: (context) => const Signin()),
       ).then((_) => _handleAmbulanceRegister());
+        await _refreshAmbulanceId();
+  await _fetchAmbulances();
+  
       return;
     }
 

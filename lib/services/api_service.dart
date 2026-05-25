@@ -296,6 +296,7 @@ Future<Response> updateDonor(String id, Map<String, dynamic> data) async {
 
   // LOGIN
   Future<Response> loginUser(Map<String, dynamic> data) async {
+    log("response$data");
     return await _dio.post(
       '/api/users/login/phone'
 
@@ -554,10 +555,36 @@ Future<Response> getDoctorById(String doctorId) async {
     return await _dio.post('/api/email', data: data);
   }
 
+  //forgot password
+// SEND RESET PASSWORD OTP
+Future<Response> sendResetPasswordOtp(
+    Map<String, dynamic> data) async {
+  return await _dio.post(
+    '/api/users/auth/send-otp',
+    data: data,
+  );
+}
 
-  Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
-    return await _dio.post('/api/users/password', data: data);
-  }
+// VERIFY RESET PASSWORD OTP
+Future<Response> verifyResetPasswordOtp(
+    Map<String, dynamic> data) async {
+  return await _dio.post(
+    '/api/users/auth/verify-otp',
+    data: data,
+  );
+}
+
+// RESET PASSWORD
+Future<Response> resetForgotPassword(
+    Map<String, dynamic> data) async {
+  return await _dio.post(
+    '/api/users/auth/reset-password',
+    data: data,
+  );
+}
+  // Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
+  //   return await _dio.post('/api/users/password', data: data);
+  // }
     // ✅ CHANGE PASSWORD (new method)
  Future<Response> changePassword(Map<String, dynamic> data) async {
   return await _dio.put('/api/users/auth/change-password', data: data);

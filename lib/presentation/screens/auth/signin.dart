@@ -1032,118 +1032,250 @@ class _SigninState extends State<Signin> {
     });
     return true;
   }
+Future<void> _sendOtp() async {
+  log("Send OTP button tapped");
 
-  Future<void> _sendOtp() async {
-     log("Send OTP button tapped");
-    String rawPhone = phoneController.text.trim();
-    String cleanPhone = _cleanPhoneNumber(rawPhone);
-    
-    log("🚀 Sending OTP for phone: $cleanPhone");
-    
-    // Validate phone number
-    if (!_validatePhoneNumber(cleanPhone)) {
-      return;
-    }
+  String rawPhone = phoneController.text.trim();
+  String cleanPhone = _cleanPhoneNumber(rawPhone);
+
+  log("🚀 Sending OTP for phone: $cleanPhone");
+
+  // Validate phone number
+  if (!_validatePhoneNumber(cleanPhone)) {
+    return;
+  }
+
+  setState(() {
+    isSendingOtp = true;
+    phoneError = null;
+  });
+
+  try {
+    final requestData = {
+      "phone": cleanPhone,
+    };
+
+    log("📤 API Request - Endpoint: /users/login");
+    log("📤 Request data: $requestData");
+
+    final response = await _apiService.loginUser(requestData);
+
+    log("📥 Response status: ${response.statusCode}");
+    log("📥 Response data: ${response.data}");
 
     setState(() {
-      isSendingOtp = true;
-      phoneError = null;
+      isSendingOtp = false;
     });
 
-    try {
-      // Try different phone number formats that your backend might expect
-      // Format 1: Just 10 digits (most common)
-      final requestData = {"phone": cleanPhone};
-      
-      // Format 2: With country code (uncomment if above doesn't work)
-      // final requestData = {"phone": "+91$cleanPhone"};
-      
-      // Format 3: With 91 prefix (uncomment if needed)
-      // final requestData = {"phone": "91$cleanPhone"};
-      
-      log("📤 API Request - Endpoint: /users/login");
-      log("📤 Request data: $requestData");
-      
-      final response = await _apiService.loginUser(requestData);
-      
-      log("📥 Response status: ${response.statusCode}");
-      log("📥 Response data: ${response.data}");
+    if (response.statusCode == 200 ||
+        response.statusCode == 201) {
 
-      setState(() => isSendingOtp = false);
+      if (response.data["success"] == true) {
 
-      // Check for successful response
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Check different possible success indicators
-        if (response.data["status"] == 200 || 
-            response.data["success"] == true ||
-            response.data["otp"] != null) {
-          
-          final backendOtp = response.data["otp"]?.toString();
-          final message = response.data["message"];
-          
-          log("✅ OTP sent successfully!");
-          log("🔑 Backend OTP: $backendOtp");
-          log("💬 Message: $message");
-          
-          if (backendOtp != null && backendOtp.length == 6) {
-            _showLoadingAndThenOtp(cleanPhone, backendOtp);
-          } else {
-            // Still show OTP screen even if no OTP in response (user will enter manually)
-            _showOtpPopup(cleanPhone, null);
-          }
-        } else {
-          // API returned success status code but indicates failure in response body
-          String errorMsg = response.data['message'] ?? 'Failed to send OTP';
-          log("❌ API returned error: $errorMsg");
-          
-          if (errorMsg.toLowerCase().contains('user') && 
-              errorMsg.toLowerCase().contains('not found')) {
-            // User not registered - show signup option
-            _showUserNotFoundDialog(errorMsg);
-          } else {
-            _showErrorDialog(errorMsg);
-          }
-        }
+        // ✅ GET OTP FROM RESPONSE
+        final backendOtp =
+           // response.data["data"]?["otp"]?.toString();
+             response.data["otp"]?.toString();
+
+        log("✅ OTP sent successfully");
+        log("📲 Backend OTP: $backendOtp");
+
+        // ✅ OPEN OTP SCREEN WITH OTP
+        _showOtpPopup(
+          cleanPhone,
+          backendOtp,
+        );
+
       } else {
-        // HTTP error status code
-        String errorMsg = response.data['message'] ?? 'Failed to send OTP';
-        log("❌ HTTP Error ${response.statusCode}: $errorMsg");
-        _showErrorDialog(errorMsg);
+
+        _showErrorDialog(
+          response.data["message"] ??
+              "Login failed",
+        );
       }
-    } on DioException catch (dioError) {
-      setState(() => isSendingOtp = false);
-      
-      log("❌ DioException occurred");
-      log("Error type: ${dioError.type}");
-      log("Error message: ${dioError.message}");
-      
-      String errorMessage = "Something went wrong";
-      
-      if (dioError.response != null) {
-        log("Response status: ${dioError.response?.statusCode}");
-        log("Response data: ${dioError.response?.data}");
-        try {
-          errorMessage = dioError.response?.data['message'] ?? 
-                        dioError.response?.data['error'] ?? 
-                        errorMessage;
-        } catch (_) {}
-      } else if (dioError.type == DioExceptionType.connectionTimeout) {
-        errorMessage = "Connection timeout. Please check your internet.";
-      } else if (dioError.type == DioExceptionType.receiveTimeout) {
-        errorMessage = "Server not responding. Please try again.";
-      } else if (dioError.type == DioExceptionType.connectionError) {
-        errorMessage = "No internet connection. Please check your network.";
-      } else if (dioError.type == DioExceptionType.cancel) {
-        errorMessage = "Request cancelled.";
-      }
-      
-      _showErrorDialog(errorMessage);
-    } catch (e) {
-      setState(() => isSendingOtp = false);
-      log("❌ Unexpected error: $e");
-      _showErrorDialog("Failed to send OTP: $e");
+
+    } else {
+
+      _showErrorDialog(
+        response.data["message"] ??
+            "Failed to send OTP",
+      );
     }
+
+  } on DioException catch (dioError) {
+
+    setState(() {
+      isSendingOtp = false;
+    });
+
+    log("❌ DioException occurred");
+    log("Error type: ${dioError.type}");
+    log("Error message: ${dioError.message}");
+
+    String errorMessage = "Something went wrong";
+
+    if (dioError.response != null) {
+
+      log("Response status: ${dioError.response?.statusCode}");
+      log("Response data: ${dioError.response?.data}");
+
+      try {
+        errorMessage =
+            dioError.response?.data['message'] ??
+            dioError.response?.data['error'] ??
+            errorMessage;
+      } catch (_) {}
+
+    } else if (dioError.type ==
+        DioExceptionType.connectionTimeout) {
+
+      errorMessage =
+          "Connection timeout. Please check your internet.";
+
+    } else if (dioError.type ==
+        DioExceptionType.receiveTimeout) {
+
+      errorMessage =
+          "Server not responding. Please try again.";
+
+    } else if (dioError.type ==
+        DioExceptionType.connectionError) {
+
+      errorMessage =
+          "No internet connection. Please check your network.";
+
+    } else if (dioError.type ==
+        DioExceptionType.cancel) {
+
+      errorMessage = "Request cancelled.";
+    }
+
+    _showErrorDialog(errorMessage);
+
+  } catch (e) {
+
+    setState(() {
+      isSendingOtp = false;
+    });
+
+    log("❌ Unexpected error: $e");
+
+    _showErrorDialog(
+      "Failed to send OTP: $e",
+    );
   }
+}
+  // Future<void> _sendOtp() async {
+  //    log("Send OTP button tapped");
+  //   String rawPhone = phoneController.text.trim();
+  //   String cleanPhone = _cleanPhoneNumber(rawPhone);
+    
+  //   log("🚀 Sending OTP for phone: $cleanPhone");
+    
+  //   // Validate phone number
+  //   if (!_validatePhoneNumber(cleanPhone)) {
+  //     return;
+  //   }
+
+  //   setState(() {
+  //     isSendingOtp = true;
+  //     phoneError = null;
+  //   });
+
+  //   try {
+  //     // Try different phone number formats that your backend might expect
+  //     // Format 1: Just 10 digits (most common)
+  //     final requestData = {"phone": cleanPhone};
+      
+  //     // Format 2: With country code (uncomment if above doesn't work)
+  //     // final requestData = {"phone": "+91$cleanPhone"};
+      
+  //     // Format 3: With 91 prefix (uncomment if needed)
+  //     // final requestData = {"phone": "91$cleanPhone"};
+      
+  //     log("📤 API Request - Endpoint: /users/login");
+  //     log("📤 Request data: $requestData");
+      
+  //     final response = await _apiService.loginUser(requestData);
+      
+  //     log("📥 Response status: ${response.statusCode}");
+  //     log("📥 Response data: ${response.data}");
+
+  //     setState(() => isSendingOtp = false);
+
+  //     // Check for successful response
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       // Check different possible success indicators
+  //       if (response.data["status"] == 200 || 
+  //           response.data["success"] == true ||
+  //           response.data["otp"] != null) {
+          
+  //         final backendOtp = response.data["otp"]?.toString();
+  //         final message = response.data["message"];
+          
+  //         log("✅ OTP sent successfully!");
+  //         log("🔑 Backend OTP: $backendOtp");
+  //         log("💬 Message: $message");
+          
+  //         if (backendOtp != null && backendOtp.length == 6) {
+  //           _showLoadingAndThenOtp(cleanPhone, backendOtp);
+  //         } else {
+  //           // Still show OTP screen even if no OTP in response (user will enter manually)
+  //           _showOtpPopup(cleanPhone, null);
+  //         }
+  //       } else {
+  //         // API returned success status code but indicates failure in response body
+  //         String errorMsg = response.data['message'] ?? 'Failed to send OTP';
+  //         log("❌ API returned error: $errorMsg");
+          
+  //         if (errorMsg.toLowerCase().contains('user') && 
+  //             errorMsg.toLowerCase().contains('not found')) {
+  //           // User not registered - show signup option
+  //           _showUserNotFoundDialog(errorMsg);
+  //         } else {
+  //           _showErrorDialog(errorMsg);
+  //         }
+  //       }
+  //     } else {
+  //       // HTTP error status code
+  //       String errorMsg = response.data['message'] ?? 'Failed to send OTP';
+  //       log("❌ HTTP Error ${response.statusCode}: $errorMsg");
+  //       _showErrorDialog(errorMsg);
+  //     }
+  //   } on DioException catch (dioError) {
+  //     setState(() => isSendingOtp = false);
+      
+  //     log("❌ DioException occurred");
+  //     log("Error type: ${dioError.type}");
+  //     log("Error message: ${dioError.message}");
+      
+  //     String errorMessage = "Something went wrong";
+      
+  //     if (dioError.response != null) {
+  //       log("Response status: ${dioError.response?.statusCode}");
+  //       log("Response data: ${dioError.response?.data}");
+  //       try {
+  //         errorMessage = dioError.response?.data['message'] ?? 
+  //                       dioError.response?.data['error'] ?? 
+  //                       errorMessage;
+  //       } catch (_) {}
+  //     } else if (dioError.type == DioExceptionType.connectionTimeout) {
+  //       errorMessage = "Connection timeout. Please check your internet.";
+  //     } else if (dioError.type == DioExceptionType.receiveTimeout) {
+  //       errorMessage = "Server not responding. Please try again.";
+  //     } else if (dioError.type == DioExceptionType.connectionError) {
+  //       errorMessage = "No internet connection. Please check your network.";
+  //     } else if (dioError.type == DioExceptionType.cancel) {
+  //       errorMessage = "Request cancelled.";
+  //     }
+      
+  //     _showErrorDialog(errorMessage);
+  //   } catch (e) {
+  //     setState(() => isSendingOtp = false);
+  //     log("❌ Unexpected error: $e");
+  //     _showErrorDialog("Failed to send OTP: $e");
+  //   }
+  // }
   
   void _showErrorDialog(String message) {
     log("⚠️ Showing error: $message");

@@ -714,4 +714,4 @@ Future<void> _loadUserIdAndFetchNotifications() async {
       ),
     );
   }
-}
+} 
