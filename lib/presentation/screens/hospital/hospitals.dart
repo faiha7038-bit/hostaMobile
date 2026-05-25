@@ -1,7 +1,8 @@
 import 'dart:developer';
-
 import 'package:flutter/material.dart';
+import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
+import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/api_service.dart';
@@ -647,6 +648,125 @@ class _HospitalsState extends State<Hospitals> {
                   ],
                 ),
                 SizedBox(height: screenHeight * 0.01),
+              Align(
+  alignment: Alignment.centerRight,
+  child: ElevatedButton(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.green,
+      padding: EdgeInsets.symmetric(
+        vertical: screenHeight * 0.015,
+         horizontal: screenWidth * 0.06,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          screenWidth * 0.03,
+        ),
+      ),
+    ),
+onPressed: () {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(20),
+      ),
+    ),
+    builder: (context) {
+      return SizedBox(
+        height: MediaQuery.of(context).size.height * 0.8,
+        child: Column(
+          children: [
+
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+              ),
+              child:
+             Row(
+  children: [
+    Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            hospital["name"] ?? "",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: screenWidth * 0.045,
+            ),
+          ),
+
+          SizedBox(height: screenHeight * 0.005),
+
+          Text(
+            "Choose Specialty",
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: screenWidth * 0.033,
+            ),
+          ),
+        ],
+      ),
+    ),
+
+    IconButton(
+      onPressed: () => Navigator.pop(context),
+      icon: Icon(
+        Icons.close,
+        color: Colors.white,
+        size: screenWidth * 0.06,
+      ),
+    ),
+  ],
+)
+            ),
+
+            // Specialities
+          Expanded(
+  child: SpecialtiesTab(
+    hospital: hospital,
+    onSpecialtyTap: (hospitalId, specialtyName) {
+
+      // close bottomsheet
+      Navigator.pop(context);
+
+      // navigate to doctor screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => Doctors(
+            hospitalId: hospitalId,
+            specialty: specialtyName,
+          ),
+        ),
+      );
+    },
+  ),
+),
+          ],
+        ),
+      );
+    },
+  );
+},
+    child: Text(
+      "Book Now",
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: screenWidth * 0.038,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  ),
+),
               ],
             ),
           ),

@@ -1,8 +1,7 @@
 import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart'; // ✅ ADD THIS IMPORT
+import 'package:geolocator/geolocator.dart'; 
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';

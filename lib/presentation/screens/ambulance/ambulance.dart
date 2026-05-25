@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/ambulance/register.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/ambulance-provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -31,7 +33,7 @@ void dispose() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _fetchAmbulances();
-     //  _refreshAmbulanceId();
+       _refreshAmbulanceId();
     });
   }
   
@@ -54,11 +56,12 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
     }
   }
 }
-// Future<void> _refreshAmbulanceId() async {
-//   final prefs = await SharedPreferences.getInstance();
-//   final id = prefs.getString('ambulanceId');
-//   ref.read(ambulanceIdProvider.notifier).state = id;
-// }
+Future<void> _refreshAmbulanceId() async {
+  final prefs = await SharedPreferences.getInstance();
+  final id = prefs.getString('ambulanceId');
+  ref.read(ambulanceIdProvider.notifier).state = id;
+  
+}
 
   void _handleAmbulanceRegister() async {
     final prefs = await SharedPreferences.getInstance();
@@ -69,6 +72,9 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
         context,
         MaterialPageRoute(builder: (context) => const Signin()),
       ).then((_) => _handleAmbulanceRegister());
+        await _refreshAmbulanceId();
+  await _fetchAmbulances();
+  
       return;
     }
 
@@ -79,16 +85,40 @@ print("🔄 Returned from AmbulanceRegister screen");
     ).then((_) => _fetchAmbulances());
   }
 
+  // Future<void> _callNumber(String phone) async {
+  //   final uri = Uri(scheme: 'tel', path: phone);
+  //   if (await canLaunchUrl(uri)) {
+  //     await launchUrl(uri);
+  //   } else {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Could not launch dialer')),
+  //     );
+  //   }
+  // }/
   Future<void> _callNumber(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
+  if (phone.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Invalid phone number')),
+    );
+    return;
+  }
+
+  var status = await Permission.phone.request();
+
+  if (status.isGranted) {
+    bool? res = await FlutterPhoneDirectCaller.callNumber(phone);
+
+    if (res != true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch dialer')),
+        const SnackBar(content: Text('Call failed')),
       );
     }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Phone permission denied')),
+    );
   }
+}
 
   Future<void> _openMap(double lat, double lon) async {
     final uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");

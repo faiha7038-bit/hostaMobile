@@ -296,6 +296,7 @@ Future<Response> updateDonor(String id, Map<String, dynamic> data) async {
 
   // LOGIN
   Future<Response> loginUser(Map<String, dynamic> data) async {
+    log("response$data");
     return await _dio.post(
       '/api/users/login/phone'
 
@@ -471,21 +472,38 @@ Future<Response> editAmbulance(String id, Map<String, dynamic> updatedData) asyn
 
 
 // GET bookings
-Future<Response> getAllBookings({String? userId}) async {
+Future<Response> getAllBookings({
+  String? userId,
+  String? status,
+  String? doctorName,
+}) async {
   final Map<String, dynamic> queryParams = {};
-  if (userId != null) queryParams['userId'] = userId;
 
-  print('📡 GET /api/booking with queryParams: $queryParams');
+  if (userId != null) queryParams['userId'] = userId;
+  if (status != null) queryParams['status'] = status;
+  if (doctorName != null) queryParams['doctor_name'] = doctorName;
+log("QUERY PARAMS = $queryParams");
+  log('📡 GET /api/booking with queryParams: $queryParams');
   return await _dio.get('/api/booking', queryParameters: queryParams);
+  
 }
 
   // UPDATE booking
-  Future<Response> updateBooking(String bookingId, String hospitalId, Map<String, dynamic> data) async {
-    print('📡 Updating booking: $bookingId for hospital: $hospitalId');
-    return await _dio.put('/api/booking/$bookingId/hospital/$hospitalId', data: data);
-  }
+  // Future<Response> updateBooking(String bookingId, String hospitalId, Map<String, dynamic> data) async {
+  //   print('📡 Updating booking: $bookingId for hospital: $hospitalId');
+  //   return await _dio.put('/api/booking/$bookingId/hospital/$hospitalId', data: data);
+  // }
 
-
+Future<Response> updateBooking(
+  String bookingId,
+  Map<String, dynamic> data,
+) async {
+  print('📡 Updating booking: $bookingId');
+  return await _dio.put(
+    '/api/booking/$bookingId',
+    data: data,
+  );
+}
 
 /// Get doctors with optional filters
 // Future<Response> getDoctors({
@@ -537,10 +555,36 @@ Future<Response> getDoctorById(String doctorId) async {
     return await _dio.post('/api/email', data: data);
   }
 
+  //forgot password
+// SEND RESET PASSWORD OTP
+Future<Response> sendResetPasswordOtp(
+    Map<String, dynamic> data) async {
+  return await _dio.post(
+    '/api/users/auth/send-otp',
+    data: data,
+  );
+}
 
-  Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
-    return await _dio.post('/api/users/password', data: data);
-  }
+// VERIFY RESET PASSWORD OTP
+Future<Response> verifyResetPasswordOtp(
+    Map<String, dynamic> data) async {
+  return await _dio.post(
+    '/api/users/auth/verify-otp',
+    data: data,
+  );
+}
+
+// RESET PASSWORD
+Future<Response> resetForgotPassword(
+    Map<String, dynamic> data) async {
+  return await _dio.post(
+    '/api/users/auth/reset-password',
+    data: data,
+  );
+}
+  // Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
+  //   return await _dio.post('/api/users/password', data: data);
+  // }
     // ✅ CHANGE PASSWORD (new method)
  Future<Response> changePassword(Map<String, dynamic> data) async {
   return await _dio.put('/api/users/auth/change-password', data: data);

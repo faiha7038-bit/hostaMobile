@@ -68,57 +68,7 @@ class _BloodState extends State<Blood> {
       print("Error loading user data: $e");
     }
   }
-// Future<void> _fetchDonors() async {
-//   setState(() => isLoading = true);
 
-//   var box = Hive.box('donorsBox');
-
-//   // 1. show offline data instantly
-//  final cachedRaw = box.get('donors', defaultValue: []);
-
-// final cached = List<Map<String, dynamic>>.from(cachedRaw);
-
-// setState(() {
-//   donors = cached;
-// });
-
- 
-
-//   try {
-//     final response = await _apiService.getAllDonors(
-//       bloodGroup: selectedBloodGroup.isEmpty ? null : selectedBloodGroup,
-//       country: selectedCountry.isEmpty ? null : selectedCountry,
-//       state: selectedState.isEmpty ? null : selectedState,
-//       district: selectedDistrict.isEmpty ? null : selectedDistrict,
-//       place: selectedPlace.isEmpty ? null : selectedPlace,
-//       name: searchQuery.isEmpty ? null : searchQuery,
-//     );
-
-//     if (response.statusCode == 200) {
-//       List donorList = [];
-
-// if (response.data is Map) {
-//   donorList = List<Map<String, dynamic>>.from(
-//     response.data['data'] ?? [],
-//   );
-// }
-
-//       setState(() {
-//         donors = donorList;
-//       });
-
-//       // save to Hive
-//     await box.put(
-//   'donors',
-//   List<Map<String, dynamic>>.from(donorList),
-// );
-//     }
-//   } catch (e) {
-//     print("Offline mode active (Hive cache used)");
-//   } finally {
-//     setState(() => isLoading = false);
-//   }
-// }
   Future<void> _fetchDonors() async {
     print("🔵 _fetchDonors called with filters");
     print("🔵 _fetchDonors called, searchQuery = '$searchQuery'");

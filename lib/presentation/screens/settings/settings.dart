@@ -5,9 +5,14 @@ import 'package:hosta/presentation/screens/settings/accountsettings.dart';
 import 'package:hosta/presentation/screens/settings/passwordManager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
 Future<void> _logout(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
 
@@ -68,6 +73,22 @@ Future<void> _logout(BuildContext context) async {
     );
   }
 
+bool isLoggedIn = false;
+
+@override
+void initState() {
+  super.initState();
+  checkLogin();
+}
+
+Future<void> checkLogin() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  setState(() {
+    isLoggedIn = prefs.getString("token") != null;
+  });
+}
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -101,16 +122,17 @@ Future<void> _logout(BuildContext context) async {
         child: Column(
           children: [
             // Password Manager
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PasswordManagerPage(),
-                  ),
-                );
-              },
-              child: Container(
+             if (isLoggedIn)
+      GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PasswordManagerPage(),
+            ),
+          );
+        },
+              child: Container( 
                 width: double.infinity,
                 padding: EdgeInsets.symmetric(
                   vertical: screenHeight * 0.02,

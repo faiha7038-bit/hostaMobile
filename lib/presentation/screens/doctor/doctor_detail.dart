@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/doctor_model.dart';
 import 'package:hosta/common/top_snackbar.dart';
+import 'package:hosta/presentation/screens/booking/register_booking.dart';
 import '../../../services/api_service.dart';
 
 class DoctorDetailScreen extends StatefulWidget {
@@ -292,13 +293,20 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: doctorDetails!.bookingOpen 
-                    ? () => _showBookingSheet(doctorDetails!)
-                    : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: doctorDetails!.bookingOpen ? Colors.green : Colors.grey,
-                  padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
+                  backgroundColor: Colors.green
                 ),
+                onPressed:(){
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=>RegisterBooking(doctor:widget.doctor )));
+                },
+                //  doctorDetails!.bookingOpen 
+                //     ? () => _showBookingSheet(doctorDetails!)
+                //     : null,
+                // style: ElevatedButton.styleFrom(
+                //   backgroundColor: doctorDetails!.bookingOpen ? Colors.green : Colors.grey,
+                //   padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
+                // ),
+                
                 child: Text(
                   doctorDetails!.bookingOpen ? "BOOK APPOINTMENT" : "CLOSED",
                   style: TextStyle(
@@ -306,6 +314,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                     fontSize: isSmallScreen ? 14 : 16,
                   ),
                 ),
+                
               ),
             ),
           ],

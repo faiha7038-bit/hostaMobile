@@ -32,7 +32,7 @@ void showTopSnackBar(BuildContext context, String message, {bool isError = false
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isError ? Colors.redAccent : Colors.blue,
+                color: isError ? Colors.redAccent : Colors.green,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(

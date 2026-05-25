@@ -732,13 +732,47 @@ Future<void> _updatePassword() async {
                   return;
                 }
 
+                // setState(() => isResetting = true);
+                
+                // // Call your reset password API here
+                // await Future.delayed(const Duration(seconds: 1));
+                
+                // setState(() => isResetting = false);
+                // Navigator.pop(dialogContext); // Close reset dialog
                 setState(() => isResetting = true);
-                
-                // Call your reset password API here
-                await Future.delayed(const Duration(seconds: 1));
-                
-                setState(() => isResetting = false);
-                Navigator.pop(dialogContext); // Close reset dialog
+
+try {
+  final response = await _apiService.resetForgotPassword({
+    "phone": phone,
+    "newPassword": newPasswordController.text.trim(),
+  });
+
+  setState(() => isResetting = false);
+
+  if (response.statusCode == 200 &&
+      response.data["success"] == true) {
+
+    Navigator.pop(dialogContext);
+
+    if (mounted) {
+      _showSuccessSnackBar(
+        "Password reset successfully! Please login again.",
+      );
+
+      Navigator.pop(context);
+    }
+  } else {
+    _showErrorSnackBar(
+      response.data["message"] ?? "Failed to reset password",
+    );
+  }
+} on DioException catch (e) {
+  setState(() => isResetting = false);
+
+  _showErrorSnackBar(
+    e.response?.data["message"] ?? "Something went wrong",
+  );
+}
                 
                 if (mounted) {
                   _showSuccessSnackBar("Password reset successfully! Please login with new password.");
