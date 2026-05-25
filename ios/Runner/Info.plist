@@ -1,250 +1,82 @@
-<!-- <?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-	<dict>
-		<key>CADisableMinimumFrameDurationOnPhone</key>
-		<true/>
-		<key>CFBundleDevelopmentRegion</key>
-		<string>$(DEVELOPMENT_LANGUAGE)</string>
-		<key>CFBundleDisplayName</key>
-		<string>Hosta</string>
-		<key>CFBundleExecutable</key>
-		<string>$(EXECUTABLE_NAME)</string>
-		<key>CFBundleIdentifier</key>
-		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-		<key>CFBundleInfoDictionaryVersion</key>
-		<string>6.0</string>
-		<key>CFBundleName</key>
-		<string>hosta</string>
-		<key>CFBundlePackageType</key>
-		<string>APPL</string>
-		<key>CFBundleShortVersionString</key>
-		<string>$(FLUTTER_BUILD_NAME)</string>
-		<key>CFBundleSignature</key>
-		<string>????</string>
-		<key>CFBundleVersion</key>
-		<string>$(FLUTTER_BUILD_NUMBER)</string>
-		<key>LSRequiresIPhoneOS</key>
-		<true/>
-		<key>UIApplicationSceneManifest</key>
-		<dict>
-			<key>UIApplicationSupportsMultipleScenes</key>
-			<false/>
-			<key>UISceneConfigurations</key>
-			<dict>
-				<key>UIWindowSceneSessionRoleApplication</key>
-				<array>
-					<dict>
-						<key>UISceneClassName</key>
-						<string>UIWindowScene</string>
-						<key>UISceneConfigurationName</key>
-						<string>flutter</string>
-						<key>UISceneDelegateClassName</key>
-						<string>FlutterSceneDelegate</string>
-						<key>UISceneStoryboardFile</key>
-						<string>Main</string>
-					</dict>
-				</array>
-			</dict>
-		</dict>
-		<key>UIApplicationSupportsIndirectInputEvents</key>
-		<true/>
-		<key>UIBackgroundModes</key>
-		<array>
-			<string>fetch</string>
-			<string>remote-notification</string>
-		</array>
-		<key>UILaunchStoryboardName</key>
-		<string>LaunchScreen</string>
-		<key>UIMainStoryboardFile</key>
-		<string>Main</string>
-		<key>UISupportedInterfaceOrientations</key>
-		<array>
-			<string>UIInterfaceOrientationPortrait</string>
-			<string>UIInterfaceOrientationLandscapeLeft</string>
-			<string>UIInterfaceOrientationLandscapeRight</string>
-		</array>
-		<key>UISupportedInterfaceOrientations~ipad</key>
-		<array>
-			<string>UIInterfaceOrientationPortrait</string>
-			<string>UIInterfaceOrientationPortraitUpsideDown</string>
-			<string>UIInterfaceOrientationLandscapeLeft</string>
-			<string>UIInterfaceOrientationLandscapeRight</string>
-		</array>
-		<key>UIStatusBarHidden</key>
-		<false/>
-		<key>NSLocationWhenInUseUsageDescription</key>
-<string>This app needs access to location when open.</string>
+<dict>
 
-<key>NSLocationWhenInUseUsageDescription</key>
-<string>We need your location to show map and nearby places.</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 
-<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>We need your location to show map and nearby places.</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
 
-	</dict>
-</plist> -->
+	<key>CFBundleDisplayName</key>
+	<string>Hosta</string>
 
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
 
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
 
+	<key>CFBundleName</key>
+	<string>hosta</string>
 
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
 
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
 
+	<key>CFBundleSignature</key>
+	<string>????</string>
 
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
 
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
 
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
 
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
 
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
 
-void main() {
-  runApp(const MyApp());
-}
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: MapSearchScreen(),
-    );
-  }
-}
+	<key>UIStatusBarHidden</key>
+	<false/>
 
-class MapSearchScreen extends StatefulWidget {
-  const MapSearchScreen({super.key});
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need your location to show map and nearby places.</string>
 
-  @override
-  State<MapSearchScreen> createState() => _MapSearchScreenState();
-}
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We need your location to show map and nearby places.</string>
 
-class _MapSearchScreenState extends State<MapSearchScreen> {
-  final Completer<GoogleMapController> _controller =
-      Completer();
-
-  final TextEditingController latController =
-      TextEditingController();
-
-  final TextEditingController lngController =
-      TextEditingController();
-
-  LatLng currentPosition = const LatLng(20.5937, 78.9629); // India default
-
-  final Set<Marker> markers = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _setMarker(currentPosition);
-  }
-
-  void _setMarker(LatLng position) {
-    markers.clear();
-
-    markers.add(
-      Marker(
-        markerId: const MarkerId("selected"),
-        position: position,
-        infoWindow: const InfoWindow(
-          title: "Selected Location",
-        ),
-      ),
-    );
-  }
-
-  Future<void> searchLocation() async {
-    try {
-      double lat = double.parse(latController.text.trim());
-      double lng = double.parse(lngController.text.trim());
-
-      LatLng newPosition = LatLng(lat, lng);
-
-      setState(() {
-        currentPosition = newPosition;
-        _setMarker(newPosition);
-      });
-
-      final GoogleMapController controller =
-          await _controller.future;
-
-      controller.animateCamera(
-        CameraUpdate.newLatLngZoom(newPosition, 16),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Invalid latitude/longitude"),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Search Lat/Lng on Map"),
-      ),
-      body: Column(
-        children: [
-          // INPUT SECTION
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                TextField(
-                  controller: latController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "Latitude",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: lngController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: "Longitude",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 45,
-                  child: ElevatedButton(
-                    onPressed: searchLocation,
-                    child: const Text("Search Location"),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // MAP
-          Expanded(
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: currentPosition,
-                zoom: 5,
-              ),
-              markers: markers,
-              onMapCreated:
-                  (GoogleMapController controller) {
-                _controller.complete(controller);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+</dict>
+</plist>
