@@ -5,8 +5,6 @@ import 'package:hosta/presentation/screens/ambulance/ambulance_details.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/blood_details.dart';
 import 'package:hosta/presentation/screens/contact/contact.dart';
-import 'package:hosta/presentation/screens/history/myhistory.dart';
-import 'package:hosta/presentation/screens/lab/lab.dart';
 import 'package:hosta/presentation/screens/prescription.dart';
 import 'package:hosta/presentation/screens/profile-edit/profile.dart';
 import 'package:hosta/presentation/screens/privacy/privacy.dart';
@@ -144,34 +142,43 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   // Helper method to safely extract profile image URL based on your structure
   // picture: { imageUrl: { type: String }, public_id: { type: String } }
+  // String? _getProfileImage() {
+  //   final picture = userData['picture'];
+
+  //   if (picture == null) return null;
+
+  //   // Handle the case where picture is a Map with imageUrl field
+  //   if (picture is Map) {
+  //     // Check if imageUrl exists in the picture map
+  //     if (picture['imageUrl'] != null) {
+  //       final imageUrl = picture['imageUrl'];
+  //       if (imageUrl is String && imageUrl.isNotEmpty) {
+  //         return imageUrl;
+  //       }
+  //     }
+
+  //     // Also check if picture itself is a string (fallback)
+  //     if (picture['url'] is String) {
+  //       return picture['url'] as String;
+  //     }
+  //   }
+
+  //   // If picture is directly a string (fallback for backward compatibility)
+  //   if (picture is String && picture.isNotEmpty) {
+  //     return picture;
+  //   }
+
+  //   return null;
+  // }
   String? _getProfileImage() {
-    final picture = userData['picture'];
+  final imageUrl = userData['imageUrl'];
 
-    if (picture == null) return null;
-
-    // Handle the case where picture is a Map with imageUrl field
-    if (picture is Map) {
-      // Check if imageUrl exists in the picture map
-      if (picture['imageUrl'] != null) {
-        final imageUrl = picture['imageUrl'];
-        if (imageUrl is String && imageUrl.isNotEmpty) {
-          return imageUrl;
-        }
-      }
-
-      // Also check if picture itself is a string (fallback)
-      if (picture['url'] is String) {
-        return picture['url'] as String;
-      }
-    }
-
-    // If picture is directly a string (fallback for backward compatibility)
-    if (picture is String && picture.isNotEmpty) {
-      return picture;
-    }
-
-    return null;
+  if (imageUrl is String && imageUrl.isNotEmpty) {
+    return imageUrl;
   }
+
+  return null;
+}
 
   void _navigateToViewProfile() {
     Navigator.push(context, MaterialPageRoute(builder: (context) => Profile()));
@@ -509,14 +516,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                           );
                                           return;
                                         }
+final result = await Navigator.push(
+  context,
+  MaterialPageRoute(builder: (_) => const MyBloodDetailsPage()),
+);
 
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                MyBloodDetailsPage(),
-                                          ),
-                                        );
+if (!mounted) return;
+
+if (result == true) {
+  await _loadUserData();
+}
+                                        // Navigator.push(
+                                        //   context,
+                                        //   MaterialPageRoute(
+                                        //     builder: (context) =>
+                                        //         MyBloodDetailsPage(),
+                                        //   ),
+                                        // );
                                       },
                                     ),
                                 const Divider(height: 0),

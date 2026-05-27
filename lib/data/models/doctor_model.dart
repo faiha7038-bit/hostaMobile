@@ -78,6 +78,7 @@ class Doctor {
     return Doctor(
       id: json['id'] ?? 0,
       hospitalId: json['hospitalId'] ?? 0,
+      hospitalName: json['hospitalName'],
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
       displayName: json['displayName'] ?? '',

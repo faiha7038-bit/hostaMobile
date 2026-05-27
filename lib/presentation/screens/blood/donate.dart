@@ -7,6 +7,7 @@ import 'package:hosta/providers/blood-donateprovider.dart';
 import 'package:hosta/providers/blood_details_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:hosta/common/top_snackbar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Donate extends ConsumerStatefulWidget {
   final Map<String, dynamic>? editData;  // ← ADD THIS
@@ -462,6 +463,8 @@ Future<void> _submit() async {
     // SUCCESS
     // ----------------------------
     if (success) {
+        final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('donorId', "true"); // or actual id
       showTopSnackBar(
         context,
         isEdit

@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:dio_smart_retry/dio_smart_retry.dart';
+import 'package:http/http.dart' as dio;
 import 'package:shared_preferences/shared_preferences.dart';
 
      class ApiService {
@@ -201,8 +202,11 @@ Future<Response> getAllCarousel({
 
 
   // GET all hospitals
-  Future<Response> getAllHospitals() async {
+  Future<Response> getAllHospitals(String query) async {
     return await _dio.get(
+        queryParameters: {
+      "search_query": query,
+    },
     '/api/hospital'
       // "/hospital"
       );
@@ -259,9 +263,10 @@ Future<Response> getAllDonors({
   String? country,
   String? state,
   String? district,
-  String? name,           // new parameter
+  String? searchQuery,
 }) async {
   final Map<String, dynamic> queryParams = {};
+
   if (userId != null) queryParams['userId'] = userId;
   if (bloodGroup != null) queryParams['bloodGroup'] = bloodGroup;
   if (pincode != null) queryParams['pincode'] = pincode;
@@ -269,9 +274,18 @@ Future<Response> getAllDonors({
   if (country != null) queryParams['country'] = country;
   if (state != null) queryParams['state'] = state;
   if (district != null) queryParams['district'] = district;
-  if (name != null) queryParams['name'] = name;   // add name if provided
 
-  return await _dio.get('/api/donors', queryParameters: queryParams);
+  // ✅ backend expects search_query
+  if (searchQuery != null && searchQuery.isNotEmpty) {
+    queryParams['search_query'] = searchQuery;
+  }
+
+  print("📤 QUERY PARAMS: $queryParams");
+
+  return await _dio.get(
+    '/api/donors',
+    queryParameters: queryParams,
+  );
 }
 
   // GET single donor
@@ -470,23 +484,46 @@ Future<Response> editAmbulance(String id, Map<String, dynamic> updatedData) asyn
   return response; // ✅ THIS WAS MISSING
 }
 
-
-// GET bookings
 Future<Response> getAllBookings({
   String? userId,
   String? status,
   String? doctorName,
+  String? searchQuery, // 👈 add this
 }) async {
   final Map<String, dynamic> queryParams = {};
 
   if (userId != null) queryParams['userId'] = userId;
   if (status != null) queryParams['status'] = status;
   if (doctorName != null) queryParams['doctor_name'] = doctorName;
-log("QUERY PARAMS = $queryParams");
-  log('📡 GET /api/booking with queryParams: $queryParams');
-  return await _dio.get('/api/booking', queryParameters: queryParams);
-  
+
+  // 👇 IMPORTANT: backend key
+  if (searchQuery != null && searchQuery.isNotEmpty) {
+    queryParams['search_query'] = searchQuery;
+  }
+
+  log("📡 QUERY PARAMS = $queryParams");
+
+  return await _dio.get(
+    '/api/booking',
+    queryParameters: queryParams,
+  );
 }
+// GET bookings
+// Future<Response> getAllBookings({
+//   String? userId,
+//   String? status,
+//   String? doctorName,
+// }) async {
+//   final Map<String, dynamic> queryParams = {};
+
+//   if (userId != null) queryParams['userId'] = userId;
+//   if (status != null) queryParams['status'] = status;
+//   if (doctorName != null) queryParams['doctor_name'] = doctorName;
+// log("QUERY PARAMS = $queryParams");
+//   log('📡 GET /api/booking with queryParams: $queryParams');
+//   return await _dio.get('/api/booking', queryParameters: queryParams);
+  
+// }
 
   // UPDATE booking
   // Future<Response> updateBooking(String bookingId, String hospitalId, Map<String, dynamic> data) async {
@@ -604,6 +641,122 @@ Future<Response> resetForgotPassword(
 Future<Response> getAmbulance(String userId) async {
   return await _dio.get('/api/ambulance/user/$userId');
 }
+//s3 imge
+  Future<Map<String, dynamic>> uploadProfileImage(
+    File file,
+    String userId,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('authToken');
 
+    final fileName = file.path.split('/').last;
+    final fileSize = await file.length();
 
+    print("=== S3 DEBUG START ===");
+    print("filename: $fileName");
+    print("size: $fileSize");
+    print("id: $userId");
+
+    try {
+      // =========================
+      // 1. GET PRESIGNED URL
+      // =========================
+      final res = await _dio.post(
+        '/api/presignurl',
+        data: {
+          "filename": fileName,
+          "contentType": "image/jpeg",
+          "size": fileSize,
+          "role": "user",
+          "id": int.parse(userId),
+        },
+        options: Options(
+          headers: {
+            "Authorization": "Bearer $token",
+          },
+        ),
+      );
+
+      final presignedUrl = res.data["presignedUrl"] ?? res.data["data"]?["presignedUrl"];
+      final key = res.data["key"] ?? res.data["data"]?["key"];
+
+      if (presignedUrl == null || key == null) {
+        throw Exception("Presign failed");
+      }
+print("key:$key");
+      print("PRESIGN OK");
+
+      // =========================
+      // 2. UPLOAD TO S3 (FIXED)
+      // =========================
+      final bytes = await file.readAsBytes();
+
+      final uploadRes = await dio.put(
+        Uri.parse(presignedUrl),
+        headers: {
+          "Content-Type": "image/jpeg",
+        },
+        body: bytes,
+      );
+
+      print("UPLOAD STATUS => ${uploadRes.statusCode}");
+
+      if (uploadRes.statusCode != 200 &&
+          uploadRes.statusCode != 201) {
+        throw Exception("S3 Upload Failed: ${uploadRes.body}");
+      }
+
+      // =========================
+      // 3. RETURN RESULT
+      // =========================
+      return {
+        "key": key,
+        "imageUrl":
+            "https://hostahealthcare.s3.eu-north-1.amazonaws.com/$key",
+      };
+    } catch (e) {
+      print("❌ S3 ERROR => $e");
+      rethrow;
+    }
+  }
+  Future<bool> deleteProfileImage(
+  String key,
+  String userId,
+) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('authToken');
+
+  print("=== S3 DELETE START ===");
+  print("key: $key");
+  print("id: $userId");
+
+  try {
+    final res = await _dio.delete(
+      '/api/presignurl',
+      data: {
+        "key": key,
+        "role": "user",
+        "id": int.parse(userId),
+      },
+      options: Options(
+        headers: {
+          "Authorization": "Bearer $token",
+        },
+      ),
+    );
+
+    print("DELETE STATUS => ${res.statusCode}");
+
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception("S3 Delete Failed");
+    }
+
+    print("DELETE SUCCESS");
+
+    return true;
+  } catch (e) {
+    print("❌ S3 DELETE ERROR => $e");
+    rethrow;
+  }
+}
 }

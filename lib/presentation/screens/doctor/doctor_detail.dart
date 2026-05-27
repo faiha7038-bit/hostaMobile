@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/doctor_model.dart';
-import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
 import '../../../services/api_service.dart';
 

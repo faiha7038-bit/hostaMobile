@@ -724,7 +724,8 @@ Future<void> fetchBookings() async {
     : state.selectedFilter.toLowerCase() == "cancelled"
         ? "cancel"
         : state.selectedFilter.toLowerCase(),
-        doctorName: state.searchQuery.isEmpty?null:state.searchQuery
+       // doctorName: state.searchQuery.isEmpty?null:state.searchQuery
+       searchQuery: state.searchQuery.isEmpty ? null : state.searchQuery
     );
     print("FULL RESPONSE = ${response.data}");
 List<Map<String, dynamic>> parsedBookings = [];
