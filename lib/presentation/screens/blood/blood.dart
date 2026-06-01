@@ -43,7 +43,8 @@ class _BloodState extends State<Blood> {
   List<String> places = [];
   String? bloodId;
   String? userId;
-
+bool _hasDonated = false;   
+bool _isLoading = true;      
   final ApiService _apiService = ApiService();
 
   @override
@@ -51,6 +52,14 @@ class _BloodState extends State<Blood> {
 void initState() {
   super.initState();
   _bootstrap();
+  _loadDonationStatus();
+}
+Future<void> _loadDonationStatus() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    _hasDonated = prefs.getBool('hasDonated') ?? false;
+    _isLoading = false;
+  });
 }
 Future<void> _bootstrap() async {
   await _loadUserData();

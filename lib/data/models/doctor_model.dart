@@ -1,8 +1,3 @@
-
-
-
-
-
 class Doctor {
   final int id;
   final int hospitalId;
