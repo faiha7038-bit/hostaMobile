@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:hosta/presentation/screens/blood/donate.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/widgets/donor-section.dart';
@@ -44,30 +43,63 @@ class _BloodState extends State<Blood> {
   List<String> places = [];
   String? bloodId;
   String? userId;
-
+bool _hasDonated = false;   
+bool _isLoading = true;      
   final ApiService _apiService = ApiService();
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-    _fetchDonors();
-  }
+  @override
+void initState() {
+  super.initState();
+  _bootstrap();
+  _loadDonationStatus();
+}
+Future<void> _loadDonationStatus() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    _hasDonated = prefs.getBool('hasDonated') ?? false;
+    _isLoading = false;
+  });
+}
+Future<void> _bootstrap() async {
+  await _loadUserData();
+  await _fetchDonors();
+}
+  // void initState() {
+  //   super.initState();
+  //   _loadUserData();
+  //   _fetchDonors();
+  //   _init();
+  // }
+Future<void> _loadUserData() async {
+  final prefs = await SharedPreferences.getInstance();
 
-  Future<void> _loadUserData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedBloodId = prefs.getString('bloodId');
-      final storedUserId = prefs.getString('userId');
+  final storedBloodId = prefs.getString('bloodId');
+  final storedUserId = prefs.getString('userId');
 
-      setState(() {
-        bloodId = storedBloodId;
-        userId = storedUserId;
-      });
-    } catch (e) {
-      print("Error loading user data: $e");
-    }
-  }
+  if (!mounted) return;
+
+  setState(() {
+    bloodId = storedBloodId;
+    userId = storedUserId;
+  });
+
+  print("🩸 UPDATED bloodId: $bloodId");
+}
+  // Future<void> _loadUserData() async {
+  //   try {
+  //     final prefs = await SharedPreferences.getInstance();
+  //     final storedBloodId = prefs.getString('bloodId');
+  //     final storedUserId = prefs.getString('userId');
+
+  //     setState(() {
+  //       bloodId = storedBloodId;
+  //       userId = storedUserId;
+  //     });
+  //   } catch (e) {
+  //     print("Error loading user data: $e");
+  //   }
+  // }
 
   Future<void> _fetchDonors() async {
     print("🔵 _fetchDonors called with filters");
@@ -82,7 +114,7 @@ class _BloodState extends State<Blood> {
         state: selectedState.isEmpty ? null : selectedState,
         district: selectedDistrict.isEmpty ? null : selectedDistrict,
         place: selectedPlace.isEmpty ? null : selectedPlace,
-        name: searchQuery.isEmpty ? null : searchQuery,
+        searchQuery: searchQuery.isEmpty ? null : searchQuery,
         // pincode: null,  // if needed later
         // userId: null,
       );
@@ -217,22 +249,25 @@ class _BloodState extends State<Blood> {
         context,
         MaterialPageRoute(builder: (context) => const Signin()),
       ).then((_) {
+         //_init();
         _loadUserData();
+
       });
     } else if (bloodId == null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const Donate()),
-      ).then((_) {
-        _loadUserData();
-      });
+ Navigator.push(
+  context,
+  MaterialPageRoute(builder: (context) => const Donate()),
+).then((value) async {
+  await _loadUserData();   // 🔥 reload bloodId AFTER return
+  await _fetchDonors();   // optional refresh list
+});
     }
   }
 
-  void _refreshData() {
-    _fetchDonors();
-    _loadUserData();
-  }
+Future<void> _refreshData() async {
+  await _loadUserData();   
+  await _fetchDonors();
+}
 
   @override
   Widget build(BuildContext context) {

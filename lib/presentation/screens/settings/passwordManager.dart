@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/services/api_service.dart';
-import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,7 +18,7 @@ class _PasswordManagerPageState extends State<PasswordManagerPage> {
   bool _showNewPassword = true;
   bool _showConfirmPassword = true;
   bool _isLoading = false;
-  
+  String? _verifiedOtp;
   final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -27,20 +26,20 @@ class _PasswordManagerPageState extends State<PasswordManagerPage> {
   final ApiService _apiService = ApiService();
 
   // Forgot Password controllers
-  final TextEditingController _phoneController = TextEditingController();
-  String? _phoneError;
+  final TextEditingController emailController = TextEditingController();
+  String? _emailError;
   String? _receivedOtp;
   bool _isSendingOtp = false;
   
   // Store the complete phone number without duplication
-  String _completePhoneNumber = '';
+ 
 
   @override
   void dispose() {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
-    _phoneController.dispose();
+   emailController.dispose();
     super.dispose();
   }
 
@@ -160,94 +159,70 @@ Future<void> _updatePassword() async {
 
   // FORGOT PASSWORD FLOW - Phone OTP Verification
 
-  bool _validatePhoneNumber(String phone) {
-    String cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
-    
-    if (!cleaned.startsWith('+')) {
-      setState(() {
-        _phoneError = 'Phone number must include country code (e.g., +91)';
-      });
-      return false;
-    }
-    
-    int digitCount = cleaned.replaceAll('+', '').length;
-    
-    if (digitCount < 10) {
-      setState(() {
-        _phoneError = 'Phone number must have at least 10 digits';
-      });
-      return false;
-    } else if (digitCount > 15) {
-      setState(() {
-        _phoneError = 'Phone number cannot exceed 15 digits';
-      });
-      return false;
-    }
-    
+bool _validateEmail(String email) {
+  if (email.trim().isEmpty) {
     setState(() {
-      _phoneError = null;
+      _emailError = "Please enter email";
     });
-    return true;
+    return false;
   }
 
-  Future<void> _sendForgotOtp() async {
-    if (_completePhoneNumber.isEmpty) {
-      setState(() {
-        _phoneError = 'Please enter a valid phone number';
-      });
-      return;
-    }
+  final emailRegex = RegExp(
+    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+  );
 
-    if (!_validatePhoneNumber(_completePhoneNumber)) {
-      return;
-    }
-
-    setState(() => _isSendingOtp = true);
-
-    try {
-      final response = await _apiService.loginUser({"phone": _completePhoneNumber});
-
-      setState(() => _isSendingOtp = false);
-
-      if (response.statusCode == 200 && response.data["status"] == 200) {
-        final backendOtp = response.data["otp"]?.toString();
-        if (backendOtp != null && backendOtp.length == 6) {
-          setState(() {
-            _receivedOtp = backendOtp;
-          });
-          _showLoadingAndThenOtp(_completePhoneNumber, backendOtp);
-        } else {
-          _showOtpPopup(_completePhoneNumber, null);
-        }
-      } else {
-        _showOtpPopup(_completePhoneNumber, null);
-      }
-    } on DioException catch (dioError) {
-      setState(() => _isSendingOtp = false);
-
-      String errorMessage = "Something went wrong";
-
-      if (dioError.response != null) {
-        try {
-          errorMessage = dioError.response?.data['message'] ?? errorMessage;
-        } catch (_) {}
-      }
-
-      if (errorMessage.toLowerCase().contains('phone') || 
-          errorMessage.toLowerCase().contains('number')) {
-        setState(() {
-          _phoneError = errorMessage;
-        });
-      } else {
-        _showErrorSnackBar(errorMessage);
-      }
-    } catch (e) {
-      setState(() => _isSendingOtp = false);
-      _showErrorSnackBar("Failed to send OTP: $e");
-    }
+  if (!emailRegex.hasMatch(email.trim())) {
+    setState(() {
+      _emailError = "Please enter valid email";
+    });
+    return false;
   }
 
-  void _showLoadingAndThenOtp(String phone, String backendOtp) {
+  setState(() {
+    _emailError = null;
+  });
+
+  return true;
+}
+
+Future<void> _sendForgotOtp() async {
+  String email = emailController.text.trim();
+
+  if (!_validateEmail(email)) {
+    return;
+  }
+
+  setState(() => _isSendingOtp = true);
+
+  try {
+    final response = await _apiService.sendResetPasswordOtp({
+      "email": email,
+    });
+
+    setState(() => _isSendingOtp = false);
+
+    if (response.statusCode == 200 &&
+        response.data["success"] == true) {
+
+      final backendOtp = response.data["otp"]?.toString();
+
+      _showOtpPopup(email, backendOtp);
+    } else {
+      _showErrorSnackBar(
+        response.data["message"] ?? "Failed to send OTP",
+      );
+    }
+  } on DioException catch (dioError) {
+    setState(() => _isSendingOtp = false);
+
+    _showErrorSnackBar(
+      dioError.response?.data["message"] ??
+      "Something went wrong",
+    );
+  }
+}
+
+  void _showLoadingAndThenOtp(String email, String backendOtp) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     
@@ -268,32 +243,33 @@ Future<void> _updatePassword() async {
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(height: screenHeight * 0.025),
-                TweenAnimationBuilder(
-                  tween: Tween<double>(begin: 0, end: 1),
-                  duration: const Duration(milliseconds: 1500),
-                  builder: (context, double value, child) {
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: screenWidth * 0.2,
-                          height: screenWidth * 0.2,
-                          child: CircularProgressIndicator(
-                            value: value,
-                            strokeWidth: screenWidth * 0.0075,
-                            backgroundColor: Colors.grey[200],
-                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-                          ),
-                        ),
-                        Icon(
-                          Icons.mark_email_read_rounded,
-                          size: screenWidth * 0.0875,
-                          color: Colors.green,
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                
+                // TweenAnimationBuilder(
+                //   tween: Tween<double>(begin: 0, end: 1),
+                //   duration: const Duration(milliseconds: 1500),
+                //   builder: (context, double value, child) {
+                //     return Stack(
+                //       alignment: Alignment.center,
+                //       children: [
+                //         SizedBox(
+                //           width: screenWidth * 0.2,
+                //           height: screenWidth * 0.2,
+                //           child: CircularProgressIndicator(
+                //             value: value,
+                //             strokeWidth: screenWidth * 0.0075,
+                //             backgroundColor: Colors.grey[200],
+                //             valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+                //           ),
+                //         ),
+                //         Icon(
+                //           Icons.mark_email_read_rounded,
+                //           size: screenWidth * 0.0875,
+                //           color: Colors.green,
+                //         ),
+                //       ],
+                //     );
+                //   },
+                // ),
                 SizedBox(height: screenHeight * 0.03),
                 Text(
                   "Sending OTP",
@@ -304,7 +280,7 @@ Future<void> _updatePassword() async {
                 ),
                 SizedBox(height: screenHeight * 0.01),
                 Text(
-                  "We're sending a 6-digit code to\n$phone",
+                  "We're sending a 6-digit code to\n$email",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey[600],
@@ -322,15 +298,16 @@ Future<void> _updatePassword() async {
     Future.delayed(const Duration(milliseconds: 2000), () {
       if (mounted) {
         Navigator.pop(context);
-        _showOtpPopup(phone, backendOtp);
+        _showOtpPopup(email, backendOtp);
       }
     });
   }
 
-  void _showOtpPopup(String phone, String? backendOtp) {
+  void _showOtpPopup(String email, String? backendOtp) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final otpController = TextEditingController();
+    bool isDialogActive = true;
     
     if (backendOtp != null) {
       Future.delayed(const Duration(milliseconds: 1500), () {
@@ -343,37 +320,52 @@ Future<void> _updatePassword() async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
-        int resendAfter = 30;
-        bool isVerifying = false;
-        bool isOtpFilled = false;
-        String? otpError;
+     builder: (dialogContext) {
+  int resendAfter = 30;
+  bool isVerifying = false;
+  bool isOtpFilled = false;
+  bool timerStarted = false;
+  String? otpError;
+void startResendTimer(void Function(void Function()) setState) async {
+  while (resendAfter > 0 && isDialogActive) {
+    await Future.delayed(const Duration(seconds: 1));
 
+    if (!isDialogActive) return;
+
+    setState(() {
+      resendAfter--;
+    });
+  }
+}
         return StatefulBuilder(
           builder: (context, setState) {
-            if (resendAfter > 0) {
-              Future.delayed(const Duration(seconds: 1), () {
-                if (mounted && resendAfter > 0) {
-                  setState(() => resendAfter--);
-                }
-              });
-            }
+            if (!timerStarted) {
+  timerStarted = true;
+  startResendTimer(setState);
+}
+            // if (resendAfter > 0) {
+            //   Future.delayed(const Duration(seconds: 1), () {
+            //     if (mounted && resendAfter > 0) {
+            //       setState(() => resendAfter--);
+            //     }
+            //   });
+            // // }
 
-            if (otpController.text.length == 6 && !isVerifying && !isOtpFilled) {
-              isOtpFilled = true;
-              Future.delayed(const Duration(milliseconds: 800), () {
-                if (mounted && !isVerifying) {
-                  setState(() => isVerifying = true);
-                  _verifyForgotOtp(phone, otpController.text, dialogContext, (error) {
-                    setState(() {
-                      otpError = error;
-                      isVerifying = false;
-                      isOtpFilled = false;
-                    });
-                  });
-                }
-              });
-            }
+            // if (otpController.text.length == 6 && !isVerifying && !isOtpFilled) {
+            //   isOtpFilled = true;
+            //   Future.delayed(const Duration(milliseconds: 800), () {
+            //     if (mounted && !isVerifying) {
+            //       setState(() => isVerifying = true);
+            //       _verifyForgotOtp(email, otpController.text, dialogContext, (error) {
+            //         setState(() {
+            //           otpError = error;
+            //           isVerifying = false;
+            //           isOtpFilled = false;
+            //         });
+            //       });
+            //     }
+            //   });
+            // }
 
             return Dialog(
               shape: RoundedRectangleBorder(
@@ -400,7 +392,7 @@ Future<void> _updatePassword() async {
                     SizedBox(height: screenHeight * 0.02),
                     
                     Text(
-                      "Verify Phone",
+                      "Verify email",
                       style: TextStyle(
                         fontSize: screenWidth * 0.05,
                         fontWeight: FontWeight.bold,
@@ -409,7 +401,7 @@ Future<void> _updatePassword() async {
                     SizedBox(height: screenHeight * 0.01),
                     
                     Text(
-                      "Code sent to $phone",
+                      "Code sent to $email",
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: screenWidth * 0.035,
@@ -427,10 +419,14 @@ Future<void> _updatePassword() async {
                           child: child,
                         );
                       },
-                      child: PinCodeTextField(
+                      child:
+                       PinCodeTextField(
                         appContext: context,
                         length: 6,
                         controller: otpController,
+                          autoDisposeControllers: false,
+  enableActiveFill: true,
+  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         keyboardType: TextInputType.number,
                         animationType: AnimationType.fade,
                         animationDuration: const Duration(milliseconds: 300),
@@ -444,8 +440,8 @@ Future<void> _updatePassword() async {
                         pinTheme: PinTheme(
                           shape: PinCodeFieldShape.box,
                           borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                          fieldHeight: screenWidth * 0.1375,
-                          fieldWidth: screenWidth * 0.1125,
+                        fieldWidth: screenWidth * 0.10,
+fieldHeight: screenWidth * 0.12,
                           activeFillColor: Colors.white,
                           selectedFillColor: Colors.white,
                           inactiveFillColor: Colors.grey[50],
@@ -457,7 +453,7 @@ Future<void> _updatePassword() async {
                         onCompleted: (value) {
                           if (!isVerifying) {
                             setState(() => isVerifying = true);
-                            _verifyForgotOtp(phone, value, dialogContext, (error) {
+                            _verifyForgotOtp(email, value, dialogContext, (error) {
                               setState(() {
                                 otpError = error;
                                 isVerifying = false;
@@ -507,19 +503,19 @@ Future<void> _updatePassword() async {
                       height: screenHeight * 0.0625,
                       child: ElevatedButton(
                         onPressed: isVerifying ? null : () {
-                          if (otpController.text.length == 6) {
-                            setState(() => isVerifying = true);
-                            _verifyForgotOtp(phone, otpController.text, dialogContext, (error) {
-                              setState(() {
-                                otpError = error;
-                                isVerifying = false;
-                              });
-                            });
-                          } else {
-                            setState(() {
-                              otpError = "Please enter a 6-digit verification code";
-                            });
-                          }
+                          // if (otpController.text.length == 6) {
+                          //   setState(() => isVerifying = true);
+                          //   _verifyForgotOtp(email, otpController.text, dialogContext, (error) {
+                          //     setState(() {
+                          //       otpError = error;
+                          //       isVerifying = false;
+                          //     });
+                          //   });
+                          // } else {
+                          //   setState(() {
+                          //     otpError = "Please enter a 6-digit verification code";
+                          //   });
+                          // }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
@@ -571,21 +567,76 @@ Future<void> _updatePassword() async {
                                     ),
                                   );
                                 },
-                              )
-                            : GestureDetector(
-                                onTap: isVerifying ? null : () async {
-                                  Navigator.pop(dialogContext);
-                                  await _sendForgotOtp();
-                                },
-                                child: Text(
-                                  "Resend OTP",
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: screenWidth * 0.035,
-                                  ),
-                                ),
-                              ),
+                              ): TextButton(
+    onPressed: isVerifying
+        ? null
+        : () async {
+
+            isDialogActive = false;
+
+            Navigator.pop(dialogContext);
+
+            await Future.delayed(
+              const Duration(milliseconds: 300),
+            );
+
+            await _sendForgotOtp();
+          },
+    style: TextButton.styleFrom(
+      padding: EdgeInsets.zero,
+      minimumSize: Size.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    ),
+    child: Text(
+      "Resend OTP",
+      style: TextStyle(
+        color: Colors.green,
+        fontWeight: FontWeight.w600,
+        fontSize: screenWidth * 0.035,
+      ),
+    ),
+  ),
+//                             : GestureDetector(
+//                               onTap: isVerifying
+//     ? null
+//     : () async {
+
+//         isDialogActive = false;
+
+//         Navigator.pop(dialogContext);
+
+//         await _sendForgotOtp();
+//       },
+// //                                 onTap: isVerifying ? null : () async {
+// //                                 // Navigator.pop(dialogContext);
+// //                                 isDialogActive = false;
+// // Navigator.pop(dialogContext);
+
+// // // _showSuccessSnackBar(
+// // //   "Password reset successfully! Please login again.",
+// // // );
+
+// // // CLEAR SESSION
+// // final prefs = await SharedPreferences.getInstance();
+// // await prefs.clear();
+
+// // // Navigate to login
+// // Navigator.pushNamedAndRemoveUntil(
+// //   context,
+// //   '/login',
+// //   (route) => false,
+// // );
+// //                                   await _sendForgotOtp();
+// //                                 },
+//                                 child: Text(
+//                                   "Resend OTP",
+//                                   style: TextStyle(
+//                                     color: Colors.green,
+//                                     fontWeight: FontWeight.w600,
+//                                     fontSize: screenWidth * 0.035,
+//                                   ),
+//                                 ),
+//                               ),
                       ],
                     ),
                   ],
@@ -598,57 +649,71 @@ Future<void> _updatePassword() async {
     );
   }
 
-  Future<void> _verifyForgotOtp(
-    String phone,
-    String otp,
-    BuildContext dialogContext,
-    Function(String) onError,
-  ) async {
-    if (otp.length != 6) {
-      onError("Please enter a valid 6-digit OTP");
-      return;
-    }
-
-    try {
-      String? token = await FirebaseMsg().token;
-
-      final response = await _apiService.otpUser({
-        "phone": phone,
-        "otp": otp,
-        "FcmToken": token,
-      });
-
-      if (response.statusCode == 200 && response.data["status"] == 200) {
-        if (Navigator.canPop(dialogContext)) {
-          Navigator.pop(dialogContext); // Close OTP dialog
-        }
-
-        if (mounted) {
-          _showResetPasswordDialog(phone);
-        }
-      } else {
-        onError(response.data["message"] ?? "Invalid OTP. Please try again.");
-      }
-    } on DioException catch (dioError) {
-      String errorMessage = "Something went wrong";
-      if (dioError.response != null) {
-        try {
-          errorMessage = dioError.response?.data['message'] ?? errorMessage;
-        } catch (_) {}
-      }
-      onError(errorMessage);
-    } catch (e) {
-      onError("Invalid OTP. Please try again.");
-    }
+Future<void> _verifyForgotOtp(
+  String email,
+  String otp,
+  BuildContext dialogContext,
+  Function(String) onError,
+) async {
+  if (otp.length != 6) {
+    onError("Please enter a valid 6-digit OTP");
+    return;
   }
 
-  void _showResetPasswordDialog(String phone) {
+  try {
+    String? token = await FirebaseMsg().token;
+log("CURRENT PASS => ${_currentPasswordController.text}");
+log("NEW PASS => ${_newPasswordController.text}");
+    final response = await _apiService.verifyResetPasswordOtp({
+      "email": email,
+      "otp": otp,
+      "FcmToken": token,
+    });
+
+    print("VERIFY RESPONSE => ${response.data}");
+
+    if (response.statusCode == 200 &&
+        response.data["success"] == true) {
+  _verifiedOtp = otp;
+      if (Navigator.canPop(dialogContext)) {
+        Navigator.pop(dialogContext);
+      }
+
+      if (mounted) {
+        _showResetPasswordDialog(email);
+      }
+
+    } else {
+      onError(
+        response.data["message"] ??
+        "Invalid OTP. Please try again.",
+      );
+    }
+
+  } on DioException catch (dioError) {
+
+    String errorMessage =
+        dioError.response?.data["message"] ??
+        "Something went wrong";
+
+    onError(errorMessage);
+
+  } catch (e) {
+    onError("Invalid OTP. Please try again.");
+  }
+}
+
+  void _showResetPasswordDialog(String email) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final TextEditingController newPasswordController = TextEditingController();
     final TextEditingController confirmPasswordController = TextEditingController();
     bool isResetting = false;
-
+int resendAfter = 30;
+bool isVerifying = false;
+bool isOtpFilled = false;
+bool timerStarted = false;
+String? otpError;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -743,9 +808,14 @@ Future<void> _updatePassword() async {
 
 try {
   final response = await _apiService.resetForgotPassword({
-    "phone": phone,
-    "newPassword": newPasswordController.text.trim(),
-  });
+  "email": email,
+  "otp": _verifiedOtp,
+  "newPassword": newPasswordController.text.trim(),
+});
+  // final response = await _apiService.resetForgotPassword({
+  //   "email": email,
+  //   "newPassword": newPasswordController.text.trim(),
+  // });
 
   setState(() => isResetting = false);
 
@@ -774,10 +844,10 @@ try {
   );
 }
                 
-                if (mounted) {
-                  _showSuccessSnackBar("Password reset successfully! Please login with new password.");
-                  Navigator.pop(context); // Close forgot password dialog
-                }
+                // if (mounted) {
+                //   _showSuccessSnackBar("Password reset successfully! Please login with new password.");
+                //   Navigator.pop(context); // Close forgot password dialog
+                // }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -807,9 +877,9 @@ try {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     
-    _phoneController.clear();
-    _phoneError = null;
-    _completePhoneNumber = '';
+    emailController.clear();
+    _emailError = null;
+   // _completePhoneNumber = '';
     
     showDialog(
       context: context,
@@ -831,57 +901,33 @@ try {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Enter your phone number to receive OTP",
+                "Enter your email to receive OTP",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: screenWidth * 0.035, color: Colors.grey),
               ),
               SizedBox(height: screenHeight * 0.02),
-              IntlPhoneField(
-                controller: _phoneController,
-                decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  labelStyle: TextStyle(
-                    color: _phoneError != null ? Colors.red : Colors.grey[600],
-                    fontSize: screenWidth * 0.035,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    borderSide: BorderSide(
-                      color: _phoneError != null ? Colors.red : Colors.grey[300]!,
-                      width: _phoneError != null ? 1.5 : 1,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    borderSide: BorderSide(
-                      color: _phoneError != null ? Colors.red : Colors.grey[300]!,
-                      width: _phoneError != null ? 1.5 : 1,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    borderSide: BorderSide(
-                      color: _phoneError != null ? Colors.red : Colors.green,
-                      width: screenWidth * 0.005,
-                    ),
-                  ),
-                  errorText: _phoneError,
-                  errorStyle: TextStyle(fontSize: screenWidth * 0.03),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
-                initialCountryCode: 'IN',
-                onChanged: (phone) {
-                  // Store the complete number in a separate variable
-                  // Don't set it to controller text as that causes duplication
-                  _completePhoneNumber = phone.completeNumber;
-                  if (_phoneError != null) {
-                    setState(() {
-                      _phoneError = null;
-                    });
-                  }
-                },
-              ),
+             TextField(
+  controller: emailController,
+  keyboardType: TextInputType.emailAddress,
+  decoration: InputDecoration(
+    labelText: "Email",
+    errorText: _emailError,
+    prefixIcon: const Icon(
+      Icons.email_outlined,
+      color: Colors.green,
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+  onChanged: (value) {
+    if (_emailError != null) {
+      setState(() {
+        _emailError = null;
+      });
+    }
+  },
+),
             ],
           ),
           actions: [
@@ -890,19 +936,22 @@ try {
               child: Text("Cancel", style: TextStyle(color: Colors.grey, fontSize: screenWidth * 0.04)),
             ),
             ElevatedButton(
-              onPressed: _isSendingOtp ? null : () async {
-                // Use _completePhoneNumber which doesn't have duplication
-                if (_completePhoneNumber.isEmpty) {
-                  setState(() {
-                    _phoneError = 'Please enter a valid phone number';
-                  });
-                  return;
-                }
-                await _sendForgotOtp();
-                if (_phoneError == null && mounted) {
-                  Navigator.pop(dialogContext); // Close phone dialog
-                }
-              },
+           onPressed: _isSendingOtp
+    ? null
+    : () async {
+
+        String email = emailController.text.trim();
+
+        if (!_validateEmail(email)) {
+          return;
+        }
+
+        Navigator.of(dialogContext).pop();
+
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        await _sendForgotOtp();
+      },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
@@ -1198,6 +1247,7 @@ try {
           ),
         ),
       ),
+      
     );
   }
 }

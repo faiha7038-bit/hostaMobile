@@ -76,6 +76,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   flutter_phone_direct_caller: ^2.2.1
+  flutter_image_compress: ^2.4.0
   
 
 dev_dependencies:

@@ -603,7 +603,7 @@ class AmbulanceRegister extends ConsumerStatefulWidget {
 
 class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
   final _phoneController = TextEditingController();
-  final _serviceNameController = TextEditingController(); // NEW
+  final _serviceNameController = TextEditingController(); 
   final _placeController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _countryController = TextEditingController();

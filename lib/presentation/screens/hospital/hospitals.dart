@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
@@ -17,7 +18,9 @@ class Hospitals extends StatefulWidget {
 
 class _HospitalsState extends State<Hospitals> {
   bool isLoading = true;
+  bool isSearching=true;
   List<dynamic> hospitals = [];
+  Timer? _debounce;
 
   String searchQuery = '';
   bool filterNearest = false;
@@ -29,37 +32,71 @@ class _HospitalsState extends State<Hospitals> {
     super.initState();
     _fetchHospitals();
   }
-
-  Future<void> _fetchHospitals() async {
-    try {
+Future<void> _fetchHospitals({String query = ''}) async {
+  try {
+    if (query.isEmpty) {
       setState(() => isLoading = true);
-
-      // Fetch ALL hospitals (no type filter)
-      final response = await ApiService().getAllHospitals();
-
-      setState(() {
-        List allHospitals = [];
-        if (response.data is Map && response.data['data'] is List) {
-          allHospitals = response.data['data'];
-        } else if (response.data is List) {
-          allHospitals = response.data;
-        }
-
-        // Filter by type on client side
-        hospitals = allHospitals.where((hospital) {
-          final hospitalType = hospital['type']?.toString().toLowerCase() ?? '';
-          return hospitalType == widget.type.toLowerCase();
-        }).toList();
-
-        print(
-            "✅ Total: ${allHospitals.length}, Filtered (${widget.type}): ${hospitals.length}");
-        isLoading = false;
-      });
-    } catch (e) {
-      print("❌ Error: $e");
-      setState(() => isLoading = false);
+    } else {
+      setState(() => isSearching = true); // 👈 only small loading
     }
+
+    final response = await ApiService().getAllHospitals(query);
+
+    List allHospitals = [];
+
+    if (response.data is Map && response.data['data'] is List) {
+      allHospitals = response.data['data'];
+    } else if (response.data is List) {
+      allHospitals = response.data;
+    }
+
+    setState(() {
+      hospitals = allHospitals.where((hospital) {
+        final hospitalType =
+            hospital['type']?.toString().toLowerCase() ?? '';
+        return hospitalType == widget.type.toLowerCase();
+      }).toList();
+
+      isLoading = false;
+      isSearching = false;
+    });
+  } catch (e) {
+    setState(() {
+      isLoading = false;
+      isSearching = false;
+    });
   }
+}
+  // Future<void> _fetchHospitals() async {
+  //   try {
+  //     setState(() => isLoading = true);
+
+  //     // Fetch ALL hospitals (no type filter)
+  //     final response = await ApiService().getAllHospitals(query);
+
+  //     setState(() {
+  //       List allHospitals = [];
+  //       if (response.data is Map && response.data['data'] is List) {
+  //         allHospitals = response.data['data'];
+  //       } else if (response.data is List) {
+  //         allHospitals = response.data;
+  //       }
+
+  //       // Filter by type on client side
+  //       hospitals = allHospitals.where((hospital) {
+  //         final hospitalType = hospital['type']?.toString().toLowerCase() ?? '';
+  //         return hospitalType == widget.type.toLowerCase();
+  //       }).toList();
+
+  //       print(
+  //           "✅ Total: ${allHospitals.length}, Filtered (${widget.type}): ${hospitals.length}");
+  //       isLoading = false;
+  //     });
+  //   } catch (e) {
+  //     print("❌ Error: $e");
+  //     setState(() => isLoading = false);
+  //   }
+  // }
 
   // 👇 Helper method (kept as is, not used now but harmless)
   String _mapTypeToBackend(String frontendType) {
@@ -288,35 +325,35 @@ class _HospitalsState extends State<Hospitals> {
   }
 
   // ========== FIXED SEARCH LOGIC - HANDLES ADDRESS MAP ==========
-  bool _matchesSearchQuery(Map<String, dynamic> hospital) {
-    if (searchQuery.isEmpty) return true;
+  // bool _matchesSearchQuery(Map<String, dynamic> hospital) {
+  //   if (searchQuery.isEmpty) return true;
 
-    final cleanQuery = searchQuery.replaceAll(' ', '').toLowerCase();
-    final hospitalName = (hospital["name"] ?? '')
-        .toString()
-        .replaceAll(' ', '')
-        .toLowerCase();
+  //   final cleanQuery = searchQuery.replaceAll(' ', '').toLowerCase();
+  //   final hospitalName = (hospital["name"] ?? '')
+  //       .toString()
+  //       .replaceAll(' ', '')
+  //       .toLowerCase();
 
-    // Convert address (Map or String) to plain string for searching
-    String getAddressString(dynamic addr) {
-      if (addr == null) return '';
-      if (addr is String) return addr;
-      if (addr is Map) {
-        final parts = <String>[];
-        if (addr['place'] != null) parts.add(addr['place'].toString());
-        if (addr['district'] != null) parts.add(addr['district'].toString());
-        if (addr['state'] != null) parts.add(addr['state'].toString());
-        return parts.join(' ');
-      }
-      return '';
-    }
+  //   // Convert address (Map or String) to plain string for searching
+  //   String getAddressString(dynamic addr) {
+  //     if (addr == null) return '';
+  //     if (addr is String) return addr;
+  //     if (addr is Map) {
+  //       final parts = <String>[];
+  //       if (addr['place'] != null) parts.add(addr['place'].toString());
+  //       if (addr['district'] != null) parts.add(addr['district'].toString());
+  //       if (addr['state'] != null) parts.add(addr['state'].toString());
+  //       return parts.join(' ');
+  //     }
+  //     return '';
+  //   }
 
-    final rawAddress = getAddressString(hospital["address"]);
-    final hospitalAddress = rawAddress.replaceAll(' ', '').toLowerCase();
+  //   final rawAddress = getAddressString(hospital["address"]);
+  //   final hospitalAddress = rawAddress.replaceAll(' ', '').toLowerCase();
 
-    return hospitalName.contains(cleanQuery) ||
-        hospitalAddress.contains(cleanQuery);
-  }
+  //   return hospitalName.contains(cleanQuery) ||
+  //       hospitalAddress.contains(cleanQuery);
+  // }
 
   // ========== BUILD METHODS ==========
 
@@ -336,12 +373,15 @@ class _HospitalsState extends State<Hospitals> {
         ),
       );
     }
-
-    List<dynamic> filteredHospitals = hospitals.where((hospital) {
-      final matchesSearch = _matchesSearchQuery(hospital);
-      final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
-      return matchesSearch && matchesOpen;
-    }).toList();
+List<dynamic> filteredHospitals = hospitals.where((hospital) {
+  final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
+  return matchesOpen;
+}).toList();
+    // List<dynamic> filteredHospitals = hospitals.where((hospital) {
+    //   final matchesSearch = _matchesSearchQuery(hospital);
+    //   final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
+    //   return matchesSearch && matchesOpen;
+    // }).toList();
 
     if (filterNearest && userPosition != null) {
       filteredHospitals.sort((a, b) {
@@ -392,7 +432,14 @@ class _HospitalsState extends State<Hospitals> {
                 vertical: screenHeight * 0.015,
               ),
               child: TextField(
-                onChanged: (value) => setState(() => searchQuery = value),
+                onChanged: (value) async {
+  setState(() {
+    searchQuery = value;
+  });
+
+  await _fetchHospitals(query: value);
+},
+                // onChanged: (value) => setState(() => searchQuery = value),
                 decoration: InputDecoration(
                   hintText: "Search hospitals...",
                   hintStyle: TextStyle(fontSize: screenWidth * 0.035),
@@ -523,7 +570,14 @@ class _HospitalsState extends State<Hospitals> {
             Padding(
               padding: EdgeInsets.only(top: screenHeight * 0.02),
               child: TextButton(
-                onPressed: () => setState(() => searchQuery = ''),
+                onPressed: () async {
+  setState(() {
+    searchQuery = '';
+  });
+
+  await _fetchHospitals();
+},
+              //  onPressed: () => setState(() => searchQuery = ''),
                 child: Text(
                   "Clear search",
                   style: TextStyle(

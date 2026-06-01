@@ -59,31 +59,31 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
 Future<void> _refreshAmbulanceId() async {
   final prefs = await SharedPreferences.getInstance();
   final id = prefs.getString('ambulanceId');
-  ref.read(ambulanceIdProvider.notifier).state = id;
-  
+
+  ref.read(ambulanceIdProvider.notifier).state = id ?? '';
 }
 
-  void _handleAmbulanceRegister() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId');
+//   void _handleAmbulanceRegister() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final userId = prefs.getString('userId');
 
-    if (userId == null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const Signin()),
-      ).then((_) => _handleAmbulanceRegister());
-        await _refreshAmbulanceId();
-  await _fetchAmbulances();
+//     if (userId == null) {
+//       Navigator.push(
+//         context,
+//         MaterialPageRoute(builder: (context) => const Signin()),
+//       ).then((_) => _handleAmbulanceRegister());
+//         await _refreshAmbulanceId();
+//   await _fetchAmbulances();
   
-      return;
-    }
+//       return;
+//     }
 
-print("🔄 Returned from AmbulanceRegister screen");
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AmbulanceRegister()),
-    ).then((_) => _fetchAmbulances());
-  }
+// print("🔄 Returned from AmbulanceRegister screen");
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(builder: (context) => const AmbulanceRegister()),
+//     ).then((_) => _fetchAmbulances());
+//   }
 
   // Future<void> _callNumber(String phone) async {
   //   final uri = Uri(scheme: 'tel', path: phone);
@@ -315,7 +315,7 @@ print("🔄 Returned from AmbulanceRegister screen");
 )
                       ),
                       SizedBox(width: screenWidth * 0.02),
-                      if (ambulanceId == null)
+                      if (ambulanceId == null || ambulanceId.isEmpty)
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
@@ -327,7 +327,28 @@ print("🔄 Returned from AmbulanceRegister screen");
                               borderRadius: BorderRadius.circular(screenWidth * 0.025),
                             ),
                           ),
-                          onPressed: _handleAmbulanceRegister,
+                          onPressed: () async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  if (userId == null) {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const Signin()),
+    );
+    return;
+  }
+
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const AmbulanceRegister()),
+  );
+
+  if (result == true) {
+    await _refreshAmbulanceId();
+    await _fetchAmbulances();
+  }
+},
                           child: Text("Register", style: TextStyle(color: Colors.white)),
                         ),
                     ],

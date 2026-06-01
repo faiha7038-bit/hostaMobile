@@ -1742,12 +1742,9 @@
 // }
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dio/dio.dart'; 
-import '../../../services/api_service.dart';
+import 'package:hosta/presentation/screens/booking/register_booking.dart';
+import 'package:hosta/services/api_service.dart';
 import '../../../common/top_snackbar.dart';
-import '../../screens/auth/signin.dart';
 import '../../screens/doctor/doctor_detail.dart';
 import '../../../data/models/doctor_model.dart';
 
@@ -1983,7 +1980,19 @@ class _DoctorsState extends ConsumerState<Doctors> {
               width: double.infinity,
               margin: const EdgeInsets.all(12),
               child: ElevatedButton(
-                onPressed: doctor.bookingOpen ? () => _showBookingSheet(doctor) : null,
+                 onPressed: doctor.bookingOpen
+      ? () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RegisterBooking(
+                doctor: doctor,
+              ),
+            ),
+          );
+        }
+      : null,
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: doctor.bookingOpen ? Colors.green : Colors.grey,
                   padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1998,280 +2007,298 @@ class _DoctorsState extends ConsumerState<Doctors> {
     );
   }
 
-  void _showBookingSheet(Doctor doctor) {
-    if (!doctor.bookingOpen) {
-      showTopSnackBar(context, 'Booking is currently closed for Dr. ${doctor.name}', isError: true);
-      return;
-    }
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => BookingForm(doctor: doctor, onBooking: _handleBooking),
-    );
-  }
+// void _showBookingSheet(Doctor doctor) {
+//   if (!doctor.bookingOpen) {
+//     showTopSnackBar(
+//       context,
+//       'Booking is currently closed for Dr. ${doctor.name}',
+//       isError: true,
+//     );
+//     return;
+//   }
 
-  Future<void> _handleBooking(
-    BuildContext context,
-    Doctor doctor,
-    String patientName,
-    String patientPhone,
-    String patientPlace,
-    DateTime? patientDob,
-    DateTime? appointmentDate,
-    String? selectedTimeSlot,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedUserId = prefs.getString('userId');
-    if (storedUserId == null || storedUserId.isEmpty) {
-      _showLoginDialog(context);
-      return;
-    }
-    if (patientName.isEmpty || patientPhone.isEmpty || patientPlace.isEmpty || patientDob == null || appointmentDate == null) {
-      showTopSnackBar(context, 'Please fill all required fields', isError: true);
-      return;
-    }
-    String formatDate(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
-    final bookingData = {
-      'userId': int.parse(storedUserId),
-      'patient_dob': formatDate(patientDob),
-      'patient_name': patientName,
-      'patient_place': patientPlace,
-      'patient_phone': patientPhone,
-      'hospitalId': int.parse(doctor.hospitalId.toString()),
-      'doctorId': int.parse(doctor.id.toString()),
-      'booking_date': formatDate(appointmentDate),
-      'department': doctor.specialty,
-      'displayName': doctor.name,
-    };
-    print("BOOKING DATA = $bookingData");
-    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.green)));
-    try {
-      final apiService = ApiService();
-      final response = await apiService.createBooking(bookingData);
-      if (Navigator.canPop(context)) Navigator.pop(context);
-      if (response.statusCode == 201 || response.data['success'] == true) {
-        showTopSnackBar(context, '✅ Booking successful! Appointment confirmed with Dr. ${doctor.name}');
-        Navigator.pop(context);
-      } else {
-        showTopSnackBar(context, response.data['message'] ?? 'Booking failed', isError: true);
-      }
-    } on DioException catch (e) {
-      if (Navigator.canPop(context)) Navigator.pop(context);
-      String errorMsg = "Booking failed";  // <-- FIXED incomplete line
-      if (e.response?.data is Map) errorMsg = e.response?.data['message'] ?? errorMsg;
-      showTopSnackBar(context, errorMsg, isError: true);
-    } catch (e) {
-      if (Navigator.canPop(context)) Navigator.pop(context);
-      showTopSnackBar(context, 'Error: $e', isError: true);
-    }
-  }
+//   Navigator.push(
+//     context,
+//     MaterialPageRoute(
+//       builder: (_) => RegisterBooking(
+//         doctor: doctor,
+//       ),
+//     ),
+//   );
+// }
 
-  void _showLoginDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Sign In Required', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Please sign in to book appointments and access all features.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const Signin()));
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-            child: const Text('Sign In', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
+  // Future<void> _handleBooking(
+  //   BuildContext context,
+  //   Doctor doctor,
+  //   String patientName,
+  //   String patientPhone,
+  //   String patientPlace,
+  //   DateTime? patientDob,
+  //   DateTime? appointmentDate,
+  //   String? selectedTimeSlot,
+  // ) async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final storedUserId = prefs.getString('userId');
+  //   if (storedUserId == null || storedUserId.isEmpty) {
+  //     _showLoginDialog(context);
+  //     return;
+  //   }
+  //   if (patientName.isEmpty || patientPhone.isEmpty || patientPlace.isEmpty || patientDob == null || appointmentDate == null) {
+  //     showTopSnackBar(context, 'Please fill all required fields', isError: true);
+  //     return;
+  //   }
+  //   String formatDate(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
+  //   final bookingData = {
+  //     'userId': int.parse(storedUserId),
+  //     'patient_dob': formatDate(patientDob),
+  //     'patient_name': patientName,
+  //     'patient_place': patientPlace,
+  //     'patient_phone': patientPhone,
+  //     'hospitalId': int.parse(doctor.hospitalId.toString()),
+  //     'doctorId': int.parse(doctor.id.toString()),
+  //     'booking_date': formatDate(appointmentDate),
+  //     'department': doctor.specialty,
+  //     'displayName': doctor.name,
+  //   };
+  //   print("BOOKING DATA = $bookingData");
+  //   showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.green)));
+  //   try {
+  //     final apiService = ApiService();
+  //     final response = await apiService.createBooking(bookingData);
+  //     if (Navigator.canPop(context)) Navigator.pop(context);
+  //     if (response.statusCode == 201 || response.data['success'] == true) {
+  //       showTopSnackBar(context, '✅ Booking successful! Appointment confirmed with Dr. ${doctor.name}');
+  //       Navigator.pop(context);
+  //     } else {
+  //       showTopSnackBar(context, response.data['message'] ?? 'Booking failed', isError: true);
+  //     }
+  //   } on DioException catch (e) {
+  //     if (Navigator.canPop(context)) Navigator.pop(context);
+  //     String errorMsg = "Booking failed";  // <-- FIXED incomplete line
+  //     if (e.response?.data is Map) errorMsg = e.response?.data['message'] ?? errorMsg;
+  //     showTopSnackBar(context, errorMsg, isError: true);
+  //   } catch (e) {
+  //     if (Navigator.canPop(context)) Navigator.pop(context);
+  //     showTopSnackBar(context, 'Error: $e', isError: true);
+  //   }
+  // }
+
+  // void _showLoginDialog(BuildContext context) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+  //       title: const Text('Sign In Required', style: TextStyle(fontWeight: FontWeight.bold)),
+  //       content: const Text('Please sign in to book appointments and access all features.'),
+  //       actions: [
+  //         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+  //         ElevatedButton(
+  //           onPressed: () {
+  //             Navigator.pop(context);
+  //             Navigator.push(context, MaterialPageRoute(builder: (_) => const Signin()));
+  //           },
+  //           style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+  //           child: const Text('Sign In', style: TextStyle(color: Colors.white)),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 }
 
 // ====================== BookingForm (fixed) ======================
-class BookingForm extends StatefulWidget {
-  final Doctor doctor;
-  final Function(
-    BuildContext context,
-    Doctor doctor,
-    String patientName,
-    String patientPhone,
-    String patientPlace,
-    DateTime? patientDob,
-    DateTime? appointmentDate,
-    String? selectedTimeSlot,
-  ) onBooking;
+// class BookingForm extends StatefulWidget {
+//   final Doctor doctor;
+//   final Function(
+//     BuildContext context,
+//     Doctor doctor,
+//     String patientName,
+//     String patientPhone,
+//     String patientPlace,
+//     DateTime? patientDob,
+//     DateTime? appointmentDate,
+//     String? selectedTimeSlot,
+//   ) onBooking;
 
-  const BookingForm({super.key, required this.doctor, required this.onBooking});
+//   const BookingForm({super.key, required this.doctor, required this.onBooking});
 
-  @override
-  State<BookingForm> createState() => _BookingFormState();
-}
+//   @override
+//   State<BookingForm> createState() => _BookingFormState();
+// }
 
-class _BookingFormState extends State<BookingForm> {
-  final TextEditingController patientNameController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController placeController = TextEditingController();
-  DateTime? dob;
-  DateTime? appointmentDate;
-  String? selectedTimeSlot;
-  bool _isSubmitting = false;
+// class _BookingFormState extends State<BookingForm> {
+//   final TextEditingController patientNameController = TextEditingController();
+//   final TextEditingController phoneController = TextEditingController();
+//   final TextEditingController placeController = TextEditingController();
+//   DateTime? dob;
+//   DateTime? appointmentDate;
+//   String? selectedTimeSlot;
+//   bool _isSubmitting = false;
 
-  List<String> get availableTimeSlots {
-    List<String> slots = [];
-    if (widget.doctor.consulting.morningSession != null) slots.add(widget.doctor.consulting.morningSession!.range);
-    if (widget.doctor.consulting.eveningSession != null) slots.add(widget.doctor.consulting.eveningSession!.range);
-    if (widget.doctor.outDoorConsulting != null) slots.add(widget.doctor.outDoorConsulting!.time.range);
-    return slots;
-  }
+//   List<String> get availableTimeSlots {
+//     List<String> slots = [];
+//     if (widget.doctor.consulting.morningSession != null) slots.add(widget.doctor.consulting.morningSession!.range);
+//     if (widget.doctor.consulting.eveningSession != null) slots.add(widget.doctor.consulting.eveningSession!.range);
+//     if (widget.doctor.outDoorConsulting != null) slots.add(widget.doctor.outDoorConsulting!.time.range);
+//     return slots;
+//   }
 
-  @override
-  void initState() {
-    super.initState();
-    if (availableTimeSlots.isNotEmpty) {
-      selectedTimeSlot = availableTimeSlots.first;
-    }
-  }
+//   @override
+//   void initState() {
+//     super.initState();
+//     if (availableTimeSlots.isNotEmpty) {
+//       selectedTimeSlot = availableTimeSlots.first;
+//     }
+//   }
 
-  Future<void> _selectDate(BuildContext context, bool isPastOnly) async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: isPastOnly ? (dob ?? DateTime(2000)) : (appointmentDate ?? now),
-      firstDate: isPastOnly ? DateTime(1900) : now,
-      lastDate: isPastOnly ? now : now.add(const Duration(days: 365)),
-      builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: Colors.green, onPrimary: Colors.white)), child: child!),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isPastOnly) dob = picked;
-        else appointmentDate = picked;
-      });
-    }
-  }
+//   Future<void> _selectDate(BuildContext context, bool isPastOnly) async {
+//     final now = DateTime.now();
+//     final picked = await showDatePicker(
+//       context: context,
+//       initialDate: isPastOnly ? (dob ?? DateTime(2000)) : (appointmentDate ?? now),
+//       firstDate: isPastOnly ? DateTime(1900) : now,
+//       lastDate: isPastOnly ? now : now.add(const Duration(days: 365)),
+//       builder: (context, child) => Theme(data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: Colors.green, onPrimary: Colors.white)), child: child!),
+//     );
+//     if (picked != null) {
+//       setState(() {
+//         if (isPastOnly) dob = picked;
+//         else appointmentDate = picked;
+//       });
+//     }
+//   }
 
-  Future<void> _handleBooking() async {
-    if (_isSubmitting) return;
-    if (availableTimeSlots.isNotEmpty && selectedTimeSlot == null) {
-      showTopSnackBar(context, 'Please select a time slot', isError: true);
-      return;
-    }
-    setState(() => _isSubmitting = true);
-    try {
-      await widget.onBooking(
-        context,
-        widget.doctor,
-        patientNameController.text,
-        phoneController.text,
-        placeController.text,
-        dob,
-        appointmentDate,
-        selectedTimeSlot,
-      );
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
+//   Future<void> _handleBooking() async {
+//     if (_isSubmitting) return;
+//     if (availableTimeSlots.isNotEmpty && selectedTimeSlot == null) {
+//       showTopSnackBar(context, 'Please select a time slot', isError: true);
+//       return;
+//     }
+//     setState(() => _isSubmitting = true);
+//     try {
+//       await widget.onBooking(
+//         context,
+//         widget.doctor,
+//         patientNameController.text,
+//         phoneController.text,
+//         placeController.text,
+//         dob,
+//         appointmentDate,
+//         selectedTimeSlot,
+//       );
+//     } finally {
+//       if (mounted) setState(() => _isSubmitting = false);
+//     }
+//   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
-      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.green[50], borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))),
-            child: Row(
-              children: [
-                CircleAvatar(backgroundColor: Colors.green, child: Text(widget.doctor.name.isNotEmpty ? widget.doctor.name[0].toUpperCase() : 'D', style: const TextStyle(color: Colors.white))),
-                const SizedBox(width: 12),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Book Appointment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), Text('Dr. ${widget.doctor.name}', style: TextStyle(color: Colors.grey[600]))])),
-                IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  _buildTextField(controller: patientNameController, label: 'Patient Name', icon: Icons.person),
-                  const SizedBox(height: 16),
-                  _buildTextField(controller: phoneController, label: 'Phone Number', icon: Icons.phone, keyboardType: TextInputType.phone),
-                  const SizedBox(height: 16),
-                  _buildDateField(label: 'Date of Birth', value: dob, onTap: () => _selectDate(context, true)),
-                  const SizedBox(height: 16),
-                  _buildTextField(controller: placeController, label: 'Place', icon: Icons.location_on),
-                  const SizedBox(height: 16),
-                  _buildDateField(label: 'Appointment Date', value: appointmentDate, onTap: () => _selectDate(context, false)),
-                  if (availableTimeSlots.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: selectedTimeSlot,
-                      hint: const Text('Select Time Slot'),
-                      decoration: InputDecoration(
-                        labelText: 'Consulting Time',
-                        prefixIcon: const Icon(Icons.access_time, color: Colors.green),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      items: availableTimeSlots.map((slot) => DropdownMenuItem(value: slot, child: Text(slot))).toList(),
-                      onChanged: (value) => setState(() => selectedTimeSlot = value),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _handleBooking,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('CONFIRM BOOKING', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       height: MediaQuery.of(context).size.height * 0.8,
+//       decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+//       child: Column(
+//         children: [
+//           Container(
+//             padding: const EdgeInsets.all(20),
+//             decoration: BoxDecoration(color: Colors.green[50], borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+//             child: Row(
+//               children: [
+//                 CircleAvatar(backgroundColor: Colors.green, child: Text(widget.doctor.name.isNotEmpty ? widget.doctor.name[0].toUpperCase() : 'D', style: const TextStyle(color: Colors.white))),
+//                 const SizedBox(width: 12),
+//                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Book Appointment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), Text('Dr. ${widget.doctor.name}', style: TextStyle(color: Colors.grey[600]))])),
+//                 IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+//               ],
+//             ),
+//           ),
+//           Expanded(
+//             child: SingleChildScrollView(
+//               padding: const EdgeInsets.all(20),
+//               child: Column(
+//                 children: [
+//                   _buildTextField(controller: patientNameController, label: 'Patient Name', icon: Icons.person),
+//                   const SizedBox(height: 16),
+//                   _buildTextField(controller: phoneController, label: 'Phone Number', icon: Icons.phone, keyboardType: TextInputType.phone),
+//                   const SizedBox(height: 16),
+//                   _buildDateField(label: 'Date of Birth', value: dob, onTap: () => _selectDate(context, true)),
+//                   const SizedBox(height: 16),
+//                   _buildTextField(controller: placeController, label: 'Place', icon: Icons.location_on),
+//                   const SizedBox(height: 16),
+//                   _buildDateField(label: 'Appointment Date', value: appointmentDate, onTap: () => _selectDate(context, false)),
+//                   if (availableTimeSlots.isNotEmpty) ...[
+//                     const SizedBox(height: 16),
+//                     DropdownButtonFormField<String>(
+//                       value: selectedTimeSlot,
+//                       hint: const Text('Select Time Slot'),
+//                       decoration: InputDecoration(
+//                         labelText: 'Consulting Time',
+//                         prefixIcon: const Icon(Icons.access_time, color: Colors.green),
+//                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+//                       ),
+//                       items: availableTimeSlots.map((slot) => DropdownMenuItem(value: slot, child: Text(slot))).toList(),
+//                       onChanged: (value) => setState(() => selectedTimeSlot = value),
+//                     ),
+//                   ],
+//                 ],
+//               ),
+//             ),
+//           ),
+//           Container(
+//             padding: const EdgeInsets.all(20),
+//             child: SizedBox(
+//               width: double.infinity,
+//               child: ElevatedButton(
+//                onPressed:widget. doctor.bookingOpen
+//     ? () {
+//         Navigator.push(
+//           context,
+//           MaterialPageRoute(
+//             builder: (_) => RegisterBooking(
+//               doctor:widget. doctor,
+//             ),
+//           ),
+//         );
+//       }
+//     : null,
+//                 style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+//                 child: _isSubmitting ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('CONFIRM BOOKING', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
 
-  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, TextInputType keyboardType = TextInputType.text}) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: Colors.green),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.green)),
-      ),
-    );
-  }
+//   Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, TextInputType keyboardType = TextInputType.text}) {
+//     return TextField(
+//       controller: controller,
+//       keyboardType: keyboardType,
+//       decoration: InputDecoration(
+//         labelText: label,
+//         prefixIcon: Icon(icon, color: Colors.green),
+//         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+//         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.green)),
+//       ),
+//     );
+//   }
 
-  Widget _buildDateField({required String label, required DateTime? value, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(Icons.calendar_today, color: Colors.green),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(value == null ? "Select Date" : "${value.day}/${value.month}/${value.year}", style: TextStyle(color: value == null ? Colors.grey : Colors.black)),
-            const Icon(Icons.arrow_drop_down, color: Colors.grey),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//   Widget _buildDateField({required String label, required DateTime? value, required VoidCallback onTap}) {
+//     return InkWell(
+//       onTap: onTap,
+//       child: InputDecorator(
+//         decoration: InputDecoration(
+//           labelText: label,
+//           prefixIcon: Icon(Icons.calendar_today, color: Colors.green),
+//           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+//         ),
+//         child: Row(
+//           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//           children: [
+//             Text(value == null ? "Select Date" : "${value.day}/${value.month}/${value.year}", style: TextStyle(color: value == null ? Colors.grey : Colors.black)),
+//             const Icon(Icons.arrow_drop_down, color: Colors.grey),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
