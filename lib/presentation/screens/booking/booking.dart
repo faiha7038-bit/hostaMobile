@@ -5,7 +5,25 @@ import 'package:hosta/providers/booking_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../common/top_snackbar.dart';
+final filteredBookingsProvider = Provider<List<Map<String, dynamic>>>((ref) {
+  final state = ref.watch(bookingStateProvider);
 
+  final bookings = state.bookings;
+  final date = state.selectedDate;
+  final filter = state.selectedFilter.toLowerCase();
+
+  return bookings.where((b) {
+    final matchDate = date == null
+        ? true
+        : b["date"] == DateFormat('yyyy-MM-dd').format(date);
+
+    final matchStatus = filter == "all"
+        ? true
+        : b["status"] == filter;
+
+    return matchDate && matchStatus;
+  }).toList();
+});
 class BookingScreen extends ConsumerStatefulWidget {
   const BookingScreen({super.key});
 
@@ -14,6 +32,8 @@ class BookingScreen extends ConsumerStatefulWidget {
 }
 
 class _BookingScreenState extends ConsumerState<BookingScreen> {
+ 
+
   @override
   void initState() {
     super.initState();
@@ -24,6 +44,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(bookingStateProvider.notifier).initializeData();
     });
+  
   }
  Future<void> _checkToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -226,8 +247,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         vertical: screenHeight * 0.015,
                       ),
                     ),
-                    onChanged: (value) async {
-                     await ref.read(bookingStateProvider.notifier).updateSearchQuery(value);
+                    onChanged: (value)  {
+                      ref.read(bookingStateProvider.notifier).updateSearchQuery(value);
                      log("hhhhhh");
                     },
                   ),
@@ -326,11 +347,21 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                             ),
                           )
                         : ListView.builder(
-                            itemCount: filteredBookings.length,
-                            itemBuilder: (context, index) {
-                              final b = filteredBookings[index];
-                              return _buildBookingCard(b, screenWidth, screenHeight);
-                            },
+                            
+                           itemCount: filteredBookings.length + 1,
+                           itemBuilder: (context, index) {
+  if (index < filteredBookings.length) {
+    final b = filteredBookings[index];
+    return _buildBookingCard(b, screenWidth, screenHeight);
+  } else {
+    return ref.watch(bookingStateProvider).isLoadingMore
+        ? const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        : const SizedBox();
+  }
+}
                           ),
                   ),
                 ],

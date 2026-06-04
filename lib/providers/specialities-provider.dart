@@ -9,37 +9,41 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 });
 
 // Specialties list provider
-final specialtiesProvider = FutureProvider<List<dynamic>>((ref) async {
+// Replace the old specialtiesProvider with this:
+final specialtiesProvider = FutureProvider.family<List<dynamic>, String>((ref, searchQuery) async {
   final apiService = ref.read(apiServiceProvider);
-  final response = await apiService.getAllSpecility();
+  final response = await apiService.getAllSpecility(searchQuery: searchQuery);
 
   if (response.statusCode == 200 && response.data != null) {
-    dynamic specialtyData;
-    if (response.data is Map) {
-      specialtyData = response.data['specialties'] ?? response.data['data'] ?? [];
-    } else if (response.data is List) {
-      specialtyData = response.data;
-    } else {
-      specialtyData = [];
+    // Handle the response structure: { success, data: [...], count, error }
+    if (response.data is Map && response.data['data'] is List) {
+      return List<dynamic>.from(response.data['data']);
     }
-    return specialtyData is List ? specialtyData : [];
+    // Fallback for other possible structures (like direct list)
+    if (response.data is List) {
+      return response.data;
+    }
   }
   return [];
 });
 
+// Keep searchQueryProvider to hold the current input text
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-final filteredSpecialtiesProvider = Provider<List<dynamic>>((ref) {
-  final specialties = ref.watch(specialtiesProvider);
-  final searchQuery = ref.watch(searchQueryProvider);
-  return specialties.when(
-    data: (list) => searchQuery.isEmpty
-        ? list
-        : list.where((s) => (s['name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase())).toList(),
-    loading: () => [],
-    error: (_, __) => [],
-  );
-});
+// Remove filteredSpecialtiesProvider – no longer needed
+
+
+// final filteredSpecialtiesProvider = Provider<List<dynamic>>((ref) {
+//   final specialties = ref.watch(specialtiesProvider);
+//   final searchQuery = ref.watch(searchQueryProvider);
+//   return specialties.when(
+//     data: (list) => searchQuery.isEmpty
+//         ? list
+//         : list.where((s) => (s['name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase())).toList(),
+//     loading: () => [],
+//     error: (_, __) => [],
+//   );
+// });
 
 // Hospitals for specialty provider (full hospital objects + doctors list)
 final hospitalsForSpecialtyProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);

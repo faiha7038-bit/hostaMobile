@@ -1135,8 +1135,8 @@ Future<void> _sendOtp() async {
     } else if (dioError.type ==
         DioExceptionType.receiveTimeout) {
 
-      errorMessage =
-          "Server not responding. Please try again.";
+      // errorMessage =
+      //     "Server not responding. Please try again.";
 
     } else if (dioError.type ==
         DioExceptionType.connectionError) {

@@ -134,33 +134,51 @@ final response = await widget.apiService.otpUser({
         final userId = userDetails["id"]?.toString();          // "115"
         final userPhone = userDetails["phone"]?.toString();
         final donorId = userDetails["donorId"]?.toString();
-        final authToken = response.data["token"];              // JWT token
+        final authToken = response.data["token"];            
+        
+  
 
-        final prefs = await SharedPreferences.getInstance();
+final prefs = await SharedPreferences.getInstance(); 
 
-        // Save userId
-        if (userId != null && userId.isNotEmpty) {
-          await prefs.setString('userId', userId);
-          log("✅ Saved userId: $userId");
-        }
+// Save userId
+if (userId != null && userId.isNotEmpty) {
+  await prefs.setString('userId', userId);
+}
 
-        // Save phone
-        if (userPhone != null && userPhone.isNotEmpty) {
-          await prefs.setString('userPhone', userPhone);
-        }
+// Save phone
+if (userPhone != null && userPhone.isNotEmpty) {
+  await prefs.setString('userPhone', userPhone);
+}
 
-        // Save donorId if present
-        if (donorId != null && donorId.isNotEmpty) {
-          await prefs.setString('bloodId', donorId);
-        }
-if (authToken != null && authToken.toString().isNotEmpty) {
-      await prefs.setString('authToken', authToken.toString());  // ← Changed!
-      log("✅ Saved authToken: ${authToken.toString().substring(0, 20)}...");
-    } else {
-      log("⚠️ No token in response");
-    }
- final savedToken = prefs.getString('authToken');
-    log("🔐 Verified saved token: ${savedToken != null ? 'Exists' : 'NULL'}");
+// Save donorId
+if (donorId != null && donorId.isNotEmpty) {
+  await prefs.setString('bloodId', donorId);
+}
+
+// Save token (ONLY ONCE)
+if (authToken != null &&
+    authToken is String &&
+    authToken.isNotEmpty) {
+  await prefs.setString('authToken', authToken);
+  log("✅ Saved authToken: ${authToken.substring(0, 20)}...");
+} else {
+  log("⚠️ No token in response");
+}
+// Save refresh token
+// if (refreshToken != null &&
+//     refreshToken is String &&
+//     refreshToken.isNotEmpty) {
+
+//   await prefs.setString('refreshToken', refreshToken);
+
+//   log("✅ Saved refreshToken");
+// } else {
+//   log("⚠️ No refresh token in response");
+// }
+
+final savedToken = prefs.getString('authToken');
+log("🔐 Verified saved token: ${savedToken != null ? 'Exists' : 'NULL'}");
+
 
         if (mounted) {
           showTopSnackBar(context, "Login successful!");

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,23 +22,135 @@ class Ambulance extends ConsumerStatefulWidget {
 class _AmbulanceState extends ConsumerState<Ambulance> {
   Timer? _debounce;
 final TextEditingController _searchController = TextEditingController();
+StreamSubscription? _connectivitySubscription;
+List<dynamic> _filterOfflineData(
+  List<dynamic> list,
+) {
+  final query = ref
+      .read(searchQueryProvider)
+      .toLowerCase();
+
+  final country =
+      ref.read(selectedCountryProvider);
+
+  final state =
+      ref.read(selectedStateProvider);
+
+  final district =
+      ref.read(selectedDistrictProvider);
+
+  final place =
+      ref.read(selectedPlaceProvider);
+
+  return list.where((amb) {
+
+    final address =
+        amb['address'] ?? {};
+
+    final serviceName =
+        (amb['serviceName'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final vehicleType =
+        (amb['vehicleType'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final ambCountry =
+        (address['country'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final ambState =
+        (address['state'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final ambDistrict =
+        (address['district'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final ambPlace =
+        (address['place'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final matchesSearch =
+        query.isEmpty ||
+        serviceName.contains(query) ||
+        vehicleType.contains(query);
+
+    final matchesCountry =
+        country.isEmpty ||
+        ambCountry ==
+            country.toLowerCase();
+
+    final matchesState =
+        state.isEmpty ||
+        ambState ==
+            state.toLowerCase();
+
+    final matchesDistrict =
+        district.isEmpty ||
+        ambDistrict ==
+            district.toLowerCase();
+
+    final matchesPlace =
+        place.isEmpty ||
+        ambPlace ==
+            place.toLowerCase();
+
+    return matchesSearch &&
+        matchesCountry &&
+        matchesState &&
+        matchesDistrict &&
+        matchesPlace;
+
+  }).toList();
+}
   @override
 void dispose() {
   _debounce?.cancel();
   _searchController.dispose();
+  _connectivitySubscription?.cancel();
   super.dispose();
 }
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+       await _checkInternet();
       _fetchAmbulances();
        _refreshAmbulanceId();
-    });
+     _connectivitySubscription =
+    Connectivity().onConnectivityChanged.listen((results) {
+
+  final hasInternet =
+      !results.contains(ConnectivityResult.none);
+
+  ref.read(isOfflineProvider.notifier).state =
+      !hasInternet;
+
+  log("Offline Status: ${!hasInternet}");
+});
+});
+  
   }
   
+Future<void> _checkInternet() async {
+  final results = await Connectivity().checkConnectivity();
 
+  final hasInternet =
+      !results.contains(ConnectivityResult.none);
+
+  ref.read(isOfflineProvider.notifier).state =
+      !hasInternet;
+
+  log("Initial Offline Status: ${!hasInternet}");
+}
 Future<void> _fetchAmbulances({bool showLoader = true}) async {
   try {
     if (showLoader) {
@@ -58,9 +171,13 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
 }
 Future<void> _refreshAmbulanceId() async {
   final prefs = await SharedPreferences.getInstance();
-  final id = prefs.getString('ambulanceId');
-
-  ref.read(ambulanceIdProvider.notifier).state = id ?? '';
+  String? ambulanceId = prefs.getString('ambulanceId');
+  if (
+    ambulanceId == null || ambulanceId.isEmpty) {
+    bool hasRegistered = prefs.getBool('ambulanceRegistered') ?? false;
+    ambulanceId = hasRegistered ? 'yes' : '';
+  }
+  ref.read(ambulanceIdProvider.notifier).state = ambulanceId ?? '';
 }
 
 //   void _handleAmbulanceRegister() async {
@@ -146,7 +263,15 @@ Future<void> _refreshAmbulanceId() async {
 
   // Extract distinct countries from current ambulance list
   List<String> getFilteredCountries() {
-    final ambulanceList = ref.read(ambulanceListProvider);
+   // final ambulanceList = ref.read(ambulanceListProvider);
+final isOffline =
+    ref.watch(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? _filterOfflineData(
+        ref.watch(allAmbulancesProvider),
+      )
+    : ref.watch(ambulanceListProvider);
     final countries = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -160,7 +285,11 @@ Future<void> _refreshAmbulanceId() async {
   List<String> getFilteredStates(String country) {
     if (country.isEmpty) return [];
     final normalizedCountry = _normalize(country);
-    final ambulanceList = ref.read(ambulanceListProvider);
+   final isOffline = ref.read(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? ref.read(allAmbulancesProvider)
+    : ref.read(ambulanceListProvider);
     final states = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -179,7 +308,11 @@ Future<void> _refreshAmbulanceId() async {
     if (country.isEmpty || state.isEmpty) return [];
     final normalizedCountry = _normalize(country);
     final normalizedState = _normalize(state);
-    final ambulanceList = ref.read(ambulanceListProvider);
+    final isOffline = ref.read(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? ref.read(allAmbulancesProvider)
+    : ref.read(ambulanceListProvider);
     final districts = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -201,7 +334,11 @@ Future<void> _refreshAmbulanceId() async {
     final normalizedCountry = _normalize(country);
     final normalizedState = _normalize(state);
     final normalizedDistrict = _normalize(district);
-    final ambulanceList = ref.read(ambulanceListProvider);
+  final isOffline = ref.read(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? ref.read(allAmbulancesProvider)
+    : ref.read(ambulanceListProvider);
     final places = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -227,7 +364,13 @@ Future<void> _refreshAmbulanceId() async {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLoading = ref.watch(isLoadingProvider);
-    final ambulanceList = ref.watch(ambulanceListProvider);  // already filtered by backend
+  final isOffline = ref.watch(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? _filterOfflineData(
+        ref.watch(allAmbulancesProvider),
+      )
+    : ref.watch(ambulanceListProvider); // already filtered by backend
     final ambulanceId = ref.watch(ambulanceIdProvider);
     log("ambulanceId${ambulanceId}");
 
@@ -288,10 +431,13 @@ Future<void> _refreshAmbulanceId() async {
     if (_debounce?.isActive ?? false) {
       _debounce!.cancel();
     }
+_debounce = Timer(const Duration(milliseconds: 500), () async {
 
-   _debounce = Timer(const Duration(milliseconds: 500), () async {
-  ref.read(searchQueryProvider.notifier).state = value.trim();
+  ref.read(searchQueryProvider.notifier).state =
+      value.trim();
+
   await _fetchAmbulances(showLoader: false);
+
 });
   },
   decoration: InputDecoration(
@@ -315,7 +461,8 @@ Future<void> _refreshAmbulanceId() async {
 )
                       ),
                       SizedBox(width: screenWidth * 0.02),
-                      if (ambulanceId == null || ambulanceId.isEmpty)
+                      if (!isOffline &&
+                        (ambulanceId == null || ambulanceId.isEmpty))
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
@@ -375,14 +522,14 @@ Future<void> _refreshAmbulanceId() async {
                                 ),
                               ),
                               SizedBox(height: screenHeight * 0.01),
-                              Text(
-                                "Try adjusting your filters",
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.035,
-                                  color: Colors.grey,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
+                              // Text(
+                              //   "Try adjusting your filters",
+                              //   style: TextStyle(
+                              //     fontSize: screenWidth * 0.035,
+                              //     color: Colors.grey,
+                              //   ),
+                              //   textAlign: TextAlign.center,
+                              // ),
                               SizedBox(height: screenHeight * 0.025),
                               ElevatedButton(
                                 onPressed: _refreshData,

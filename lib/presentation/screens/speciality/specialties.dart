@@ -10,11 +10,12 @@ class Specialties extends ConsumerStatefulWidget {
 }
 
 class _SpecialitesState extends ConsumerState<Specialties> {
+    //final Debouncer _debouncer = Debouncer(const Duration(milliseconds: 500));
   @override
   void initState() {
     super.initState();
     // Trigger specialties fetch
-    ref.read(specialtiesProvider);
+   // ref.read(specialtiesProvider);
   }
 
   void _showErrorSnackbar(String message) {
@@ -35,11 +36,12 @@ class _SpecialitesState extends ConsumerState<Specialties> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final searchQuery = ref.watch(searchQueryProvider);
-    final filteredSpecialties = ref.watch(filteredSpecialtiesProvider);
-    final specialtiesAsync = ref.watch(specialtiesProvider);
-    final hospitalsLoading = ref.watch(hospitalsLoadingProvider);
-    final hospitalsForSpecialty = ref.watch(hospitalsForSpecialtyProvider);
-    final selectedSpecialty = ref.watch(selectedSpecialtyProvider);
+   // final filteredSpecialties = ref.watch(filteredSpecialtiesProvider);
+   
+    final specialtiesAsync = ref.watch(specialtiesProvider(searchQuery));
+    // final hospitalsLoading = ref.watch(hospitalsLoadingProvider);
+    // final hospitalsForSpecialty = ref.watch(hospitalsForSpecialtyProvider);
+    // final selectedSpecialty = ref.watch(selectedSpecialtyProvider);
     final hospitalOps = ref.read(hospitalOperationsProvider);
 
     return Scaffold(
@@ -71,7 +73,7 @@ class _SpecialitesState extends ConsumerState<Specialties> {
               size: screenWidth * 0.06,
             ),
             onPressed: () {
-              ref.invalidate(specialtiesProvider);
+              ref.invalidate(specialtiesProvider(searchQuery));
             },
             tooltip: 'Refresh',
           ),
@@ -114,32 +116,26 @@ class _SpecialitesState extends ConsumerState<Specialties> {
             ),
 
             // ===== Grid =====
-            specialtiesAsync.when(
+          specialtiesAsync.when(
               data: (specialties) {
-                if (filteredSpecialties.isEmpty) {
+                if (specialties.isEmpty) {
                   return Expanded(
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.search_off,
-                            size: screenWidth * 0.15,
-                            color: Colors.grey,
-                          ),
+                          Icon(Icons.search_off, size: screenWidth * 0.15, color: Colors.grey),
                           SizedBox(height: screenHeight * 0.02),
                           Text(
-                            "No specialties found",
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.04,
-                              color: Colors.grey,
-                            ),
+                            searchQuery.isEmpty ? "No specialties found" : "No matching specialties",
+                            style: TextStyle(fontSize: screenWidth * 0.04, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
                   );
                 }
+                
                 
                 return Expanded(
                   child: SingleChildScrollView(
@@ -157,9 +153,9 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                           crossAxisSpacing: 12,
                           childAspectRatio: 1.1,
                         ),
-                        itemCount: filteredSpecialties.length,
+                        itemCount: specialties.length,
                         itemBuilder: (context, index) {
-                          final specialty = filteredSpecialties[index];
+                          final specialty = specialties[index]; 
                           final name = specialty['name']?.toString() ?? 'Unknown';
                           final picture = specialty['picture'] ?? {};
                           final imageUrl = picture['imageUrl']?.toString() ?? '';
@@ -235,7 +231,7 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                       SizedBox(height: screenHeight * 0.02),
                       ElevatedButton(
                         onPressed: () {
-                          ref.invalidate(specialtiesProvider);
+                           ref.invalidate(specialtiesProvider(searchQuery));
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
