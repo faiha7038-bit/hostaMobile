@@ -77,6 +77,9 @@ dependencies:
   hive_flutter: ^1.1.0
   flutter_phone_direct_caller: ^2.2.1
   flutter_image_compress: ^2.4.0
+  connectivity_plus: ^7.1.1
+  dio_cookie_manager: ^3.4.0
+  cookie_jar: ^4.0.9
   
 
 dev_dependencies:
@@ -86,7 +89,6 @@ dev_dependencies:
   flutter_native_splash: ^2.4.1
   flutter_lints: ^5.0.0
   mockito: ^5.6.4
-  build_runner: ^2.15.0
   firebase_core_platform_interface: ^5.4.2
 
 flutter_launcher_icons:

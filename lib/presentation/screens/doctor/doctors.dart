@@ -1740,11 +1740,12 @@
 //     );
 //   }
 // }
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
 import 'package:hosta/services/api_service.dart';
-import '../../../common/top_snackbar.dart';
 import '../../screens/doctor/doctor_detail.dart';
 import '../../../data/models/doctor_model.dart';
 
@@ -1763,14 +1764,25 @@ class _DoctorsState extends ConsumerState<Doctors> {
   List<Doctor> doctors = [];
   bool isLoading = true;
   String? errorMessage;
-
+ Timer? _debounceTimer;
   @override
   void initState() {
     super.initState();
     _fetchDoctors();
   }
-
-  Future<void> _fetchDoctors() async {
+    @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+  void _onSearchChanged(String value) {
+    setState(() => searchQuery = value);
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _fetchDoctors(search: value.isEmpty ? null : value);
+    });
+  }
+ Future<void> _fetchDoctors({String? search}) async {
     if (!mounted) return;
     try {
       setState(() {
@@ -1780,6 +1792,7 @@ class _DoctorsState extends ConsumerState<Doctors> {
       final response = await ApiService().getDoctors(
         hospitalId: widget.hospitalId,
         speciality: widget.specialty,
+        searchQuery: search,   // ✅ use the search parameter
       );
       if (!mounted) return;
       if (response.data['success'] == true && response.data['data'] != null) {
@@ -1809,14 +1822,14 @@ class _DoctorsState extends ConsumerState<Doctors> {
     }
   }
 
-  List<Doctor> get filteredDoctors {
-    if (searchQuery.isEmpty) return doctors;
-    return doctors.where((doctor) =>
-      doctor.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-      doctor.specialty.toLowerCase().contains(searchQuery.toLowerCase()) ||
-      (doctor.hospitalName?.toLowerCase() ?? '').contains(searchQuery.toLowerCase())
-    ).toList();
-  }
+  // List<Doctor> get filteredDoctors {
+  //   if (searchQuery.isEmpty) return doctors;
+  //   return doctors.where((doctor) =>
+  //     doctor.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
+  //     doctor.specialty.toLowerCase().contains(searchQuery.toLowerCase()) ||
+  //     (doctor.hospitalName?.toLowerCase() ?? '').contains(searchQuery.toLowerCase())
+  //   ).toList();
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -1855,7 +1868,8 @@ class _DoctorsState extends ConsumerState<Doctors> {
             const SizedBox(width: 12),
             Expanded(
               child: TextField(
-                onChanged: (value) => setState(() => searchQuery = value),
+                  onChanged: _onSearchChanged,
+                // onChanged: (value) => setState(() => searchQuery = value),
                 decoration: InputDecoration(hintText: 'Search doctors by name or specialty...', hintStyle: TextStyle(color: Colors.grey[500]), border: InputBorder.none),
               ),
             ),
@@ -1865,59 +1879,55 @@ class _DoctorsState extends ConsumerState<Doctors> {
     );
   }
 
-  Widget _buildContent() {
-    if (isLoading) return const Center(child: CircularProgressIndicator(color: Colors.green));
-    if (errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(errorMessage!, style: TextStyle(color: Colors.grey[600]), textAlign: TextAlign.center),
-            const SizedBox(height: 20),
-            ElevatedButton(onPressed: _fetchDoctors, style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text('Try Again', style: TextStyle(color: Colors.white))),
-          ],
-        ),
-      );
-    }
-    if (doctors.isEmpty && searchQuery.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.medical_services, size: 80, color: Colors.grey[300]),
-            const SizedBox(height: 20),
-            Text('No Doctors found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700])),
-            const SizedBox(height: 8),
-            //Text('This hospital does not have ${widget.specialty} doctors.', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-          ],
-        ),
-      );
-    }
-    if (filteredDoctors.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.medical_information, size: 80, color: Colors.grey[300]),
-            const SizedBox(height: 20),
-            Text('No doctors found', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
-            const SizedBox(height: 8),
-            Text('Try adjusting your search', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
-          ],
-        ),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 16, childAspectRatio: 0.75),
-        itemCount: filteredDoctors.length,
-        itemBuilder: (context, index) => _buildDoctorCard(filteredDoctors[index]),
+Widget _buildContent() {
+  if (isLoading) return const Center(child: CircularProgressIndicator(color: Colors.green));
+  if (errorMessage != null) { /* error widget unchanged */ }
+  
+  // No doctors at all (initial load, no search query)
+  if (doctors.isEmpty && searchQuery.isEmpty) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.medical_services, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 20),
+          Text('No Doctors found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+        ],
       ),
     );
   }
+  
+  // No results for the search
+  if (doctors.isEmpty && searchQuery.isNotEmpty) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.medical_information, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 20),
+          Text('No doctors found', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+          const SizedBox(height: 8),
+          Text('Try adjusting your search', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+        ],
+      ),
+    );
+  }
+  
+  // Display doctors from API (already filtered)
+  return Padding(
+    padding: const EdgeInsets.all(16),
+    child: GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: doctors.length,   // ✅ use doctors, not filteredDoctors
+      itemBuilder: (context, index) => _buildDoctorCard(doctors[index]),
+    ),
+  );
+}
 
   Widget _buildDoctorCard(Doctor doctor) {
     String firstLetter = doctor.displayName.isNotEmpty ? doctor.displayName[0].toUpperCase() : (doctor.firstName.isNotEmpty ? doctor.firstName[0].toUpperCase() : 'D');

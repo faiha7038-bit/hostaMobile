@@ -639,6 +639,7 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
     _checkLogin();
     _loadJson();
     _loadUserPhone();
+    // _resetAmbulanceFlag();
 
     if (widget.editData != null) {
       _fillEditData();
@@ -660,7 +661,12 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
 
     _hydrateSelectionsFromSavedData();
   }
-
+// Future<void> _resetAmbulanceFlag() async {
+//   final prefs = await SharedPreferences.getInstance();
+//   await prefs.remove('ambulanceRegistered');
+//   await prefs.remove('ambulanceId');
+//   print("🔄 Ambulance flags reset");
+// }
   Future<void> _hydrateSelectionsFromSavedData() async {
     if (jsonData.isEmpty) return;
 
@@ -969,6 +975,9 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
       if (!mounted) return;
 
       if (success) {
+         final prefs = await SharedPreferences.getInstance();
+  // ✅ Save a flag that user has registered ambulance
+  await prefs.setBool('ambulanceRegistered', true);
         showTopSnackBar(
           context,
           widget.editData == null
@@ -977,7 +986,7 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
         );
         Navigator.pop(context, true);
       } else {
-        showTopSnackBar(context, "Something went wrong", isError: true);
+        showTopSnackBar(context, "This mobile number already registered. choose another mobile number ", isError: true);
       }
     } catch (e) {
       showTopSnackBar(context, e.toString(), isError: true);

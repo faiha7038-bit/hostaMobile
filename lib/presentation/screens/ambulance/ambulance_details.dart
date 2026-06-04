@@ -248,13 +248,30 @@ class _AmbulanceDetailsPageState extends ConsumerState<AmbulanceDetailsPage> {
     _loadAmbulances();
   }
 
-  Future<void> _loadAmbulances() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId');
-    if (userId == null) return;
-    await ref.read(ambulanceListProvider.notifier).fetchAmbulances(userId: userId);
+  // Future<void> _loadAmbulances() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final userId = prefs.getString('userId');
+  //   if (userId == null) return;
+  //   await ref.read(ambulanceListProvider.notifier).fetchAmbulances(userId: userId);
+  // }
+Future<void> _loadAmbulances() async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+  if (userId == null) return;
+  
+  await ref.read(ambulanceListProvider.notifier).fetchAmbulances(userId: userId);
+  
+  final state = ref.read(ambulanceListProvider);
+  
+  // ✅ If no ambulances left, clear the registration flag
+  if (state.ambulances.isEmpty) {
+    await prefs.remove('ambulanceRegistered');
+    await prefs.remove('ambulanceId');
+    log("🔄 Cleared ambulance flag – no ambulances remaining");
+  } else {
+    // Ensure flag is true when ambulances exist (already set on registration)
   }
-
+}
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;

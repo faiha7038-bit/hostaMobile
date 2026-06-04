@@ -167,56 +167,71 @@ Future<void> _fetchHospitals({String query = ''}) async {
       ),
     );
   }
-
   bool _isOpenNow(Map<String, dynamic> hospital) {
-    final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
-    if (workingHoursClinic != null && workingHoursClinic.isNotEmpty) {
-      return _isOpenNowNewFormat(hospital);
-    }
-
-    final workingHours = hospital["working_hours"] as List<dynamic>?;
-    if (workingHours == null || workingHours.isEmpty) return false;
-
-    final now = DateTime.now();
-    final today = [
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-      "Sunday"
-    ][now.weekday - 1];
-
-    final todayHours = workingHours.firstWhere(
-      (day) => day["day"] == today,
-      orElse: () => null,
-    );
-
-    if (todayHours == null || todayHours["is_holiday"] == true) return false;
-
-    final open = todayHours["opening_time"];
-    final close = todayHours["closing_time"];
-    if (open == null || close == null) return false;
-
-    try {
-      int nowMinutes = now.hour * 60 + now.minute;
-      final openParts = open.split(":");
-      int openMinutes = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
-
-      final closeParts = close.split(":");
-      int closeMinutes = int.parse(closeParts[0]) * 60 +
-          int.parse(closeParts[1]);
-
-      if (closeMinutes < openMinutes) {
-        return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
-      } else {
-        return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
-      }
-    } catch (_) {
-      return false;
-    }
+  // 1. working_hours_clinic (morning/evening sessions)
+  if (hospital["working_hours_clinic"] is List && (hospital["working_hours_clinic"] as List).isNotEmpty) {
+    return _isOpenNowNewFormat(hospital);
   }
+  // 2. working_hours_clinic_nobreak (simple open/close)
+  if (hospital["working_hours_clinic_nobreak"] is List && (hospital["working_hours_clinic_nobreak"] as List).isNotEmpty) {
+    return _isOpenNowNoBreak(hospital);
+  }
+  // 3. working_hours_general
+  if (hospital["working_hours_general"] is List && (hospital["working_hours_general"] as List).isNotEmpty) {
+    return _isOpenNowGeneral(hospital);
+  }
+  return false;
+}
+
+  // bool _isOpenNow(Map<String, dynamic> hospital) {
+  //   final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
+  //   if (workingHoursClinic != null && workingHoursClinic.isNotEmpty) {
+  //     return _isOpenNowNewFormat(hospital);
+  //   }
+
+  //   final workingHours = hospital["working_hours"] as List<dynamic>?;
+  //   if (workingHours == null || workingHours.isEmpty) return false;
+
+  //   final now = DateTime.now();
+  //   final today = [
+  //     "Monday",
+  //     "Tuesday",
+  //     "Wednesday",
+  //     "Thursday",
+  //     "Friday",
+  //     "Saturday",
+  //     "Sunday"
+  //   ][now.weekday - 1];
+
+  //   final todayHours = workingHours.firstWhere(
+  //     (day) => day["day"] == today,
+  //     orElse: () => null,
+  //   );
+
+  //   if (todayHours == null || todayHours["is_holiday"] == true) return false;
+
+  //   final open = todayHours["opening_time"];
+  //   final close = todayHours["closing_time"];
+  //   if (open == null || close == null) return false;
+
+  //   try {
+  //     int nowMinutes = now.hour * 60 + now.minute;
+  //     final openParts = open.split(":");
+  //     int openMinutes = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
+
+  //     final closeParts = close.split(":");
+  //     int closeMinutes = int.parse(closeParts[0]) * 60 +
+  //         int.parse(closeParts[1]);
+
+  //     if (closeMinutes < openMinutes) {
+  //       return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
+  //     } else {
+  //       return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+  //     }
+  //   } catch (_) {
+  //     return false;
+  //   }
+  // }
 
   bool _isOpenNowNewFormat(Map<String, dynamic> hospital) {
     final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
@@ -285,7 +300,60 @@ Future<void> _fetchHospitals({String query = ''}) async {
 
     return false;
   }
+bool _isOpenNowGeneral(Map<String, dynamic> hospital) {
+  final hours = hospital["working_hours_general"] as List<dynamic>?;
+  if (hours == null || hours.isEmpty) return false;
 
+  final now = DateTime.now();
+  final today = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][now.weekday - 1];
+
+  final todayEntry = hours.firstWhere(
+    (entry) => entry["day"].toString().toLowerCase() == today.toLowerCase(),
+    orElse: () => null,
+  );
+  if (todayEntry == null || todayEntry["is_holiday"] == true) return false;
+
+  String open = todayEntry["opening_time"] ?? "";
+  String close = todayEntry["closing_time"] ?? "";
+  if (open.isEmpty || close.isEmpty) return false;
+
+  int nowMinutes = now.hour * 60 + now.minute;
+  int openMinutes = _parseTimeToMinutes(open);
+  int closeMinutes = _parseTimeToMinutes(close);
+
+  if (closeMinutes < openMinutes) {
+    return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
+  } else {
+    return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+  }
+}
+bool _isOpenNowNoBreak(Map<String, dynamic> hospital) {
+  final hours = hospital["working_hours_clinic_nobreak"] as List<dynamic>?;
+  if (hours == null || hours.isEmpty) return false;
+
+  final now = DateTime.now();
+  final today = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][now.weekday - 1];
+
+  final todayEntry = hours.firstWhere(
+    (entry) => entry["day"].toString().toLowerCase() == today.toLowerCase(),
+    orElse: () => null,
+  );
+  if (todayEntry == null || todayEntry["is_holiday"] == true) return false;
+
+  String open = todayEntry["opening_time"] ?? "";
+  String close = todayEntry["closing_time"] ?? "";
+  if (open.isEmpty || close.isEmpty) return false;
+
+  int nowMinutes = now.hour * 60 + now.minute;
+  int openMinutes = _parseTimeToMinutes(open);
+  int closeMinutes = _parseTimeToMinutes(close);
+
+  if (closeMinutes < openMinutes) {
+    return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
+  } else {
+    return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+  }
+}
   String _formatTime(String time24) {
     try {
       final parts = time24.split(":");
@@ -299,6 +367,21 @@ Future<void> _fetchHospitals({String query = ''}) async {
       return time24;
     }
   }
+  int _parseTimeToMinutes(String time) {
+  try {
+    String t = time.trim().toUpperCase();
+    bool isPM = t.contains("PM");
+    t = t.replaceAll(RegExp(r'[AP]M'), '').trim();
+    var parts = t.split(":");
+    int hour = int.parse(parts[0]);
+    int minute = int.parse(parts[1]);
+    if (isPM && hour != 12) hour += 12;
+    if (!isPM && hour == 12) hour = 0;
+    return hour * 60 + minute;
+  } catch (_) {
+    return 0;
+  }
+}
 
   double? _calculateDistance(double lat, double lon) {
     if (userPosition == null) return null;
@@ -382,22 +465,43 @@ List<dynamic> filteredHospitals = hospitals.where((hospital) {
     //   final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
     //   return matchesSearch && matchesOpen;
     // }).toList();
+if (filterNearest && userPosition != null) {
+  filteredHospitals.sort((a, b) {
 
-    if (filterNearest && userPosition != null) {
-      filteredHospitals.sort((a, b) {
-        final aDist = _calculateDistance(
-              (a["latitude"] ?? 0).toDouble(),
-              (a["longitude"] ?? 0).toDouble(),
-            ) ??
-            double.infinity;
-        final bDist = _calculateDistance(
-              (b["latitude"] ?? 0).toDouble(),
-              (b["longitude"] ?? 0).toDouble(),
-            ) ??
-            double.infinity;
-        return aDist.compareTo(bDist);
-      });
-    }
+    final aLat =
+        double.tryParse(a["latitude"].toString()) ?? 0.0;
+    final aLon =
+        double.tryParse(a["longitude"].toString()) ?? 0.0;
+
+    final bLat =
+        double.tryParse(b["latitude"].toString()) ?? 0.0;
+    final bLon =
+        double.tryParse(b["longitude"].toString()) ?? 0.0;
+
+    final aDist =
+        _calculateDistance(aLat, aLon) ?? double.infinity;
+
+    final bDist =
+        _calculateDistance(bLat, bLon) ?? double.infinity;
+
+    return aDist.compareTo(bDist);
+  });
+}
+    // if (filterNearest && userPosition != null) {
+    //   filteredHospitals.sort((a, b) {
+    //     final aDist = _calculateDistance(
+    //           (a["latitude"] ?? 0).toDouble(),
+    //           (a["longitude"] ?? 0).toDouble(),
+    //         ) ??
+    //         double.infinity;
+    //     final bDist = _calculateDistance(
+    //           (b["latitude"] ?? 0).toDouble(),
+    //           (b["longitude"] ?? 0).toDouble(),
+    //         ) ??
+    //         double.infinity;
+    //     return aDist.compareTo(bDist);
+    //   });
+    // }
 
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
@@ -432,13 +536,29 @@ List<dynamic> filteredHospitals = hospitals.where((hospital) {
                 vertical: screenHeight * 0.015,
               ),
               child: TextField(
-                onChanged: (value) async {
+                onChanged: (value) {
   setState(() {
     searchQuery = value;
   });
 
-  await _fetchHospitals(query: value);
+  if (_debounce?.isActive ?? false) {
+    _debounce!.cancel();
+  }
+
+  _debounce = Timer(
+    const Duration(milliseconds: 500),
+    () {
+      _fetchHospitals(query: value);
+    },
+  );
 },
+//                 onChanged: (value) async {
+//   setState(() {
+//     searchQuery = value;
+//   });
+
+//   await _fetchHospitals(query: value);
+// },
                 // onChanged: (value) => setState(() => searchQuery = value),
                 decoration: InputDecoration(
                   hintText: "Search hospitals...",
@@ -558,7 +678,7 @@ List<dynamic> filteredHospitals = hospitals.where((hospital) {
           SizedBox(height: screenHeight * 0.01),
           Text(
             searchQuery.isEmpty
-                ? "Try adjusting your filters"
+                ? ""
                 : "No results for \"$searchQuery\"",
             style: TextStyle(
               fontSize: screenWidth * 0.035,
@@ -617,11 +737,20 @@ List<dynamic> filteredHospitals = hospitals.where((hospital) {
 
     final address = getAddress(hospital["address"]);
     final phone = hospital["phone"] ?? "";
-    final lat = (hospital["latitude"] ?? 0).toDouble();
-    final lon = (hospital["longitude"] ?? 0).toDouble();
+    log("LAT: ${hospital["latitude"]}");
+log("LON: ${hospital["longitude"]}");
+log("USER LAT: ${userPosition?.latitude}");
+log("USER LNG: ${userPosition?.longitude}");
+    final lat =
+    double.tryParse(hospital["latitude"].toString()) ?? 0.0;
+
+final lon =
+    double.tryParse(hospital["longitude"].toString()) ?? 0.0;
+    // final lat = (hospital["latitude"] ?? 0).toDouble();
+    // final lon = (hospital["longitude"] ?? 0).toDouble();
     final distance = _calculateDistance(lat, lon);
     final isOpen = _isOpenNow(hospital);
-
+print(_calculateDistance(lat, lon));
     return Container(
       margin: EdgeInsets.only(bottom: screenHeight * 0.015),
       decoration: BoxDecoration(
@@ -669,14 +798,24 @@ List<dynamic> filteredHospitals = hospitals.where((hospital) {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (distance != null)
-                  Text(
-                    "${distance.toStringAsFixed(1)} km away",
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.035,
-                      color: Colors.blueGrey,
-                    ),
-                  ),
+    if (distance != null)
+  Text(
+    distance < 1
+        ? "${(distance * 1000).toStringAsFixed(0)} m away"
+        : "${distance.toStringAsFixed(2)} km away",
+    style: TextStyle(
+      fontSize: screenWidth * 0.035,
+      color: Colors.blueGrey,
+    ),
+  ),
+                // if (distance != null)
+                //   Text(
+                //     "${distance.toStringAsFixed(1)} km away",
+                //     style: TextStyle(
+                //       fontSize: screenWidth * 0.035,
+                //       color: Colors.blueGrey,
+                //     ),
+                //   ),
                 SizedBox(height: screenHeight * 0.0075),
                 Text(
                   address,
