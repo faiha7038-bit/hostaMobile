@@ -21,10 +21,10 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   double rating = 4.5;
   int reviewCount = 38;
 
-  List<Map<String, dynamic>> reviews = [
-    {"name": "Rahul", "stars": 5, "comment": "Very friendly doctor"},
-    {"name": "Anjali", "stars": 4, "comment": "Good experience"},
-  ];
+  // List<Map<String, dynamic>> reviews = [
+  //   {"name": "Rahul", "stars": 5, "comment": "Very friendly doctor"},
+  //   {"name": "Anjali", "stars": 4, "comment": "Good experience"},
+  // ];
 
   @override
   void initState() {
@@ -173,7 +173,25 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             _feesCard(screenWidth),
 
             SizedBox(height: screenHeight * 0.025),
-
+Container(
+  padding: const EdgeInsets.all(12),
+  decoration: BoxDecoration(
+    color: Colors.green.shade50,
+    borderRadius: BorderRadius.circular(12),
+  ),
+  child: Row(
+    children: [
+      const Icon(Icons.calendar_month, color: Colors.green),
+      const SizedBox(width: 10),
+      Text(
+        "${doctorDetails!.appointmentCount} Total Appointments",
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ],
+  ),
+),
             /// TIMINGS
             Text(
               "Available Timings",
@@ -223,7 +241,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             SizedBox(height: screenHeight * 0.01),
 
             Text(
-              "Dr. ${doctorDetails!.name} is a specialized ${doctorDetails!.specialty.toLowerCase()} with qualification ${doctorDetails!.qualification}. "
+              " ${doctorDetails!.displayName} is a specialized ${doctorDetails!.specialty.toLowerCase()} with qualification ${doctorDetails!.qualification}. "
               "Experienced in ${doctorDetails!.department} department with expertise in ${doctorDetails!.specialist}.",
               style: TextStyle(
                 color: Colors.grey,
@@ -258,33 +276,33 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               ),
 
             /// REVIEWS
-            Text(
-              "Patient Reviews",
-              style: TextStyle(
-                fontSize: isSmallScreen ? 16 : 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            // Text(
+            //   "Patient Reviews",
+            //   style: TextStyle(
+            //     fontSize: isSmallScreen ? 16 : 20,
+            //     fontWeight: FontWeight.bold,
+            //   ),
+            // ),
 
-            SizedBox(height: screenHeight * 0.012),
+           // SizedBox(height: screenHeight * 0.012),
 
-            ...reviews.map(
-              (r) => _reviewTile(r["name"], r["stars"], r["comment"], screenWidth),
-            ),
+            // ...reviews.map(
+            //   (r) => _reviewTile(r["name"], r["stars"], r["comment"], screenWidth),
+            // ),
 
             SizedBox(height: screenHeight * 0.012),
 
             /// ADD REVIEW BUTTON
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => _showReviewDialog(),
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
-                ),
-                child: const Text("Write a Review"),
-              ),
-            ),
+            // SizedBox(
+            //   width: double.infinity,
+            //   child: OutlinedButton(
+            //     onPressed: () => _showReviewDialog(),
+            //     style: OutlinedButton.styleFrom(
+            //       padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
+            //     ),
+            //     child: const Text("Write a Review"),
+            //   ),
+            // ),
 
             SizedBox(height: screenHeight * 0.03),
 
@@ -292,23 +310,27 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
+                
                 style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(10)),
                   backgroundColor: Colors.green
                 ),
-                onPressed:(){
-                  Navigator.push(context, MaterialPageRoute(builder: (context)=>RegisterBooking(doctor:widget.doctor )));
-                },
-                //  doctorDetails!.bookingOpen 
-                //     ? () => _showBookingSheet(doctorDetails!)
-                //     : null,
-                // style: ElevatedButton.styleFrom(
-                //   backgroundColor: doctorDetails!.bookingOpen ? Colors.green : Colors.grey,
-                //   padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
-                // ),
+                 onPressed: doctorDetails!.bookingOpen
+      ? () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  RegisterBooking(doctor: widget.doctor),
+            ),
+          );
+        }
+      : null, 
                 
                 child: Text(
-                  doctorDetails!.bookingOpen ? "BOOK APPOINTMENT" : "CLOSED",
+                  doctorDetails!.bookingOpen ? "Book Appointment" : "CLOSED",
                   style: TextStyle(
+                    fontWeight: FontWeight.bold,
                     color: Colors.white,
                     fontSize: isSmallScreen ? 14 : 16,
                   ),
@@ -339,13 +361,36 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: avatarSize,
-            height: avatarSize,
-            decoration: const BoxDecoration(
-              color: Colors.green,
-              shape: BoxShape.circle,
-            ),
+        Container(
+  width: avatarSize,
+  height: avatarSize,
+  decoration: const BoxDecoration(
+    shape: BoxShape.circle,
+  ),
+  child: ClipOval(
+    child: doctor.imageUrl != null &&
+            doctor.imageUrl!.isNotEmpty
+        ? Image.network(
+            doctor.imageUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.green,
+                child: Center(
+                  child: Text(
+                    firstLetter,
+                    style: TextStyle(
+                      fontSize: avatarSize / 2,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              );
+            },
+          )
+        : Container(
+            color: Colors.green,
             child: Center(
               child: Text(
                 firstLetter,
@@ -357,13 +402,15 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               ),
             ),
           ),
+  ),
+),
           SizedBox(width: isSmallScreen ? 12.0 : 20.0),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  doctor.name,
+                  doctor.displayName,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: isSmallScreen ? 16 : 20,
@@ -376,6 +423,14 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                     fontSize: isSmallScreen ? 12 : 14,
                   ),
                 ),
+                  const SizedBox(height: 6),
+                Text(
+  "${doctor.experience} Years Experience",
+  style: TextStyle(
+    color: Colors.grey,
+    fontSize: isSmallScreen ? 12 : 14,
+  ),
+),
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -563,80 +618,80 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     );
   }
 
-  void _showReviewDialog() {
-    final controller = TextEditingController();
-    int stars = 5;
+  // void _showReviewDialog() {
+  //   final controller = TextEditingController();
+  //   int stars = 5;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text("Add Review"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(5, (index) {
-                      return GestureDetector(
-                        onTap: () {
-                          setStateDialog(() {
-                            stars = index + 1;
-                          });
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Icon(
-                            Icons.star,
-                            size: 28,
-                            color: index < stars ? Colors.amber : Colors.grey[300],
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      hintText: "Write your review",
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel"),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (controller.text.trim().isEmpty) return;
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return StatefulBuilder(
+  //         builder: (context, setStateDialog) {
+  //           return AlertDialog(
+  //             title: const Text("Add Review"),
+  //             content: Column(
+  //               mainAxisSize: MainAxisSize.min,
+  //               children: [
+  //                 Row(
+  //                   mainAxisAlignment: MainAxisAlignment.center,
+  //                   children: List.generate(5, (index) {
+  //                     return GestureDetector(
+  //                       onTap: () {
+  //                         setStateDialog(() {
+  //                           stars = index + 1;
+  //                         });
+  //                       },
+  //                       child: Padding(
+  //                         padding: const EdgeInsets.symmetric(horizontal: 4),
+  //                         child: Icon(
+  //                           Icons.star,
+  //                           size: 28,
+  //                           color: index < stars ? Colors.amber : Colors.grey[300],
+  //                         ),
+  //                       ),
+  //                     );
+  //                   }),
+  //                 ),
+  //                 const SizedBox(height: 10),
+  //                 TextField(
+  //                   controller: controller,
+  //                   decoration: const InputDecoration(
+  //                     hintText: "Write your review",
+  //                     border: OutlineInputBorder(),
+  //                   ),
+  //                   maxLines: 3,
+  //                 ),
+  //               ],
+  //             ),
+  //             actions: [
+  //               TextButton(
+  //                 onPressed: () => Navigator.pop(context),
+  //                 child: const Text("Cancel"),
+  //               ),
+  //               ElevatedButton(
+  //                 onPressed: () {
+  //                   if (controller.text.trim().isEmpty) return;
 
-                    setState(() {
-                      reviews.add({
-                        "name": "You",
-                        "stars": stars,
-                        "comment": controller.text,
-                      });
-                      reviewCount++;
-                    });
+  //                   // setState(() {
+  //                   //   reviews.add({
+  //                   //     "name": "You",
+  //                   //     "stars": stars,
+  //                   //     "comment": controller.text,
+  //                   //   });
+  //                   //   reviewCount++;
+  //                   // });
 
-                    Navigator.pop(context);
-                  },
-                  child: const Text("Submit"),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
+  //                   Navigator.pop(context);
+  //                 },
+  //                 child: const Text("Submit"),
+  //               ),
+  //             ],
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
   
   void _showBookingSheet(Doctor doctor) {
     // Navigate to booking screen or show bottom sheet

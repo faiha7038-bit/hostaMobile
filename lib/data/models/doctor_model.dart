@@ -25,6 +25,9 @@ class Doctor {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
+  final int appointmentCount;
+  final String experience;
+  final String? imageUrl;
   
   // UI-ന് വേണ്ടി additional fields
   String? hospitalName;
@@ -45,6 +48,7 @@ class Doctor {
     required this.fees,
     required this.gender,
     this.dob,
+    
     required this.knowLanguages,
     required this.address,
     required this.consulting,
@@ -61,6 +65,9 @@ class Doctor {
     this.hospitalName,
     this.hospitalAddress,
     this.hospitalPhone,
+    required this.appointmentCount,
+    required this.experience,
+    this.imageUrl,
   });
 
   // Helper getters for UI
@@ -104,6 +111,9 @@ class Doctor {
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
       deletedAt: json['deletedAt'] != null ? DateTime.parse(json['deletedAt']) : null,
+      appointmentCount: json['appointmentCount'] ?? 0,
+      experience: json['experience']?.toString() ?? '',
+      imageUrl: json['imageUrl'],
     );
   }
 
@@ -145,6 +155,9 @@ class Doctor {
       hospitalName: hospitalName ?? this.hospitalName,
       hospitalAddress: hospitalAddress ?? this.hospitalAddress,
       hospitalPhone: hospitalPhone ?? this.hospitalPhone,
+       appointmentCount: appointmentCount, 
+       experience: experience,
+      imageUrl: imageUrl,
     );
   }
 }
