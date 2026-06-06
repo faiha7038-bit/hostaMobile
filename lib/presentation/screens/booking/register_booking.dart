@@ -27,7 +27,11 @@ class _RegisterBookingState extends State<RegisterBooking> {
   String? selectedGender;
   bool _isSubmitting = false;
   final _formKey = GlobalKey<FormState>();
-
+List<dynamic> _patients = [];
+int? _selectedPatientId;
+Map<String, dynamic>? _selectedPatient;
+bool _isLoadingPatients = true;
+bool _isAutoFilling = false;
   List<String> get availableTimeSlots {
     List<String> slots = [];
     if (widget.doctor.consulting.morningSession != null) {
@@ -42,14 +46,83 @@ class _RegisterBookingState extends State<RegisterBooking> {
     return slots;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    if (availableTimeSlots.isNotEmpty) {
-      selectedTimeSlot = availableTimeSlots.first;
-    }
+ @override
+void initState() {
+  super.initState();
+  if (availableTimeSlots.isNotEmpty) {
+    selectedTimeSlot = availableTimeSlots.first;
+  }
+  _fetchPatients();
+}
+
+Future<void> _fetchPatients() async {
+  
+  final prefs = await SharedPreferences.getInstance();
+  final storedUserId = prefs.getString('userId');
+  print("Stored userId: $storedUserId");
+  if (storedUserId == null) {
+    setState(() => _isLoadingPatients = false);
+    return;
   }
 
+  try {
+    final apiService = ApiService();
+    print("Calling getPatients with hospitalId=${widget.doctor.hospitalId}, userId=${int.parse(storedUserId)}");
+    final response = await apiService.getPatients(
+      hospitalId: widget.doctor.hospitalId,
+      userId: int.parse(storedUserId),
+    );
+    print("Full response: ${response.data}");
+    
+    if (response.data != null && response.data['data'] != null) {
+      print("Patients found: ${response.data['data'].length}");
+      setState(() {
+        _patients = response.data['data'];
+        _isLoadingPatients = false;
+      });
+    } else {
+      print("No 'data' key in response or empty");
+      setState(() => _isLoadingPatients = false);
+    }
+  } catch (e) {
+    print("Error fetching patients: $e");
+    setState(() => _isLoadingPatients = false);
+    //print("Full response: ${response.data}");
+  }
+}
+void _onPatientSelected(dynamic patient) {
+
+  String place = patient['addressLine'] ?? '';
+
+  if ((place.isEmpty || place == 'N/A') &&
+      patient['location'] != null) {
+    place = patient['location']['place'] ?? '';
+  }
+
+  setState(() {
+
+    _selectedPatient = patient;
+    _selectedPatientId = patient['id'];
+
+    patientNameController.text =
+        patient['name'] ?? '';
+
+    phoneController.text =
+        patient['mobileNumber'] ?? '';
+
+    placeController.text = place;
+
+    ageController.text =
+        (patient['age'] ?? '').toString();
+
+    selectedGender =
+        patient['gender'];
+
+    dob = patient['dob'] != null
+        ? DateTime.parse(patient['dob']).toLocal()
+        : null;
+  });
+}
   Future<void> _selectDate(BuildContext context, bool isPastOnly) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -126,23 +199,25 @@ String formatBookingDate(DateTime date) =>
     setState(() => _isSubmitting = true);
 
     final bookingData = {
-      'userId': int.parse(storedUserId),
-    'patient_dob': DateFormat('dd/MM/yyyy').format(dob!),
+  'userId': int.parse(storedUserId),
+
+  // CHANGE HERE
+  'patientId': _selectedPatient?['id'],
+
+  'patient_dob': DateFormat('dd/MM/yyyy').format(dob!),
   'patient_age': int.parse(ageController.text),
   'patient_gender': selectedGender,
   'patient_name': patientNameController.text,
   'patient_place': placeController.text,
   'patient_phone': phoneController.text,
-      'hospitalId': int.parse(widget.doctor.hospitalId.toString()),
-      'doctorId': int.parse(widget.doctor.id.toString()),
-        'booking_date': DateFormat(
-    'yyyy-MM-dd',
-  ).format(appointmentDate!),
-      'department': widget.doctor.specialty,
-      'displayName': widget.doctor.name,
-      //...
-       'booking_status': 'user booking',
-    };
+
+  'hospitalId': int.parse(widget.doctor.hospitalId.toString()),
+  'doctorId': int.parse(widget.doctor.id.toString()),
+  'booking_date': DateFormat('yyyy-MM-dd').format(appointmentDate!),
+  'department': widget.doctor.specialty,
+  'displayName': widget.doctor.name,
+  'booking_status': 'user booking',
+};
 
       print("BOOKING DATA = $bookingData");
     showDialog(
@@ -307,6 +382,78 @@ String formatBookingDate(DateTime date) =>
                 ],
               ),
             ),
+            // After the doctor info Container
+if (_isLoadingPatients)
+  const Padding(
+    padding: EdgeInsets.all(16.0),
+    child: Center(child: CircularProgressIndicator()),
+  )
+else if (_patients.isNotEmpty)
+  Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+    child:
+   DropdownButtonFormField<int>(
+  value: _selectedPatientId,
+  decoration: InputDecoration(
+    labelText: 'Select existing patient',
+    prefixIcon: const Icon(Icons.people, color: Colors.green),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+
+  items: [
+    const DropdownMenuItem<int>(
+      value: -1,
+      child: Text('+ New Patient'),
+    ),
+
+    ..._patients.map((patient) {
+      return DropdownMenuItem<int>(
+        value: patient['id'],
+        child: Text(
+          '${patient['patientId']} - ${patient['name']}',
+        ),
+      );
+    }).toList(),
+  ],
+
+onChanged: (value) {
+
+  if (value == -1 || value == null) {
+
+    setState(() {
+      _selectedPatientId = null;
+      _selectedPatient = null;
+
+      patientNameController.clear();
+      phoneController.clear();
+      placeController.clear();
+      ageController.clear();
+
+      selectedGender = null;
+      dob = null;
+    });
+
+    return;
+  }
+
+  final patient = _patients.firstWhere(
+    (p) => p['id'] == value,
+  );
+setState(() {
+  _selectedPatientId = value;
+  _selectedPatient = patient;
+});
+ // _onPatientSelected(patient);
+},
+)
+  )
+else
+  const Padding(
+    padding: EdgeInsets.all(16.0),
+    child: Text('No existing patients found. Please fill the form below.'),
+  ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -315,9 +462,12 @@ String formatBookingDate(DateTime date) =>
                     _buildTextField(
                       controller: patientNameController,
                       label: 'Patient Name',
+                      
                       icon: Icons.person,
+                      
                     ),
                     const SizedBox(height: 16),
+                    
                  _buildTextField(
   controller: phoneController,
   label: 'Phone Number',
@@ -504,6 +654,18 @@ const SizedBox(height: 16),
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+// onChanged: (value) {
+
+//   if (_isAutoFilling) return;
+
+//   if (_selectedPatient != null) {
+//     setState(() {
+//       _selectedPatient = null;
+//       _selectedPatientId = null;
+//     });
+//   }
+// },
+
       autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: (value) {
         if (value == null || value.trim().isEmpty) {
