@@ -588,6 +588,7 @@ if (result == true) {
                                       MaterialPageRoute(
                                         builder: (context) =>
                                             PrescriptionDetailsScreen(
+                                              userId: userId,
                                               // userId: userId,
                                             ),
                                       ),

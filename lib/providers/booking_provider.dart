@@ -99,6 +99,8 @@ Future<void> loadMore() async {
     reset: false,
     page: nextPage,
   );
+
+  state = state.copyWith(isLoadingMore: false);
 }
 
   Future<void> updateSelectedFilter(String filter)async {
@@ -235,30 +237,29 @@ Future<void> fetchBookings({
     return;
   }
 
-  try {
-    // ✅ RESET STATE (fresh load)
-    if (reset) {
-      state = state.copyWith(
-        currentPage: 1,
-        bookings: [],
-        hasNextPage: true,
-        isLoading: true,
-      );
-    }
-
-    final pageToLoad = page ?? state.currentPage;
-
-    final response = await _apiService.getAllBookings(
-      userId: userId,
-      status: state.selectedFilter == "All"
-          ? null
-          : state.selectedFilter.toLowerCase() == "cancelled"
-              ? "cancel"
-              : state.selectedFilter.toLowerCase(),
-      searchQuery: state.searchQuery.isEmpty ? null : state.searchQuery,
-      page: pageToLoad,
-      limit: 10,
+  if (reset) {
+    state = state.copyWith(
+      currentPage: 1,
+      bookings: [],
+      hasNextPage: true,
+       isLoading: state.bookings.isEmpty,
     );
+  }
+
+  try {
+   final response = await _apiService.getAllBookings(
+  userId: userId,
+  status: state.selectedFilter == "All"
+      ? null
+      : state.selectedFilter.toLowerCase() == "cancelled"
+          ? "cancel"
+          : state.selectedFilter.toLowerCase(),
+  searchQuery: state.searchQuery.isEmpty
+      ? null
+      : state.searchQuery,
+  page: page ?? state.currentPage,
+  limit: 10,
+);
 
     final data = response.data;
 
@@ -270,29 +271,18 @@ Future<void> fetchBookings({
 
     final pagination = data['pagination'];
 
-    final bool hasNext = pagination?['hasNextPage'] ?? false;
-    final int backendPage = pagination?['currentPage'] ?? pageToLoad;
-
-    // ✅ UPDATE STATE PROPERLY
     state = state.copyWith(
       bookings: reset
           ? parsedBookings
           : [...state.bookings, ...parsedBookings],
-      hasNextPage: hasNext,
-      currentPage: backendPage,
-      isLoading: false,
-      isLoadingMore: false,
+      hasNextPage: pagination['hasNextPage'],
+    currentPage: (page ?? state.currentPage),
     );
 
   } catch (e) {
-    log("❌ fetchBookings error: $e");
-
-    state = state.copyWith(
-      bookings: [],
-      isLoading: false,
-      isLoadingMore: false,
-      hasNextPage: false,
-    );
+    setBookings([]);
+  } finally {
+    setLoading(false);
   }
 }
 

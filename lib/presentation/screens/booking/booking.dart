@@ -5,25 +5,7 @@ import 'package:hosta/providers/booking_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../common/top_snackbar.dart';
-final filteredBookingsProvider = Provider<List<Map<String, dynamic>>>((ref) {
-  final state = ref.watch(bookingStateProvider);
 
-  final bookings = state.bookings;
-  final date = state.selectedDate;
-  final filter = state.selectedFilter.toLowerCase();
-
-  return bookings.where((b) {
-    final matchDate = date == null
-        ? true
-        : b["date"] == DateFormat('yyyy-MM-dd').format(date);
-
-    final matchStatus = filter == "all"
-        ? true
-        : b["status"] == filter;
-
-    return matchDate && matchStatus;
-  }).toList();
-});
 class BookingScreen extends ConsumerStatefulWidget {
   const BookingScreen({super.key});
 
@@ -32,8 +14,8 @@ class BookingScreen extends ConsumerStatefulWidget {
 }
 
 class _BookingScreenState extends ConsumerState<BookingScreen> {
- 
-
+  final ScrollController _scrollController = ScrollController();
+  bool _isFetchingMore = false;
   @override
   void initState() {
     super.initState();
@@ -44,7 +26,18 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(bookingStateProvider.notifier).initializeData();
     });
-  
+_scrollController.addListener(() {
+  if (_scrollController.position.pixels >=
+      _scrollController.position.maxScrollExtent - 200) {
+
+    if (_isFetchingMore) return;
+
+    _isFetchingMore = true;
+
+    ref.read(bookingStateProvider.notifier).loadMore()
+      .then((_) => _isFetchingMore = false);
+  }
+});
   }
  Future<void> _checkToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -347,21 +340,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                             ),
                           )
                         : ListView.builder(
-                            
-                           itemCount: filteredBookings.length + 1,
-                           itemBuilder: (context, index) {
+                            controller: _scrollController,
+                        itemCount: filteredBookings.length + (bookingState.hasNextPage ? 1 : 0),
+itemBuilder: (context, index) {
   if (index < filteredBookings.length) {
     final b = filteredBookings[index];
     return _buildBookingCard(b, screenWidth, screenHeight);
   } else {
-    return ref.watch(bookingStateProvider).isLoadingMore
-        ? const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        : const SizedBox();
+    return const Padding(
+      padding: EdgeInsets.all(16),
+      child: Center(child: CircularProgressIndicator()),
+    );
   }
-}
+},
                           ),
                   ),
                 ],

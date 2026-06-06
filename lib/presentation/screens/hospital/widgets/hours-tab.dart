@@ -20,13 +20,31 @@ class HoursTab extends StatelessWidget {
     final workingHoursGeneral = hospital["working_hours_general"] as List?;
     final workingHoursClinicNoBreak = hospital["working_hours_clinic_nobreak"] as List?;
 
-    if (workingHoursClinic != null && workingHoursClinic.isNotEmpty) {
-      return _buildHoursTabClinicFormat(workingHoursClinic, screenWidth, screenHeight);
-    } else if (workingHoursGeneral != null && workingHoursGeneral.isNotEmpty) {
-      return _buildHoursTabGeneralFormat(workingHoursGeneral, screenWidth, screenHeight);
-    } else if (workingHoursClinicNoBreak != null && workingHoursClinicNoBreak.isNotEmpty) {
-      return _buildHoursTabClinicNoBreakFormat(workingHoursClinicNoBreak, screenWidth, screenHeight);
-    } else {
+    if (workingHoursClinic != null &&
+    workingHoursClinic.isNotEmpty) {
+
+  return _buildHoursTabClinicFormat(
+      workingHoursClinic,
+      screenWidth,
+      screenHeight);
+
+} else if (workingHoursClinicNoBreak != null &&
+           workingHoursClinicNoBreak.isNotEmpty) {
+
+  return _buildHoursTabClinicNoBreakFormat(
+      workingHoursClinicNoBreak,
+      screenWidth,
+      screenHeight);
+
+} else if (workingHoursGeneral != null &&
+           workingHoursGeneral.isNotEmpty) {
+
+  return _buildHoursTabGeneralFormat(
+      workingHoursGeneral,
+      screenWidth,
+      screenHeight);
+
+} else {
       return Center(
         child: Text(
           "No working hours available",

@@ -17,6 +17,12 @@ class Hospitals extends StatefulWidget {
 }
 
 class _HospitalsState extends State<Hospitals> {
+  final ScrollController _scrollController = ScrollController();
+
+int currentPage = 1;
+bool hasNextPage = true;
+bool isLoadingMore = false;
+
   bool isLoading = true;
   bool isSearching=true;
   List<dynamic> hospitals = [];
@@ -27,35 +33,78 @@ class _HospitalsState extends State<Hospitals> {
   bool filterOpenNow = false;
   Position? userPosition;
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchHospitals();
-  }
-Future<void> _fetchHospitals({String query = ''}) async {
+ @override
+void initState() {
+  super.initState();
+
+  _fetchHospitals();
+
+  _scrollController.addListener(() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !isLoadingMore &&
+        hasNextPage) {
+      _loadMoreHospitals();
+    }
+  });
+}
+Future<void> _loadMoreHospitals() async {
+  if (isLoadingMore || !hasNextPage) return;
+
+  setState(() => isLoadingMore = true);
+
+  await _fetchHospitals(
+    query: searchQuery,
+    page: currentPage + 1,
+    loadMore: true,
+  );
+
+  setState(() => isLoadingMore = false);
+}
+Future<void> _fetchHospitals({
+  String query = '',
+  int page = 1,
+  bool loadMore = false,
+}) async {
   try {
-    if (query.isEmpty) {
-      setState(() => isLoading = true);
-    } else {
-      setState(() => isSearching = true); // 👈 only small loading
+    if (!loadMore) {
+      if (query.isEmpty) {
+        setState(() => isLoading = true);
+      } else {
+        setState(() => isSearching = true);
+      }
     }
 
-    final response = await ApiService().getAllHospitals(query);
+    final response = await ApiService().getAllHospitals(
+      query,
+      page: page,
+      limit: 10,
+    );
 
     List allHospitals = [];
 
-    if (response.data is Map && response.data['data'] is List) {
+    if (response.data is Map &&
+        response.data['data'] is List) {
       allHospitals = response.data['data'];
-    } else if (response.data is List) {
-      allHospitals = response.data;
     }
 
+    final pagination = response.data['pagination'];
+
+    final filtered = allHospitals.where((hospital) {
+      final hospitalType =
+          hospital['type']?.toString().toLowerCase() ?? '';
+
+      return hospitalType ==
+          widget.type.toLowerCase();
+    }).toList();
+
     setState(() {
-      hospitals = allHospitals.where((hospital) {
-        final hospitalType =
-            hospital['type']?.toString().toLowerCase() ?? '';
-        return hospitalType == widget.type.toLowerCase();
-      }).toList();
+      hospitals = loadMore
+          ? [...hospitals, ...filtered]
+          : filtered;
+
+      currentPage = pagination['currentPage'];
+      hasNextPage = pagination['hasNextPage'];
 
       isLoading = false;
       isSearching = false;
@@ -64,9 +113,46 @@ Future<void> _fetchHospitals({String query = ''}) async {
     setState(() {
       isLoading = false;
       isSearching = false;
+      isLoadingMore = false;
     });
   }
 }
+// Future<void> _fetchHospitals({String query = '',  int page = 1,
+//   bool loadMore = false,}) async {
+//   try {
+//     if (query.isEmpty) {
+//       setState(() => isLoading = true);
+//     } else {
+//       setState(() => isSearching = true); // 👈 only small loading
+//     }
+
+//     final response = await ApiService().getAllHospitals(query);
+
+//     List allHospitals = [];
+
+//     if (response.data is Map && response.data['data'] is List) {
+//       allHospitals = response.data['data'];
+//     } else if (response.data is List) {
+//       allHospitals = response.data;
+//     }
+
+//     setState(() {
+//       hospitals = allHospitals.where((hospital) {
+//         final hospitalType =
+//             hospital['type']?.toString().toLowerCase() ?? '';
+//         return hospitalType == widget.type.toLowerCase();
+//       }).toList();
+
+//       isLoading = false;
+//       isSearching = false;
+//     });
+//   } catch (e) {
+//     setState(() {
+//       isLoading = false;
+//       isSearching = false;
+//     });
+//   }
+// }
   // Future<void> _fetchHospitals() async {
   //   try {
   //     setState(() => isLoading = true);
@@ -644,15 +730,33 @@ if (filterNearest && userPosition != null) {
               child: filteredHospitals.isEmpty
                   ? _buildEmptyState(screenWidth, screenHeight)
                   : ListView.builder(
+                    controller: _scrollController,
                       padding: EdgeInsets.all(screenWidth * 0.03),
-                      itemCount: filteredHospitals.length,
-                      itemBuilder: (context, index) => InkWell(
+                      itemCount: filteredHospitals.length +
+    (isLoadingMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+
+  if (index == filteredHospitals.length) {
+    return const Padding(
+      padding: EdgeInsets.all(16),
+      child: Center(
+        child: CircularProgressIndicator(
+          color: Colors.green,
+        ),
+      ),
+    );
+  }
+
+  return InkWell(
                         onTap: () => _navigateToHospitalDetails(
                             filteredHospitals[index]),
                         child: _buildHospitalCard(filteredHospitals[index],
                             screenWidth, screenHeight),
-                      ),
+                      
+                      );
+                      }
                     ),
+  
             ),
           ],
         ),
