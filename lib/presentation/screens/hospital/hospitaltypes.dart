@@ -199,13 +199,14 @@ Future<void> fetchCategories({String? query}) async {
 }
 
 void onSearchChanged(String val) {
-    log("🔍 onSearchChanged called with: '$val'");
-  searchQuery = val;
+  setState(() {
+    searchQuery = val;
+  });
 
   if (_debounce?.isActive ?? false) _debounce!.cancel();
 
   _debounce = Timer(const Duration(milliseconds: 500), () {
-    page = 1; // 🔥 RESET PAGE
+    page = 1;
     fetchCategories(query: val);
   });
 }
@@ -260,41 +261,66 @@ void dispose() {
           ),
 
           // ===== GRID =====
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : GridView.builder(
-                    padding: EdgeInsets.all(screenWidth * 0.04),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      final item = categories[index];
-
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  Hospitals(type: item.name),
-                            ),
-                          );
-                        },
-                        child: _buildCard(
-                          item.name,
-                          item.imageUrl ?? '',
-                          screenWidth,
-                          screenHeight,
-                        ),
-                      );
-                    },
+        Expanded(
+  child: isLoading
+      ? const Center(
+          child: CircularProgressIndicator(),
+        )
+      : categories.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.search_off,
+                    size: 60,
+                    color: Colors.grey,
                   ),
-          ),
+                  SizedBox(height: 12),
+                  Text(
+                    searchQuery.isNotEmpty
+                        ? 'No categories found'
+                        : 'No categories available',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : GridView.builder(
+              padding: EdgeInsets.all(screenWidth * 0.04),
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final item = categories[index];
+
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => Hospitals(type: item.name),
+                      ),
+                    );
+                  },
+                  child: _buildCard(
+                    item.name,
+                    item.imageUrl ?? '',
+                    screenWidth,
+                    screenHeight,
+                  ),
+                );
+              },
+            ),
+)
         ],
       ),
     );

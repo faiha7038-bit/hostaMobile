@@ -175,7 +175,10 @@ if (authToken != null &&
 // } else {
 //   log("⚠️ No refresh token in response");
 // }
-
+final refreshToken = response.data["refreshToken"];   // Get from backend
+if (refreshToken != null && refreshToken.isNotEmpty) {
+  await prefs.setString('refreshToken', refreshToken);
+}log("FULL RESPONSE DATA: ${response.data}");
 final savedToken = prefs.getString('authToken');
 log("🔐 Verified saved token: ${savedToken != null ? 'Exists' : 'NULL'}");
 
