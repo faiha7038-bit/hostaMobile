@@ -987,7 +987,11 @@ class Signin extends StatefulWidget {
 class _SigninState extends State<Signin> {
   final TextEditingController phoneController = TextEditingController();
   final ApiService _apiService = ApiService();
-
+ @override
+  void initState() {
+    super.initState();
+    _apiService.init();
+  }
   bool isSendingOtp = false;
   String? phoneError;
 
@@ -1059,7 +1063,7 @@ Future<void> _sendOtp() async {
     log("📤 Request data: $requestData");
 
     final response = await _apiService.loginUser(requestData);
-
+log("HEADERS => ${response.headers.map}");
     log("📥 Response status: ${response.statusCode}");
     log("📥 Response data: ${response.data}");
 
