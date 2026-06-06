@@ -12,7 +12,8 @@ class ApiService {
   bool _isRefreshing = false;
   late final Dio _dio;
   late final Dio _refreshDio;
-  late PersistCookieJar cookieJar;
+  late final PersistCookieJar cookieJar;
+bool _cookieInitialized = false;
     Future<String?>? _refreshTokenFuture;
     
   // ✅ Add constructor
@@ -45,6 +46,7 @@ class ApiService {
         receiveDataWhenStatusError: true,
       ),
     );
+  
     // _dio.interceptors.add(CookieManager(cookieJar));
     // _refreshDio.interceptors.add(CookieManager(cookieJar));
 
@@ -164,7 +166,8 @@ log("HEADER => ${options.headers}");
       ),
     );
   }
-  Future<void> init() async {
+ 
+ Future<void> init() async {
   final dir = await getApplicationDocumentsDirectory();
 
   cookieJar = PersistCookieJar(
@@ -173,6 +176,8 @@ log("HEADER => ${options.headers}");
 
   _dio.interceptors.add(CookieManager(cookieJar));
   _refreshDio.interceptors.add(CookieManager(cookieJar));
+
+  _cookieInitialized = true;
 
   log("✅ CookieJar initialized");
 }
@@ -188,13 +193,21 @@ log("HEADER => ${options.headers}");
 Future<String?> _refresh(String refreshToken) async {
   final res = await _refreshDio.post(
     '/api/users/refresh',
-    data: {'refreshToken': refreshToken},   // ✅ Send it
+    data: {'refreshToken': refreshToken},
   );
+
   final newToken = res.data['accessToken'];
+
   if (newToken != null) {
     final prefs = await SharedPreferences.getInstance();
+
     await prefs.setString('authToken', newToken);
+
+    // 👇 THIS is the correct place
+    _dio.options.headers['Authorization'] = 'Bearer $newToken';
+    _refreshDio.options.headers['Authorization'] = 'Bearer $newToken';
   }
+
   return newToken;
 }
   // Refresh Token -
