@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
@@ -81,13 +82,14 @@ hasNextPage = true;
     }
 
     final response = await ApiService().getDoctors(
+      
       hospitalId: widget.hospitalId,
       speciality: widget.specialty,
       searchQuery: search,
       page: currentPage,
       limit: 10,
     );
-
+log("responseofdoctor${response.data}");
     if (!mounted) return;
 
     if (response.data['success'] == true) {

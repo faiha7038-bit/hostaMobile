@@ -1,228 +1,425 @@
+// import 'dart:developer';
+// import 'package:dio/dio.dart';
+// import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+// import 'dart:io';
+// import 'package:dio_smart_retry/dio_smart_retry.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:path_provider/path_provider.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:cookie_jar/cookie_jar.dart';
+
+// class ApiService {
+//   bool _isRefreshing = false;
+//   late final Dio _dio;
+//   late final Dio _refreshDio;
+//   late final PersistCookieJar cookieJar;
+// bool _cookieInitialized = false;
+//     Future<String?>? _refreshTokenFuture;
+    
+//   // ✅ Add constructor
+//   ApiService() {
+//       log("ApiService instance => ${hashCode}");
+//     // _dio = Dio(BaseOptions(baseUrl: "https://zorrowtek.in",
+//     //  connectTimeout: const Duration(seconds: 30),
+//     //   receiveTimeout: const Duration(seconds: 30),
+//     //     headers: {
+//     //     'Content-Type': 'application/json',
+//     //   },
+//     //   ));
+
+//     _dio = Dio(
+//       BaseOptions(
+//         baseUrl: "https://zorrowtek.in",
+//         connectTimeout: const Duration(seconds: 30),
+//         receiveTimeout: const Duration(seconds: 30),
+//         headers: {'Content-Type': 'application/json'},
+//         receiveDataWhenStatusError: true,
+//       ),
+//     );
+
+//     _refreshDio = Dio(
+//       BaseOptions(
+//         baseUrl: "https://zorrowtek.in",
+//         connectTimeout: const Duration(seconds: 30),
+//         receiveTimeout: const Duration(seconds: 30),
+//         headers: {'Content-Type': 'application/json'},
+//         receiveDataWhenStatusError: true,
+//       ),
+//     );
+  
+//     // _dio.interceptors.add(CookieManager(cookieJar));
+//     // _refreshDio.interceptors.add(CookieManager(cookieJar));
+
+//     _dio.interceptors.add(
+//       InterceptorsWrapper(
+//         onRequest: (options, handler) async {
+//           final prefs = await SharedPreferences.getInstance();
+
+//           final token = prefs.getString('authToken');
+
+//           if (token != null && token.isNotEmpty) {
+//             options.headers['Authorization'] = 'Bearer $token';
+
+//             log("🔐 TOKEN ADDED");
+//             log("TOKEN => $token");
+// log("HEADER => ${options.headers}");
+//           }
+
+//           log("📡 ${options.method} ${options.path}");
+
+//           handler.next(options);
+//         }, // onRequest: (options, handler) async {
+
+//         //   final prefs =
+//         //       await SharedPreferences.getInstance();
+
+//         //   final token =
+//         //       prefs.getString('authToken');
+
+//         //   if (token != null &&
+//         //       token.isNotEmpty) {
+//         //     options.headers['Authorization'] =
+//         //         'Bearer $token';
+
+//         //     print("🔐 TOKEN ADDED");
+//         //   }
+
+//         //   print(
+//         //       "📡 ${options.method} ${options.path}");
+
+//         //   handler.next(options);
+//         // },
+
+//         // ================= 401 HANDLER =================
+//  onError: (error, handler) async {
+//   log("🔥 ON ERROR CALLED");
+//   log("STATUS => ${error.response?.statusCode}");
+//   log("PATH => ${error.requestOptions.path}");
+
+//   final request = error.requestOptions;
+
+//   // Only handle 401 Unauthorized
+//   if (error.response?.statusCode != 401) {
+//     return handler.next(error);
+//   }
+
+//   // Avoid infinite loop on the refresh endpoint itself
+//   if (request.path.contains('/api/users/refresh')) {
+//     return handler.next(error);
+//   }
+
+//   final prefs = await SharedPreferences.getInstance();
+  
+//   // Try to get refresh token from SharedPreferences first
+//   String? refreshToken = prefs.getString('refreshToken');
+  
+//   // If not found, fallback to cookies
+//   if (refreshToken == null || refreshToken.isEmpty) {
+//     refreshToken = await _getRefreshTokenFromCookies();
+//   }
+
+//   if (refreshToken == null || refreshToken.isEmpty) {
+//     log("⚠️ No refresh token available – clearing session");
+//     await prefs.clear();
+//     await cookieJar.deleteAll();  // also clear cookies
+//     return handler.next(error);
+//   }
+
+//   try {
+//     // Use a future to prevent multiple concurrent refresh calls
+//     _refreshTokenFuture ??= _refresh(refreshToken);
+//     final newToken = await _refreshTokenFuture;
+//     _refreshTokenFuture = null;
+
+//     if (newToken == null) {
+//       log("❌ Refresh failed – clearing session");
+//       await prefs.clear();
+//       await cookieJar.deleteAll();
+//       return handler.next(error);
+//     }
+
+//     // Update the failed request with the new token and retry
+//     request.headers['Authorization'] = 'Bearer $newToken';
+//     final response = await _dio.fetch(request);
+//     return handler.resolve(response);
+//   } catch (e) {
+//     log("❌ Refresh exception: $e");
+//     _refreshTokenFuture = null;
+//     await prefs.clear();
+//     await cookieJar.deleteAll();
+//     return handler.next(error);
+//   }
+// }
+//       ),
+//     );
+//     // ================= RETRY =================
+
+//     _dio.interceptors.add(
+//       RetryInterceptor(
+//         dio: _dio,
+//         retries: 3,
+//         retryDelays: const [
+//           Duration(seconds: 1),
+//           Duration(seconds: 2),
+//           Duration(seconds: 3),
+//         ],
+//       ),
+//     );
+//   }
+ 
+//  Future<void> init() async {
+//   final dir = await getApplicationDocumentsDirectory();
+
+//   cookieJar = PersistCookieJar(
+//     storage: FileStorage("${dir.path}/.cookies/"),
+//   );
+
+//   _dio.interceptors.add(CookieManager(cookieJar));
+//   _refreshDio.interceptors.add(CookieManager(cookieJar));
+
+//   _cookieInitialized = true;
+
+//   log("✅ CookieJar initialized");
+// }
+ 
+//  Future<String?> _getRefreshTokenFromCookies() async {
+//   final uri = Uri.parse('https://zorrowtek.in/api/users/refresh');
+//   final cookies = await cookieJar.loadForRequest(uri);
+//   for (var cookie in cookies) {
+//     if (cookie.name == 'refreshToken') return cookie.value;
+//   }
+//   return null;
+// }
+// Future<String?> _refresh(String refreshToken) async {
+//   final res = await _refreshDio.post(
+//     '/api/users/refresh',
+//     data: {'refreshToken': refreshToken},
+//   );
+
+//   final newToken = res.data['accessToken'];
+
+//   if (newToken != null) {
+//     final prefs = await SharedPreferences.getInstance();
+
+//     await prefs.setString('authToken', newToken);
+
+//     // 👇 THIS is the correct place
+//     _dio.options.headers['Authorization'] = 'Bearer $newToken';
+//     _refreshDio.options.headers['Authorization'] = 'Bearer $newToken';
+//   }
+
+//   return newToken;
+// }
+//   // Refresh Token -
+//   Future<Response> refreshUserToken(Map<String, dynamic> data) async {
+//     return await _dio.post('/api/users/refresh', data: data);
+//   }
 import 'dart:developer';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'dart:io';
-import 'package:dio_smart_retry/dio_smart_retry.dart';
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cookie_jar/cookie_jar.dart';
+
+import 'token_manager.dart';
 
 class ApiService {
-  bool _isRefreshing = false;
-  late final Dio _dio;
-  late final Dio _refreshDio;
+  static final ApiService _instance = ApiService._internal();
+
+  factory ApiService() => _instance;
+
+  ApiService._internal();
+
+  late final Dio dio;
+  late final Dio refreshDio;
   late final PersistCookieJar cookieJar;
-bool _cookieInitialized = false;
-    Future<String?>? _refreshTokenFuture;
-    
-  // ✅ Add constructor
-  ApiService() {
-      log("ApiService instance => ${hashCode}");
-    // _dio = Dio(BaseOptions(baseUrl: "https://zorrowtek.in",
-    //  connectTimeout: const Duration(seconds: 30),
-    //   receiveTimeout: const Duration(seconds: 30),
-    //     headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   ));
 
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: "https://zorrowtek.in",
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        headers: {'Content-Type': 'application/json'},
-        receiveDataWhenStatusError: true,
-      ),
+  bool _initialized = false;
+  Future<String?>? _refreshFuture;
+
+  final String baseUrl = "https://zorrowtek.in";
+
+  // ---------------- INIT ----------------
+  Future<void> init() async {
+    if (_initialized) return;
+
+    final dir = await getApplicationDocumentsDirectory();
+
+    cookieJar = PersistCookieJar(
+      storage: FileStorage("${dir.path}/.cookies/"),
     );
 
-    _refreshDio = Dio(
-      BaseOptions(
-        baseUrl: "https://zorrowtek.in",
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        headers: {'Content-Type': 'application/json'},
-        receiveDataWhenStatusError: true,
-      ),
-    );
-  
-    // _dio.interceptors.add(CookieManager(cookieJar));
-    // _refreshDio.interceptors.add(CookieManager(cookieJar));
+    dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {"Content-Type": "application/json"},
+    ));
 
-    _dio.interceptors.add(
+    refreshDio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {"Content-Type": "application/json"},
+    ));
+
+    dio.interceptors.add(CookieManager(cookieJar));
+    refreshDio.interceptors.add(CookieManager(cookieJar));
+
+    // 🔥 TOKEN INTERCEPTOR
+    dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final prefs = await SharedPreferences.getInstance();
-
-          final token = prefs.getString('authToken');
-
-          if (token != null && token.isNotEmpty) {
+          final token = await TokenManager.getAccessToken();
+log("TOKEN => $token");
+          if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
-
-            log("🔐 TOKEN ADDED");
-            log("TOKEN => $token");
-log("HEADER => ${options.headers}");
           }
-
+  log("HEADERS => ${options.headers}");
           log("📡 ${options.method} ${options.path}");
-
           handler.next(options);
-        }, // onRequest: (options, handler) async {
+        },
 
-        //   final prefs =
-        //       await SharedPreferences.getInstance();
-
-        //   final token =
-        //       prefs.getString('authToken');
-
-        //   if (token != null &&
-        //       token.isNotEmpty) {
-        //     options.headers['Authorization'] =
-        //         'Bearer $token';
-
-        //     print("🔐 TOKEN ADDED");
-        //   }
-
-        //   print(
-        //       "📡 ${options.method} ${options.path}");
-
-        //   handler.next(options);
-        // },
-
-        // ================= 401 HANDLER =================
- onError: (error, handler) async {
-  log("🔥 ON ERROR CALLED");
+        onError: (error, handler) async {
+          log("🔥 ON ERROR CALLED");
   log("STATUS => ${error.response?.statusCode}");
   log("PATH => ${error.requestOptions.path}");
+          if (error.response?.statusCode != 401) {
+            return handler.next(error);
+          }
 
-  final request = error.requestOptions;
+          final request = error.requestOptions;
 
-  // Only handle 401 Unauthorized
-  if (error.response?.statusCode != 401) {
-    return handler.next(error);
-  }
+          // prevent loop
+          if (request.path.contains("/api/users/refresh")) {
+            return handler.next(error);
+          }
 
-  // Avoid infinite loop on the refresh endpoint itself
-  if (request.path.contains('/api/users/refresh')) {
-    return handler.next(error);
-  }
+         final refreshToken = await _getRefreshTokenFromCookies();
 
-  final prefs = await SharedPreferences.getInstance();
-  
-  // Try to get refresh token from SharedPreferences first
-  String? refreshToken = prefs.getString('refreshToken');
-  
-  // If not found, fallback to cookies
-  if (refreshToken == null || refreshToken.isEmpty) {
-    refreshToken = await _getRefreshTokenFromCookies();
-  }
+          if (refreshToken == null) {
+            await TokenManager.clear();
+            return handler.next(error);
+          }
 
-  if (refreshToken == null || refreshToken.isEmpty) {
-    log("⚠️ No refresh token available – clearing session");
-    await prefs.clear();
-    await cookieJar.deleteAll();  // also clear cookies
-    return handler.next(error);
-  }
+          try {
+            _refreshFuture ??= _refresh(refreshToken);
+            final newToken = await _refreshFuture;
+            _refreshFuture = null;
 
-  try {
-    // Use a future to prevent multiple concurrent refresh calls
-    _refreshTokenFuture ??= _refresh(refreshToken);
-    final newToken = await _refreshTokenFuture;
-    _refreshTokenFuture = null;
+            if (newToken == null) {
+              await TokenManager.clear();
+              return handler.next(error);
+            }
 
-    if (newToken == null) {
-      log("❌ Refresh failed – clearing session");
-      await prefs.clear();
-      await cookieJar.deleteAll();
-      return handler.next(error);
-    }
+            request.headers['Authorization'] = 'Bearer $newToken';
+            final response = await dio.fetch(request);
 
-    // Update the failed request with the new token and retry
-    request.headers['Authorization'] = 'Bearer $newToken';
-    final response = await _dio.fetch(request);
-    return handler.resolve(response);
-  } catch (e) {
-    log("❌ Refresh exception: $e");
-    _refreshTokenFuture = null;
-    await prefs.clear();
-    await cookieJar.deleteAll();
-    return handler.next(error);
-  }
-}
+            return handler.resolve(response);
+          } catch (e) {
+            _refreshFuture = null;
+            await TokenManager.clear();
+            return handler.next(error);
+          }
+        },
       ),
     );
-    // ================= RETRY =================
 
-    _dio.interceptors.add(
-      RetryInterceptor(
-        dio: _dio,
-        retries: 3,
-        retryDelays: const [
-          Duration(seconds: 1),
-          Duration(seconds: 2),
-          Duration(seconds: 3),
-        ],
-      ),
-    );
+    _initialized = true;
+    log("✅ ApiService Initialized (Singleton)");
   }
- 
- Future<void> init() async {
-  final dir = await getApplicationDocumentsDirectory();
-
-  cookieJar = PersistCookieJar(
-    storage: FileStorage("${dir.path}/.cookies/"),
+Future<String?> _getRefreshTokenFromCookies() async {
+  final cookies = await cookieJar.loadForRequest(
+    Uri.parse("https://zorrowtek.in"),
+    
   );
 
-  _dio.interceptors.add(CookieManager(cookieJar));
-  _refreshDio.interceptors.add(CookieManager(cookieJar));
-
-  _cookieInitialized = true;
-
-  log("✅ CookieJar initialized");
-}
- 
- Future<String?> _getRefreshTokenFromCookies() async {
-  final uri = Uri.parse('https://zorrowtek.in/api/users/refresh');
-  final cookies = await cookieJar.loadForRequest(uri);
-  for (var cookie in cookies) {
-    if (cookie.name == 'refreshToken') return cookie.value;
+  for (final cookie in cookies) {
+    log("COOKIE => ${cookie.name} = ${cookie.value}");
+log("COOKIE COUNT => ${cookies.length}");
+    if (cookie.name == "refreshToken") {
+      return cookie.value;
+    }
   }
+
   return null;
 }
-Future<String?> _refresh(String refreshToken) async {
-  final res = await _refreshDio.post(
+  // ---------------- REFRESH TOKEN ----------------
+  Future<String?> _refresh(String refreshToken) async {
+  
+  final res = await refreshDio.post(
     '/api/users/refresh',
-    data: {'refreshToken': refreshToken},
+    data: {
+      'refreshToken': refreshToken,
+    },
   );
+  log("refresh token called");
+  log("REFRESH RESPONSE => ${res.data}");
 
-  final newToken = res.data['accessToken'];
+  final newToken = res.data['token'];
 
   if (newToken != null) {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setString('authToken', newToken);
-
-    // 👇 THIS is the correct place
-    _dio.options.headers['Authorization'] = 'Bearer $newToken';
-    _refreshDio.options.headers['Authorization'] = 'Bearer $newToken';
+    await TokenManager.saveAccessToken(newToken);
+    log("✅ NEW ACCESS TOKEN SAVED");
   }
 
   return newToken;
 }
-  // Refresh Token -
-  Future<Response> refreshUserToken(Map<String, dynamic> data) async {
-    return await _dio.post('/api/users/refresh', data: data);
+
+  // ---------------- LOGIN ----------------
+  // Future<Response> loginUser(Map<String, dynamic> data) async {
+  //   return await dio.post('/api/users/login/phone', data: data);
+  // }
+
+  // Future<Response> otpUser(Map<String, dynamic> data) async {
+  //   return await dio.post('/api/users/otp', data: data);
+  // }
+
+  // ---------------- PRESCRIPTION ----------------
+  Future<Response> getPrescriptions({
+    String? userId,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    return await dio.get(
+      '/api/prescription',
+      queryParameters: {
+        if (userId != null) "userId": userId,
+        "page": page,
+        "limit": limit,
+      },
+    );
+  }
+
+  // ---------------- BOOKING ----------------
+  // Future<Response> createBooking(Map<String, dynamic> data) async {
+  //   return await dio.post('/api/booking', data: data);
+  // }
+
+  // Future<Response> getBookings({String? userId}) async {
+  //   return await dio.get(
+  //     '/api/booking',
+  //     queryParameters: {
+  //       if (userId != null) "userId": userId,
+  //     },
+  //   );
+  // }
+
+  // ---------------- NOTIFICATIONS ----------------
+  Future<Response> getNotifications(String userId) async {
+    return await dio.get('/api/notifications/user/no-read/$userId');
   }
 
   //Medicine Reminder CREATE
   Future<Response> createMedicineReminder(Map<String, dynamic> data) async {
-    return await _dio.post('/api/medicinereminders', data: data);
+    return await dio.post('/api/medicinereminders', data: data);
   }
 
   // ✅ Medicine Reminder GET (User- reminders)
   Future<Response> getUserMedicineReminders(String userId) async {
-    return await _dio.get('/api/medicinereminders/user/$userId');
+    return await dio.get('/api/medicinereminders/user/$userId');
   }
 
   Future<Response> getAllCarousel({double? latitude, double? longitude}) async {
@@ -234,7 +431,7 @@ Future<String?> _refresh(String refreshToken) async {
       queryParams['lng'] = longitude.toString();
     }
 
-    return await _dio.get(
+    return await dio.get(
       '/api/ads/nearby',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
@@ -262,7 +459,7 @@ Future<String?> _refresh(String refreshToken) async {
     int page = 1,
     int limit = 10,
   }) async {
-    return await _dio.get(
+    return await dio.get(
       '/api/hospital',
       queryParameters: {"search_query": query, "page": page, "limit": limit},
     );
@@ -270,7 +467,7 @@ Future<String?> _refresh(String refreshToken) async {
 
   // GET a hospitals
   Future<Response> getAHospitals(String id) async {
-    return await _dio.get(
+    return await dio.get(
       '/api/hospital/$id',
       // "/hospital/$id"
     );
@@ -281,14 +478,14 @@ Future<String?> _refresh(String refreshToken) async {
   // }
 
   Future<Response> getAHospitalsReview(String id) async {
-    return await _dio.get('/api/reviews/hospital/$id');
+    return await dio.get('/api/reviews/hospital/$id');
   }
 
   // Create a reviewf
   Future<Response> createAHospitalReview(
     Map<String, dynamic> reviewData,
   ) async {
-    return await _dio.post('/api/reviews', data: reviewData);
+    return await dio.post('/api/reviews', data: reviewData);
   }
 
   // Update a review
@@ -296,11 +493,11 @@ Future<String?> _refresh(String refreshToken) async {
     String id,
     Map<String, dynamic> reviewData,
   ) async {
-    return await _dio.put('/api/reviews/$id', data: reviewData);
+    return await dio.put('/api/reviews/$id', data: reviewData);
   }
 
   Future<Response> deleteAHospitalReview(String id) async {
-    return await _dio.delete('/api/reviews/$id');
+    return await dio.delete('/api/reviews/$id');
   }
 
   // GET all donors
@@ -331,7 +528,7 @@ Future<String?> _refresh(String refreshToken) async {
 
     print("📤 QUERY PARAMS: $queryParams");
 
-    return await _dio.get('/api/donors', queryParameters: queryParams);
+    return await dio.get('/api/donors', queryParameters: queryParams);
   }
 
   // GET single donor
@@ -341,19 +538,19 @@ Future<String?> _refresh(String refreshToken) async {
 
   // CREATE donor
   Future<Response> createADonor(Map<String, dynamic> data) async {
-    return await _dio.post('/api/donors', data: data);
+    return await dio.post('/api/donors', data: data);
   }
 
   // UPDATE donor
   Future<Response> updateDonor(String id, Map<String, dynamic> data) async {
-    return await _dio.put('/api/donors/$id', data: data);
+    return await dio.put('/api/donors/$id', data: data);
   }
 
   // DELETE donor
   Future<Response> deleteDonor(String id) async {
     print("DELETE DONOR ID => $id");
 
-    return await _dio.delete('/api/donors/$id');
+    return await dio.delete('/api/donors/$id');
   }
 
   // LOGIN
@@ -364,11 +561,19 @@ Future<String?> _refresh(String refreshToken) async {
   // }
 Future<Response> loginUser(Map<String, dynamic> data) async {
   log("LOGIN ApiService instance => ${hashCode}");
-  final response = await _dio.post(
+  final response = await dio.post(
     '/api/users/login/phone',
     data: data,
+    
   );
 
+final cookies = await cookieJar.loadForRequest(
+  Uri.parse("https://zorrowtek.in"),
+);
+
+for (final c in cookies) {
+  log("COOKIE => ${c.name} = ${c.value}");
+}
   // final cookies = await cookieJar.loadForRequest(
   //   Uri.parse("https://zorrowtek.in"),
   // );
@@ -380,25 +585,25 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
   return response;
 }
   Future<Response> otpUser(Map<String, dynamic> data) async {
-    return await _dio.post('/api/users/otp', data: data);
+    return await dio.post('/api/users/otp', data: data);
   }
 
   // SIGNUP
   Future<Response> signupUser(Map<String, dynamic> data) async {
-    return await _dio.post('/api/users', data: data);
+    return await dio.post('/api/users', data: data);
   }
 
   Future<Response> getAUser(String id) async {
-    return await _dio.get('/api/users/$id');
+    return await dio.get('/api/users/$id');
   }
 
   Future<Response> deleteAUser(String id) async {
-    return await _dio.delete('/api/users/$id');
+    return await dio.delete('/api/users/$id');
   }
 
   // Update user
   Future<Response> updateUser(String id, Map<String, dynamic> data) async {
-    return await _dio.put('/api/users/$id', data: data);
+    return await dio.put('/api/users/$id', data: data);
   }
 
   Future<Response> updateUserWithImage(
@@ -422,7 +627,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
           ),
         });
 
-        return await _dio.put(
+        return await dio.put(
           '/api/users/$id',
           data: formData,
           options: Options(
@@ -432,7 +637,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
         );
       } else {
         // Regular update without image
-        return await _dio.put('/api/users/$id', data: data);
+        return await dio.put('/api/users/$id', data: data);
       }
     } catch (e) {
       print('Error in updateUserWithImage: $e');
@@ -446,7 +651,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
     if (searchQuery != null && searchQuery.isNotEmpty) {
       url += '?search_query=$searchQuery';
     }
-    return await _dio.get(url);
+    return await dio.get(url);
   }
 
   // GET Ambulances
@@ -472,7 +677,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
       queryParams['search_query'] = searchQuery;
 
     log("📤 QUERY PARAMS: $queryParams");
-    return await _dio.get('/api/ambulance', queryParameters: queryParams);
+    return await dio.get('/api/ambulance', queryParameters: queryParams);
   }
 
   //  GET MY AMBULANCE
@@ -482,7 +687,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
 
   // DELETE ambulance
   Future<Response> deleteAmbulance(String id) async {
-    return await _dio.delete('/api/ambulance/$id');
+    return await dio.delete('/api/ambulance/$id');
   }
 
   // EDIT ambulance
@@ -490,31 +695,31 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
     String id,
     Map<String, dynamic> updatedData,
   ) async {
-    return await _dio.put('/api/ambulance/$id', data: updatedData);
+    return await dio.put('/api/ambulance/$id', data: updatedData);
   }
 
   //create Ambulance
   Future<Response> createAmbulance(Map<String, dynamic> data) async {
-    return await _dio.post('/api/ambulance', data: data);
+    return await dio.post('/api/ambulance', data: data);
   }
 
   // GET Notifications
   Future<Response> getAllNotificationRead(String id) async {
-    return await _dio.get('/api/notifications/user/read/$id');
+    return await dio.get('/api/notifications/user/read/$id');
   }
 
   Future<Response> getAllNotificationUnRead(String id) async {
-    return await _dio.get('/api/notifications/user/no-read/$id');
+    return await dio.get('/api/notifications/user/no-read/$id');
   }
 
   // PATCH read all notifications
   Future<Response> allReadNotifications(String id) async {
-    return await _dio.patch('/api/notifications/user/read-all/$id');
+    return await dio.patch('/api/notifications/user/read-all/$id');
   }
 
   // PATCH single notification
   Future<Response> aReadNotification(String id) async {
-    return await _dio.patch('/api/notifications/user/$id');
+    return await dio.patch('/api/notifications/user/$id');
   }
 
   //create booking
@@ -535,7 +740,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
 
     //final prefs = await SharedPreferences.getInstance();
     // final token = prefs.getString('authToken');
-    return await _dio.post('/api/booking', data: bookingData);
+    return await dio.post('/api/booking', data: bookingData);
 
     // final response = await _dio.post(
     //   '/api/booking',
@@ -568,7 +773,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
     if (page != null) queryParams['page'] = page;
     if (limit != null) queryParams['limit'] = limit;
 
-    return await _dio.get('/api/booking', queryParameters: queryParams);
+    return await dio.get('/api/booking', queryParameters: queryParams);
   }
   // GET bookings
   // Future<Response> getAllBookings({
@@ -598,7 +803,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
     Map<String, dynamic> data,
   ) async {
     print('📡 Updating booking: $bookingId');
-    return await _dio.put('/api/booking/$bookingId', data: data);
+    return await dio.put('/api/booking/$bookingId', data: data);
   }
 
   /// Get doctors with optional filters
@@ -641,7 +846,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
 
     log("Calling /api/doctor with params: $queryParams");
 
-    return await _dio.get('/api/doctor', queryParameters: queryParams);
+    return await dio.get('/api/doctor', queryParameters: queryParams);
   }
 
   // In api_service.dart
@@ -650,7 +855,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
     print("🔵 GET Doctor by ID API Call");
     print("🔵 URL: /api/doctor/$doctorId");
 
-    return await _dio.get('/api/doctor/$doctorId');
+    return await dio.get('/api/doctor/$doctorId');
   }
   // UPDATE booking
   // Future<Response> getFilter(String filter) async {
@@ -658,23 +863,23 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
   // }
 
   Future<Response> sendEmail(Map<String, dynamic> data) async {
-    return await _dio.post('/api/email', data: data);
+    return await dio.post('/api/email', data: data);
   }
 
   //forgot password
   // SEND RESET PASSWORD OTP
   Future<Response> sendResetPasswordOtp(Map<String, dynamic> data) async {
-    return await _dio.post('/api/users/auth/send-otp', data: data);
+    return await dio.post('/api/users/auth/send-otp', data: data);
   }
 
   // VERIFY RESET PASSWORD OTP
   Future<Response> verifyResetPasswordOtp(Map<String, dynamic> data) async {
-    return await _dio.post('/api/users/auth/verify-otp', data: data);
+    return await dio.post('/api/users/auth/verify-otp', data: data);
   }
 
   // RESET PASSWORD
   Future<Response> resetForgotPassword(Map<String, dynamic> data) async {
-    return await _dio.post('/api/users/auth/reset-password', data: data);
+    return await dio.post('/api/users/auth/reset-password', data: data);
   }
 
   // Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
@@ -682,7 +887,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
   // }
   // ✅ CHANGE PASSWORD (new method)
   Future<Response> changePassword(Map<String, dynamic> data) async {
-    return await _dio.put('/api/users/auth/change-password', data: data);
+    return await dio.put('/api/users/auth/change-password', data: data);
   }
   //   // ================= PHARMACY =================
 
@@ -720,7 +925,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
       // =========================
       // 1. GET PRESIGNED URL
       // =========================
-      final res = await _dio.post(
+      final res = await dio.post(
         '/api/presignurl',
         data: {
           "filename": fileName,
@@ -781,7 +986,7 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
     print("id: $userId");
 
     try {
-      final res = await _dio.delete(
+      final res = await dio.delete(
         '/api/presignurl',
         data: {"key": key, "role": "user", "id": int.parse(userId)},
         options: Options(headers: {"Authorization": "Bearer $token"}),
@@ -807,39 +1012,39 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
     required int hospitalId,
     required int userId,
   }) async {
-    return await _dio.get(
+    return await dio.get(
       '/api/patients',
       queryParameters: {'hospitalId': hospitalId, 'userId': userId},
     );
   }
   //prescription
- Future<Response> getPrescriptions({
-  String? userId,
-  int page = 1,
-  int limit = 10,
-  String? date,
-}) async {
+//  Future<Response> getPrescriptions({
+//   String? userId,
+//   int page = 1,
+//   int limit = 10,
+//   String? date,
+// }) async {
 
-  final Map<String, dynamic> queryParams = {};
+//   final Map<String, dynamic> queryParams = {};
 
-  if (userId != null && userId.isNotEmpty) {
-    queryParams['userId'] = userId;
-  }
+//   if (userId != null && userId.isNotEmpty) {
+//     queryParams['userId'] = userId;
+//   }
 
-  queryParams['page'] = page;
-  queryParams['limit'] = limit;
+//   queryParams['page'] = page;
+//   queryParams['limit'] = limit;
 
-  if (date != null && date.isNotEmpty) {
-    queryParams['date'] = date;
-  }
+//   if (date != null && date.isNotEmpty) {
+//     queryParams['date'] = date;
+//   }
 
-  print("📤 PRESCRIPTION QUERY PARAMS: $queryParams");
+//   print("📤 PRESCRIPTION QUERY PARAMS: $queryParams");
 
-  return await _dio.get(
-    '/api/prescription',
-    queryParameters: queryParams,
-  );
-}
+//   return await dio.get(
+//     '/api/prescription',
+//     queryParameters: queryParams,
+//   );
+// }
 Future<Response> getCategories({
   String? searchQuery,
   int page = 1,
@@ -857,6 +1062,6 @@ Future<Response> getCategories({
   }
 
   log("Calling /api/category with params: $queryParams");
-  return await _dio.get('/api/category', queryParameters: queryParams);
+  return await dio.get('/api/category', queryParameters: queryParams);
 }
 }

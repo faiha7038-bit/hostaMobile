@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/doctor_model.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
@@ -34,44 +36,22 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     _fetchDoctorDetails();
   }
   
-  Future<void> _fetchDoctorDetails() async {
-    if (doctorDetails != null) return; // Already have data
-    
-    if (!mounted) return;
-    
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-    
-    try {
-      final response = await ApiService().getDoctorById(widget.doctor.id.toString());
-      
-      if (!mounted) return;
-      
-      print("📡 Doctor Details Response: ${response.data}");
-      
-      if (response.data['success'] == true && response.data['data'] != null) {
-        setState(() {
-          doctorDetails = Doctor.fromJson(response.data['data']);
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          errorMessage = response.data['message'] ?? 'Failed to load doctor details';
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      print("❌ Error fetching doctor details: $e");
-      if (mounted) {
-        setState(() {
-          errorMessage = 'Error loading doctor details';
-          isLoading = false;
-        });
-      }
+Future<void> _fetchDoctorDetails() async {
+  try {
+    final response = await ApiService()
+        .getDoctorById(widget.doctor.id.toString());
+
+    log("DOCTOR RESPONSE => ${response.data}");
+
+    if (response.data['success'] == true) {
+      setState(() {
+        doctorDetails = Doctor.fromJson(response.data['data']);
+      });
     }
+  } catch (e) {
+    log("ERROR => $e");
   }
+}
 
   @override
   Widget build(BuildContext context) {
