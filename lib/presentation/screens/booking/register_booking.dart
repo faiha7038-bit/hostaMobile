@@ -13,17 +13,50 @@ class RegisterBooking extends StatefulWidget {
 
   @override
   State<RegisterBooking> createState() => _RegisterBookingState();
+
 }
 
 class _RegisterBookingState extends State<RegisterBooking> {
-  
+  List<int> getAvailableWeekdays() {
+  final Map<String, int> dayMap = {
+    'monday': DateTime.monday,
+    'tuesday': DateTime.tuesday,
+    'wednesday': DateTime.wednesday,
+    'thursday': DateTime.thursday,
+    'friday': DateTime.friday,
+    'saturday': DateTime.saturday,
+    'sunday': DateTime.sunday,
+  };
+
+  final List<int> availableDays = [];
+
+  // consultingOne
+  for (final item in widget.doctor.consultingOne) {
+    if (!item.isHoliday) {
+      availableDays.add(
+        dayMap[item.day.toLowerCase()]!,
+      );
+    }
+  }
+
+  // consultingTwo
+  for (final item in widget.doctor.consultingTwo) {
+    if (!item.isHoliday) {
+      availableDays.add(
+        dayMap[item.day.toLowerCase()]!,
+      );
+    }
+  }
+
+  return availableDays.toSet().toList();
+}
   final TextEditingController patientNameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController placeController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   DateTime? dob;
   DateTime? appointmentDate;
-  String? selectedTimeSlot;
+
   String? selectedGender;
   bool _isSubmitting = false;
   final _formKey = GlobalKey<FormState>();
@@ -32,26 +65,11 @@ int? _selectedPatientId;
 Map<String, dynamic>? _selectedPatient;
 bool _isLoadingPatients = true;
 bool _isAutoFilling = false;
-  List<String> get availableTimeSlots {
-    List<String> slots = [];
-    if (widget.doctor.consulting.morningSession != null) {
-      slots.add(widget.doctor.consulting.morningSession!.range);
-    }
-    if (widget.doctor.consulting.eveningSession != null) {
-      slots.add(widget.doctor.consulting.eveningSession!.range);
-    }
-    if (widget.doctor.outDoorConsulting != null) {
-      slots.add(widget.doctor.outDoorConsulting!.time.range);
-    }
-    return slots;
-  }
+
 
  @override
 void initState() {
   super.initState();
-  if (availableTimeSlots.isNotEmpty) {
-    selectedTimeSlot = availableTimeSlots.first;
-  }
   _fetchPatients();
 }
 
@@ -132,6 +150,7 @@ void _onPatientSelected(dynamic patient) {
           : (appointmentDate ?? now),
       firstDate: isPastOnly ? DateTime(1900) : now,
       lastDate: isPastOnly ? now : now.add(const Duration(days: 365)),
+      
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(

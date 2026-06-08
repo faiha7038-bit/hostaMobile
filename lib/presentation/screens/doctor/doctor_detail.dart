@@ -2,7 +2,9 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/doctor_model.dart';
+import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
 class DoctorDetailScreen extends StatefulWidget {
@@ -174,7 +176,7 @@ Container(
 ),
             /// TIMINGS
             Text(
-              "Available Timings",
+              "Available Days",
               style: TextStyle(
                 fontSize: isSmallScreen ? 16 : 20,
                 fontWeight: FontWeight.bold,
@@ -182,7 +184,18 @@ Container(
             ),
 
             SizedBox(height: screenHeight * 0.012),
+Wrap(
+  spacing: 8,
+  children: doctorDetails!.availableDays.map((day) {
+    return Chip(
+      label: Text(day),
+      backgroundColor: Colors.green.shade50,
+      avatar: const Icon(Icons.check, color: Colors.green, size: 18),
+    );
+  }).toList(),
+),
 
+SizedBox(height: 20),
             /// Morning Session
             if (doctorDetails!.consulting.morningSession != null)
               _timingTile(
@@ -295,17 +308,54 @@ Container(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(10)),
                   backgroundColor: Colors.green
                 ),
-                 onPressed: doctorDetails!.bookingOpen
-      ? () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  RegisterBooking(doctor: widget.doctor),
+         onPressed: doctorDetails!.bookingOpen
+    ? () async {
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getString('userId') ?? '';
+
+        if (userId.isEmpty) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text("Login Required",style: TextStyle(color: Colors.green),),
+              content: const Text(
+                "Please login to book an appointment.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const Signin(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Login",
+                    style: TextStyle(color: Colors.green),
+                  ),
+                ),
+              ],
             ),
           );
+          return;
         }
-      : null, 
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                RegisterBooking(doctor: widget.doctor),
+          ),
+        );
+      }
+    : null,
                 
                 child: Text(
                   doctorDetails!.bookingOpen ? "Book Appointment" : "CLOSED",

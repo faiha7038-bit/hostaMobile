@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../screens/doctor/doctor_detail.dart';
 import '../../../data/models/doctor_model.dart';
 
@@ -298,18 +300,55 @@ Widget _buildContent() {
               width: double.infinity,
               margin: const EdgeInsets.all(12),
               child: ElevatedButton(
-                 onPressed: doctor.bookingOpen
-      ? () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => RegisterBooking(
-                doctor: doctor,
+          onPressed: doctor.bookingOpen
+    ? () async {
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getString('userId') ?? '';
+
+        if (userId.isEmpty) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text("Login Required",style: TextStyle(color: Colors.green),),
+              content: const Text(
+                "Please login to book an appointment.",
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => Signin(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Login",
+                    style: TextStyle(color: Colors.green),
+                  ),
+                ),
+              ],
             ),
           );
+          return;
         }
-      : null,
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RegisterBooking(
+              doctor: doctor,
+            ),
+          ),
+        );
+      }
+    : null,
 
                 style: ElevatedButton.styleFrom(
                   backgroundColor: doctor.bookingOpen ? Colors.green : Colors.grey,
