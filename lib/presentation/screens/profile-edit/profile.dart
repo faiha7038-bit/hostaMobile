@@ -262,7 +262,7 @@ void _showProfileOptions(
                             key: const Key('edit_menu_button'),
                             icon: const Icon(Icons.more_vert, color: Colors.black, size: 20),
                             elevation: 2,
-                            color: Colors.green,
+                            color: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -284,11 +284,11 @@ void _showProfileOptions(
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.edit, size: 16, color: Colors.white),
+                                      Icon(Icons.edit, size: 16, color: Colors.black),
                                       SizedBox(width: 8),
                                       Text(
                                         'Edit',
-                                        style: TextStyle(fontSize: 14, color: Colors.white),
+                                        style: TextStyle(fontSize: 14, color: Colors.black),
                                       ),
                                     ],
                                   ),

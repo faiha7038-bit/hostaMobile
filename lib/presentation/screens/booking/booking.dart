@@ -67,6 +67,7 @@ _scrollController.addListener(() {
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 1),
     );
+      log("PICKED DATE => $picked");
     if (picked != null && mounted) {
       ref.read(bookingStateProvider.notifier).updateSelectedDate(picked);
     }
@@ -268,7 +269,7 @@ _scrollController.addListener(() {
                           style: TextStyle(fontSize: screenWidth * 0.035),
                         ),
                       ),
-                      if (selectedDate != null)
+                     if (ref.watch(bookingStateProvider).selectedDate != null)
                         IconButton(
                           icon: Icon(Icons.clear, size: screenWidth * 0.045),
                           onPressed: () {

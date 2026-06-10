@@ -722,17 +722,7 @@ for (final c in cookies) {
     return await dio.patch('/api/notifications/user/$id');
   }
 
-  //create booking
-  // Future<Response> createBooking(Map<String, dynamic> userId, Map<String, dynamic> data) async {
-  //   print('📡 Creating booking for user: $userId');
-  //   return await _dio.post('/api/booking', data: data);
-  // }
-  // Future<Response> createBooking(String hospitalId,Map<String, dynamic> bookingData) async {
-  //   return await _dio.post(
-  //     '/booking/$hospitalId',
-  //     data: bookingData,
-  //   );
-  // }
+
 
   Future<Response> createBooking(Map<String, dynamic> bookingData) async {
     print('📡 POST /api/booking');
@@ -755,7 +745,7 @@ for (final c in cookies) {
 
     // return response; // ✅ THIS WAS MISSING
   }
-
+//Booking
   Future<Response> getAllBookings({
     String? userId,
     String? status,
@@ -763,6 +753,7 @@ for (final c in cookies) {
     String? searchQuery,
     int? page,
     int? limit,
+      String? date,
   }) async {
     final Map<String, dynamic> queryParams = {};
 
@@ -772,31 +763,19 @@ for (final c in cookies) {
 
     if (page != null) queryParams['page'] = page;
     if (limit != null) queryParams['limit'] = limit;
-
+ if (date != null) {
+    queryParams["date"] = date;
+  }
+  log("GET BOOKINGS PARAMS:");
+log("userId = $userId");
+log("status = $status");
+log("searchQuery = $searchQuery");
+log("page = $page");
+log("limit = $limit");
+log("date=$date");
     return await dio.get('/api/booking', queryParameters: queryParams);
   }
-  // GET bookings
-  // Future<Response> getAllBookings({
-  //   String? userId,
-  //   String? status,
-  //   String? doctorName,
-  // }) async {
-  //   final Map<String, dynamic> queryParams = {};
 
-  //   if (userId != null) queryParams['userId'] = userId;
-  //   if (status != null) queryParams['status'] = status;
-  //   if (doctorName != null) queryParams['doctor_name'] = doctorName;
-  // log("QUERY PARAMS = $queryParams");
-  //   log('📡 GET /api/booking with queryParams: $queryParams');
-  //   return await _dio.get('/api/booking', queryParameters: queryParams);
-
-  // }
-
-  // UPDATE booking
-  // Future<Response> updateBooking(String bookingId, String hospitalId, Map<String, dynamic> data) async {
-  //   print('📡 Updating booking: $bookingId for hospital: $hospitalId');
-  //   return await _dio.put('/api/booking/$bookingId/hospital/$hospitalId', data: data);
-  // }
 
   Future<Response> updateBooking(
     String bookingId,

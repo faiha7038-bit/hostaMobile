@@ -174,22 +174,17 @@ consultingTwo: (json['consultingTwo'] as List?)
   consultingTwo: consultingTwo,
     );
   }
-  List<String> get availableDays {
-  final days = <String>[];
+List<String> get availableDays {
+  final days = <String>{
+    ...consultingOne
+        .where((e) => !e.isHoliday)
+        .map((e) => e.day),
+    ...consultingTwo
+        .where((e) => !e.isHoliday)
+        .map((e) => e.day),
+  };
 
-  for (final item in consultingOne) {
-    if (!item.isHoliday) {
-      days.add(item.day);
-    }
-  }
-
-  for (final item in consultingTwo) {
-    if (!item.isHoliday) {
-      days.add(item.day);
-    }
-  }
-
-  return days.toSet().toList();
+  return days.toList();
 }
 }
 

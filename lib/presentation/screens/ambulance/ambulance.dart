@@ -23,6 +23,7 @@ class _AmbulanceState extends ConsumerState<Ambulance> {
   Timer? _debounce;
 final TextEditingController _searchController = TextEditingController();
 StreamSubscription? _connectivitySubscription;
+String? userId;
 List<dynamic> _filterOfflineData(
   List<dynamic> list,
 ) {
@@ -125,6 +126,7 @@ void dispose() {
        await _checkInternet();
       _fetchAmbulances();
        _refreshAmbulanceId();
+       _loadUser();
      _connectivitySubscription =
     Connectivity().onConnectivityChanged.listen((results) {
 
@@ -136,10 +138,16 @@ void dispose() {
 
   log("Offline Status: ${!hasInternet}");
 });
+
 });
   
   }
-  
+  Future<void> _loadUser() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    userId = prefs.getString('userId');
+  });
+  }
 Future<void> _checkInternet() async {
   final results = await Connectivity().checkConnectivity();
 
@@ -171,13 +179,24 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
 }
 Future<void> _refreshAmbulanceId() async {
   final prefs = await SharedPreferences.getInstance();
-  String? ambulanceId = prefs.getString('ambulanceId');
-  if (
-    ambulanceId == null || ambulanceId.isEmpty) {
-    bool hasRegistered = prefs.getBool('ambulanceRegistered') ?? false;
+
+  String? ambulanceId =
+      prefs.getString('ambulanceId');
+
+  bool hasRegistered =
+      prefs.getBool('ambulanceRegistered') ?? false;
+
+  log("ambulanceId => $ambulanceId");
+  log("ambulanceRegistered => $hasRegistered");
+
+  if (ambulanceId == null || ambulanceId.isEmpty) {
     ambulanceId = hasRegistered ? 'yes' : '';
   }
-  ref.read(ambulanceIdProvider.notifier).state = ambulanceId ?? '';
+
+  ref.read(ambulanceIdProvider.notifier).state =
+      ambulanceId ?? '';
+
+  log("provider value => $ambulanceId");
 }
 
 //   void _handleAmbulanceRegister() async {
@@ -461,8 +480,7 @@ _debounce = Timer(const Duration(milliseconds: 500), () async {
 )
                       ),
                       SizedBox(width: screenWidth * 0.02),
-                      if (!isOffline &&
-                        (ambulanceId == null || ambulanceId.isEmpty))
+                      if (!isOffline && userId == null)
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
@@ -490,11 +508,15 @@ _debounce = Timer(const Duration(milliseconds: 500), () async {
     context,
     MaterialPageRoute(builder: (_) => const AmbulanceRegister()),
   );
+if (result == true) {
+  log("RETURNED TRUE FROM REGISTER SCREEN");
 
-  if (result == true) {
-    await _refreshAmbulanceId();
-    await _fetchAmbulances();
-  }
+  await _refreshAmbulanceId();
+
+  log("AFTER REFRESH => ${ref.read(ambulanceIdProvider)}");
+
+  await _fetchAmbulances();
+}
 },
                           child: Text("Register", style: TextStyle(color: Colors.white)),
                         ),
