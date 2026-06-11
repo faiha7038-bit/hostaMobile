@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
 // Provider for ApiService
@@ -53,137 +54,210 @@ class AmbulanceNotifier
     return result !=
         ConnectivityResult.none;
   }
+// In ambulance-provider.dart – AmbulanceListNotifier.fetchAmbulances
 
 Future<void> fetchAmbulances() async {
   try {
+    final isOffline = _ref.read(isOfflineProvider);
 
-    final isOffline =
-        _ref.read(isOfflineProvider);
-
-    // OFFLINE
+    // ----- OFFLINE MODE -----
     if (isOffline) {
-
-      final cached =
-          cacheBox.get('all_ambulances');
-
+      final cached = cacheBox.get('all_ambulances');
       if (cached != null) {
-
-        final decoded =
-            List<dynamic>.from(
-          jsonDecode(cached),
-        );
-
+        final decoded = List<dynamic>.from(jsonDecode(cached));
         state = decoded;
-
-        _ref
-            .read(
-              allAmbulancesProvider.notifier,
-            )
-            .state = decoded;
+        _ref.read(allAmbulancesProvider.notifier).state = decoded;
       }
-
+      _ref.read(isLoadingProvider.notifier).state = false;
       return;
     }
 
-    // SEARCH + FILTER VALUES
-    final searchQuery =
-        _ref.read(searchQueryProvider);
+    // ----- ONLINE MODE: read search & location filters -----
+    final searchQuery = _ref.read(searchQueryProvider);
+    final country = _ref.read(selectedCountryProvider);
+    final stateFilter = _ref.read(selectedStateProvider);
+    final district = _ref.read(selectedDistrictProvider);
+    final place = _ref.read(selectedPlaceProvider);
 
-    final country =
-        _ref.read(selectedCountryProvider);
-
-    final stateFilter =
-        _ref.read(selectedStateProvider);
-
-    final district =
-        _ref.read(selectedDistrictProvider);
-
-    final place =
-        _ref.read(selectedPlaceProvider);
-
-    // ONLINE API CALL
-    final response =
-        await _apiService.getAllAmbulances(
-
-      searchQuery:
-          searchQuery.isEmpty
-              ? null
-              : searchQuery,
-
-      country:
-          country.isEmpty
-              ? null
-              : country,
-
-      state:
-          stateFilter.isEmpty
-              ? null
-              : stateFilter,
-
-      district:
-          district.isEmpty
-              ? null
-              : district,
-
-      place:
-          place.isEmpty
-              ? null
-              : place,
+    // ----- API CALL with userId + all filters -----
+    final response = await _apiService.getAllAmbulances(
+ 
+      searchQuery: searchQuery.isEmpty ? null : searchQuery,
+      country: country.isEmpty ? null : country,
+      state: stateFilter.isEmpty ? null : stateFilter,
+      district: district.isEmpty ? null : district,
+      place: place.isEmpty ? null : place,
     );
 
-    if (response.statusCode == 200 &&
-        response.data != null) {
+    if (response.statusCode == 200 && response.data != null) {
+      final newData = response.data is List
+          ? response.data
+          : response.data['data'] ?? [];
 
-      final newData =
-          response.data is List
-              ? response.data
-              : response.data['data'] ?? [];
+      // ----- SAVE TO HIVE CACHE (offline support) -----
+      await cacheBox.put('all_ambulances', jsonEncode(newData));
 
-      // SAVE CACHE
-      await cacheBox.put(
-        'all_ambulances',
-        jsonEncode(newData),
-      );
+      // ----- BUTTON FIX: Update SharedPreferences flags -----
+      final prefs = await SharedPreferences.getInstance();
+      if (newData.isNotEmpty) {
+        final firstAmbulance = newData.first as Map<String, dynamic>;
+        final firstId = (firstAmbulance['_id'] ?? firstAmbulance['id']).toString();
+        await prefs.setBool('ambulanceRegistered', true);
+        await prefs.setString('ambulanceId', firstId);
+      } else {
+        await prefs.remove('ambulanceRegistered');
+        await prefs.remove('ambulanceId');
+      }
 
+      // Update UI state
       state = newData;
-
-      _ref
-          .read(
-            allAmbulancesProvider.notifier,
-          )
-          .state = newData;
+      _ref.read(allAmbulancesProvider.notifier).state = newData;
     }
-
   } catch (e) {
-
-    log("CACHE LOAD ERROR: $e");
-
-    final cached =
-        cacheBox.get('all_ambulances');
-
+    log("FETCH ERROR: $e – loading from cache");
+    // Fallback to cache on error
+    final cached = cacheBox.get('all_ambulances');
     if (cached != null) {
-
-      final decoded =
-          List<dynamic>.from(
-        jsonDecode(cached),
-      );
-
+      final decoded = List<dynamic>.from(jsonDecode(cached));
       state = decoded;
-
-      _ref
-          .read(
-            allAmbulancesProvider.notifier,
-          )
-          .state = decoded;
+      _ref.read(allAmbulancesProvider.notifier).state = decoded;
+    } else {
+      state = [];
     }
-
   } finally {
-
-    _ref
-        .read(isLoadingProvider.notifier)
-        .state = false;
+    _ref.read(isLoadingProvider.notifier).state = false;
   }
 }
+// Future<void> fetchAmbulances() async {
+//   try {
+
+//     final isOffline =
+//         _ref.read(isOfflineProvider);
+
+//     // OFFLINE
+//     if (isOffline) {
+
+//       final cached =
+//           cacheBox.get('all_ambulances');
+
+//       if (cached != null) {
+
+//         final decoded =
+//             List<dynamic>.from(
+//           jsonDecode(cached),
+//         );
+
+//         state = decoded;
+
+//         _ref
+//             .read(
+//               allAmbulancesProvider.notifier,
+//             )
+//             .state = decoded;
+//       }
+
+//       return;
+//     }
+
+//     // SEARCH + FILTER VALUES
+//     final searchQuery =
+//         _ref.read(searchQueryProvider);
+
+//     final country =
+//         _ref.read(selectedCountryProvider);
+
+//     final stateFilter =
+//         _ref.read(selectedStateProvider);
+
+//     final district =
+//         _ref.read(selectedDistrictProvider);
+
+//     final place =
+//         _ref.read(selectedPlaceProvider);
+
+//     // ONLINE API CALL
+//     final response =
+//         await _apiService.getAllAmbulances(
+
+//       searchQuery:
+//           searchQuery.isEmpty
+//               ? null
+//               : searchQuery,
+
+//       country:
+//           country.isEmpty
+//               ? null
+//               : country,
+
+//       state:
+//           stateFilter.isEmpty
+//               ? null
+//               : stateFilter,
+
+//       district:
+//           district.isEmpty
+//               ? null
+//               : district,
+
+//       place:
+//           place.isEmpty
+//               ? null
+//               : place,
+//     );
+
+//     if (response.statusCode == 200 &&
+//         response.data != null) {
+
+//       final newData =
+//           response.data is List
+//               ? response.data
+//               : response.data['data'] ?? [];
+
+//       // SAVE CACHE
+//       await cacheBox.put(
+//         'all_ambulances',
+//         jsonEncode(newData),
+//       );
+
+//       state = newData;
+
+//       _ref
+//           .read(
+//             allAmbulancesProvider.notifier,
+//           )
+//           .state = newData;
+//     }
+
+//   } catch (e) {
+
+//     log("CACHE LOAD ERROR: $e");
+
+//     final cached =
+//         cacheBox.get('all_ambulances');
+
+//     if (cached != null) {
+
+//       final decoded =
+//           List<dynamic>.from(
+//         jsonDecode(cached),
+//       );
+
+//       state = decoded;
+
+//       _ref
+//           .read(
+//             allAmbulancesProvider.notifier,
+//           )
+//           .state = decoded;
+//     }
+
+//   } finally {
+
+//     _ref
+//         .read(isLoadingProvider.notifier)
+//         .state = false;
+//   }
+// }
 
 
 

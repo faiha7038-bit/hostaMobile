@@ -159,24 +159,37 @@ Future<void> _checkInternet() async {
 
   log("Initial Offline Status: ${!hasInternet}");
 }
+// Inside _AmbulanceState
+
 Future<void> _fetchAmbulances({bool showLoader = true}) async {
   try {
-    if (showLoader) {
-      ref.read(isLoadingProvider.notifier).state = true;
-    }
-
-    await ref.read(ambulanceListProvider.notifier)
-    
-        .fetchAmbulances();
-
+    if (showLoader) ref.read(isLoadingProvider.notifier).state = true;
+    await ref.read(ambulanceListProvider.notifier).fetchAmbulances();
+    await _refreshAmbulanceId();   // <-- Add this line
   } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
+    // ...
+  } finally {
+    if (showLoader) ref.read(isLoadingProvider.notifier).state = false;
   }
 }
+// Future<void> _fetchAmbulances({bool showLoader = true}) async {
+//   try {
+//     if (showLoader) {
+//       ref.read(isLoadingProvider.notifier).state = true;
+//     }
+
+//     await ref.read(ambulanceListProvider.notifier)
+    
+//         .fetchAmbulances(userId: '');
+
+//   } catch (e) {
+//     if (mounted) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Error: $e')),
+//       );
+//     }
+//   }
+// }
 Future<void> _refreshAmbulanceId() async {
   final prefs = await SharedPreferences.getInstance();
 
@@ -189,9 +202,8 @@ Future<void> _refreshAmbulanceId() async {
   log("ambulanceId => $ambulanceId");
   log("ambulanceRegistered => $hasRegistered");
 
-  if (ambulanceId == null || ambulanceId.isEmpty) {
-    ambulanceId = hasRegistered ? 'yes' : '';
-  }
+ref.read(ambulanceIdProvider.notifier).state =
+    prefs.getString('ambulanceId');
 
   ref.read(ambulanceIdProvider.notifier).state =
       ambulanceId ?? '';
@@ -480,7 +492,7 @@ _debounce = Timer(const Duration(milliseconds: 500), () async {
 )
                       ),
                       SizedBox(width: screenWidth * 0.02),
-                      if (!isOffline && userId == null)
+                    if (!isOffline && (userId == null || ambulanceId == null || ambulanceId.isEmpty))
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
@@ -508,14 +520,11 @@ _debounce = Timer(const Duration(milliseconds: 500), () async {
     context,
     MaterialPageRoute(builder: (_) => const AmbulanceRegister()),
   );
-if (result == true) {
-  log("RETURNED TRUE FROM REGISTER SCREEN");
+if (result != null && result["refresh"] == true) {
+  ref.invalidate(ambulanceListProvider);
+  ref.invalidate(allAmbulancesProvider);
 
-  await _refreshAmbulanceId();
-
-  log("AFTER REFRESH => ${ref.read(ambulanceIdProvider)}");
-
-  await _fetchAmbulances();
+  await _fetchAmbulances(showLoader: true);
 }
 },
                           child: Text("Register", style: TextStyle(color: Colors.white)),
