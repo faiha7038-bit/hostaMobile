@@ -654,7 +654,7 @@ onChanged: (value) {
   );
 },
               decoration: InputDecoration(
-                hintText: "Search by name...",
+                hintText: "Search donors",
                 hintStyle: TextStyle(fontSize: screenWidth * 0.035),
                 prefixIcon: Icon(
                   Icons.search,

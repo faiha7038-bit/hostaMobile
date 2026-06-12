@@ -167,7 +167,7 @@ log("responseofdoctor${response.data}");
               child: TextField(
                   onChanged: _onSearchChanged,
                 // onChanged: (value) => setState(() => searchQuery = value),
-                decoration: InputDecoration(hintText: 'Search doctors by name or specialty...', hintStyle: TextStyle(color: Colors.grey[500]), border: InputBorder.none),
+                decoration: InputDecoration(hintText: 'Search doctors ', hintStyle: TextStyle(color: Colors.grey[500]), border: InputBorder.none),
               ),
             ),
           ],
@@ -204,7 +204,7 @@ Widget _buildContent() {
           const SizedBox(height: 20),
           Text('No doctors found', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
           const SizedBox(height: 8),
-          Text('Try adjusting your search', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+         // Text('Try adjusting your search', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
         ],
       ),
     );

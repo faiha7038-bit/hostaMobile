@@ -39,6 +39,16 @@ _scrollController.addListener(() {
   }
 });
   }
+  String formatBookingDate(String? date) {
+  if (date == null || date.isEmpty) return "N/A";
+
+  try {
+    final parsedDate = DateTime.parse(date);
+    return DateFormat('dd/MM/yyyy').format(parsedDate);
+  } catch (e) {
+    return date;
+  }
+}
  Future<void> _checkToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('authToken');
@@ -229,7 +239,7 @@ _scrollController.addListener(() {
                   TextField(
                     controller: searchController,
                     decoration: InputDecoration(
-                      hintText: "Search by hospital or doctor",
+                      hintText: "Search bookings",
                       prefixIcon: Icon(Icons.search, size: screenWidth * 0.06),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(screenWidth * 0.03),
@@ -284,7 +294,7 @@ _scrollController.addListener(() {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: ["All", "Pending", "Accepted", "Declined", "Cancelled"]
+                      children: ["All", "Pending", "Accepted", "Declined", "Cancelled","Completed"]
                           .map(
                             (f) => Padding(
                               padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.01),
@@ -478,12 +488,12 @@ itemBuilder: (context, index) {
             SizedBox(height: screenHeight * 0.008),
             
             // Date
-            _buildInfoRow(
-              Icons.calendar_today,
-              "Date",
-              booking["date"] ?? "N/A",
-              screenWidth,
-            ),
+          _buildInfoRow(
+  Icons.calendar_today,
+  "Date",
+  formatBookingDate(booking["date"]),
+  screenWidth,
+),
             SizedBox(height: screenHeight * 0.008),
 
 // TOKEN NUMBER
