@@ -1,4 +1,3 @@
-
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,7 +33,20 @@ Future<void> _loadAmbulances() async {
   await ref.read(ambulanceListProvider.notifier).fetchAmbulances(userId: userId);
   
   final state = ref.read(ambulanceListProvider);
-  
+  if (state.ambulances.isEmpty) {
+  await prefs.remove('ambulanceRegistered');
+  await prefs.remove('ambulanceId');
+} else {
+  final firstAmbulance = state.ambulances.first;
+
+  final ambulanceId =
+      (firstAmbulance['id'] ?? firstAmbulance['_id']).toString();
+
+  await prefs.setBool('ambulanceRegistered', true);
+  await prefs.setString('ambulanceId', ambulanceId);
+
+  log("Saved ambulanceId => $ambulanceId");
+}
   // ✅ If no ambulances left, clear the registration flag
   if (state.ambulances.isEmpty) {
     await prefs.remove('ambulanceRegistered');
@@ -89,7 +101,10 @@ Future<void> _loadAmbulances() async {
                   context,
                   MaterialPageRoute(builder: (_) => const AmbulanceRegister()),
                 );
-                if (result == true) _loadAmbulances();
+                 if (result != null && result['refresh'] == true) {
+            _loadAmbulances();
+          }
+               // if (result == true) _loadAmbulances();
               },
               backgroundColor: Colors.green,
               child: Icon(
@@ -118,11 +133,13 @@ Future<void> _loadAmbulances() async {
               SizedBox(height: screenHeight * 0.0125),
               ElevatedButton(
                 onPressed: () async {
-                  await Navigator.push(
+                 final result = await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const AmbulanceRegister()),
                   );
-                  _loadAmbulances();
+                    if (result != null && result['refresh'] == true) {
+      _loadAmbulances();
+    }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
@@ -154,8 +171,10 @@ Future<void> _loadAmbulances() async {
 
     return Card(
       margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.04)),
+      //elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.04),
+      side: BorderSide(color: Colors.grey)
+      ),
       child: Padding(
         padding: EdgeInsets.all(screenWidth * 0.04),
         child: Column(
@@ -167,7 +186,7 @@ Future<void> _loadAmbulances() async {
                 Expanded(
                   child: Text(
                     serviceName,
-                    style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold,color: Colors.black),
                   ),
                 ),
                 PopupMenuButton<String>(
@@ -180,7 +199,10 @@ Future<void> _loadAmbulances() async {
                           builder: (_) => AmbulanceRegister(editData: ambulance),
                         ),
                       );
-                      if (result == true) _loadAmbulances();
+                       if (result != null && result['refresh'] == true) {
+    _loadAmbulances();
+  }
+                      //if (result == true) _loadAmbulances();
                     } else if (value == 'delete') {
                       final confirm = await showDialog<bool>(
                         context: context,
@@ -188,7 +210,7 @@ Future<void> _loadAmbulances() async {
                           title: const Text("Delete Ambulance"),
                           content: const Text("Are you sure you want to delete this ambulance record?"),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel",style: TextStyle(color: Colors.grey),)),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
                               child: const Text("Delete", style: TextStyle(color: Colors.red)),
@@ -224,9 +246,9 @@ Future<void> _loadAmbulances() async {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_forever, color: Colors.red, size: 20),
+                          Icon(Icons.delete_rounded, color: Colors.red, size: 20),
                           SizedBox(width: 12),
-                          Text('Delete'),
+                          Text('Delete',style: TextStyle(color: Colors.red),),
                         ],
                       ),
                     ),
@@ -235,10 +257,10 @@ Future<void> _loadAmbulances() async {
               ],
             ),
             SizedBox(height: screenHeight * 0.008),
-            Text("Service: $serviceName", style: TextStyle(fontSize: screenWidth * 0.04)),
-            Text("Vehicle Type: $vehicleType", style: TextStyle(fontSize: screenWidth * 0.04)),
-            Text("Phone: $phone", style: TextStyle(fontSize: screenWidth * 0.04)),
-            Text("Location: $fullLocation", style: TextStyle(fontSize: screenWidth * 0.04)),
+            Text("Service : $serviceName", style: TextStyle(fontSize: screenWidth * 0.04,fontWeight: FontWeight.w500,color: Colors.grey.shade700)),
+            Text("Vehicle Type : $vehicleType", style: TextStyle(fontSize: screenWidth * 0.04,fontWeight: FontWeight.w500,color: Colors.grey.shade700)),
+            Text("Phone : $phone", style: TextStyle(fontSize: screenWidth * 0.04,fontWeight: FontWeight.w500,color: Colors.grey.shade700)),
+            Text("Location : $fullLocation", style: TextStyle(fontSize: screenWidth * 0.04,fontWeight: FontWeight.w500,color: Colors.grey.shade700)),
           ],
         ),
       ),

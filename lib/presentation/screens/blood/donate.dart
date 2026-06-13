@@ -1,4 +1,3 @@
-
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,9 +9,9 @@ import 'package:hosta/common/top_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Donate extends ConsumerStatefulWidget {
-  final Map<String, dynamic>? editData;  // ← ADD THIS
+  final Map<String, dynamic>? editData; 
 
-  const Donate({super.key, this.editData}); // ← UPDATE CONSTRUCTOR
+  const Donate({super.key, this.editData}); 
 
   @override
   ConsumerState<Donate> createState() => _DonateState();
@@ -257,6 +256,7 @@ class _DonateState extends ConsumerState<Donate> {
     _districtController.text = district['name'].toString();
   }
 
+
 Future<void> _submit() async {
   final formState = ref.read(donorFormProvider);
 
@@ -398,7 +398,7 @@ Future<void> _submit() async {
       showTopSnackBar(context, "Something went wrong", isError: true);
     }
   } catch (e) {
-    showTopSnackBar(context, e.toString(), isError: true);
+   // showTopSnackBar(context, e.toString(), isError: true);
   } finally {
     ref.read(donorFormProvider.notifier).setLoading(false);
   }

@@ -24,8 +24,11 @@ class _AmbulanceState extends ConsumerState<Ambulance> {
   Timer? _debounce;
 final TextEditingController _searchController = TextEditingController();
 StreamSubscription? _connectivitySubscription;
+String? userId;
+
 List<dynamic> _filterOfflineData(
   List<dynamic> list,
+  
 ) {
   final query = ref
       .read(searchQueryProvider)
@@ -126,6 +129,7 @@ void dispose() {
        await _checkInternet();
       _fetchAmbulances();
        _refreshAmbulanceId();
+       _loadUser();
      _connectivitySubscription =
     Connectivity().onConnectivityChanged.listen((results) {
 
@@ -137,10 +141,16 @@ void dispose() {
 
   log("Offline Status: ${!hasInternet}");
 });
+
 });
   
   }
-  
+  Future<void> _loadUser() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    userId = prefs.getString('userId');
+  });
+  }
 Future<void> _checkInternet() async {
   final results = await Connectivity().checkConnectivity();
 
@@ -152,33 +162,41 @@ Future<void> _checkInternet() async {
 
   log("Initial Offline Status: ${!hasInternet}");
 }
+// Inside _AmbulanceState
+
 Future<void> _fetchAmbulances({bool showLoader = true}) async {
   try {
-    if (showLoader) {
-      ref.read(isLoadingProvider.notifier).state = true;
-    }
-
-    await ref.read(ambulanceListProvider.notifier)
-    
-        .fetchAmbulances();
-
+    if (showLoader) ref.read(isLoadingProvider.notifier).state = true;
+    await ref.read(ambulanceListProvider.notifier).fetchAmbulances();
+    await _refreshAmbulanceId();   // <-- Add this line
   } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
+    // ...
+  } finally {
+    if (showLoader) ref.read(isLoadingProvider.notifier).state = false;
   }
 }
+
 Future<void> _refreshAmbulanceId() async {
+  
   final prefs = await SharedPreferences.getInstance();
-  String? ambulanceId = prefs.getString('ambulanceId');
-  if (
-    ambulanceId == null || ambulanceId.isEmpty) {
-    bool hasRegistered = prefs.getBool('ambulanceRegistered') ?? false;
-    ambulanceId = hasRegistered ? 'yes' : '';
-  }
-  ref.read(ambulanceIdProvider.notifier).state = ambulanceId ?? '';
+
+  String? ambulanceId =
+      prefs.getString('ambulanceId');
+log("userId => $userId");
+log("ambulanceId => $ambulanceId");
+  bool hasRegistered =
+      prefs.getBool('ambulanceRegistered') ?? false;
+
+  log("ambulanceId => $ambulanceId");
+  log("ambulanceRegistered => $hasRegistered");
+
+ref.read(ambulanceIdProvider.notifier).state =
+    prefs.getString('ambulanceId');
+
+  ref.read(ambulanceIdProvider.notifier).state =
+      ambulanceId ?? '';
+
+  log("provider value => $ambulanceId");
 }
 
 //   void _handleAmbulanceRegister() async {
@@ -362,6 +380,7 @@ final ambulanceList = isOffline
 
   @override
   Widget build(BuildContext context) {
+    
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLoading = ref.watch(isLoadingProvider);
@@ -375,6 +394,14 @@ final ambulanceList = isOffline
     final ambulanceId = ref.watch(ambulanceIdProvider);
     log("ambulanceId${ambulanceId}");
 
+  log("userId => $userId");
+  log("ambulanceId => $ambulanceId");
+  log("ambulanceList count => ${ambulanceList.length}");
+final hasMyAmbulance = ambulanceList.any(
+  (amb) => amb['userId']?.toString() == userId,
+);
+
+log("hasMyAmbulance => $hasMyAmbulance");
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
@@ -462,8 +489,8 @@ _debounce = Timer(const Duration(milliseconds: 500), () async {
 )
                       ),
                       SizedBox(width: screenWidth * 0.02),
-                      if (!isOffline &&
-                        (ambulanceId == null || ambulanceId.isEmpty))
+                 if (!isOffline &&
+    (userId == null || !hasMyAmbulance))
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
@@ -491,11 +518,12 @@ _debounce = Timer(const Duration(milliseconds: 500), () async {
     context,
     MaterialPageRoute(builder: (_) => const AmbulanceRegister()),
   );
+if (result != null && result["refresh"] == true) {
+  ref.invalidate(ambulanceListProvider);
+  ref.invalidate(allAmbulancesProvider);
 
-  if (result == true) {
-    await _refreshAmbulanceId();
-    await _fetchAmbulances();
-  }
+  await _fetchAmbulances(showLoader: true);
+}
 },
                           child: Text("Register", style: TextStyle(color: Colors.white)),
                         ),

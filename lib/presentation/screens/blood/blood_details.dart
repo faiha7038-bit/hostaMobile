@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/blood/donate.dart';
 import 'package:hosta/providers/blood_details_provider.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MyBloodDetailsPage extends ConsumerStatefulWidget {
@@ -61,24 +61,7 @@ class _MyBloodDetailsPageState extends ConsumerState<MyBloodDetailsPage> {
           : donor == null
               ? _noDonorUI(context, screenWidth, screenHeight)
               : _donorCard(donor, screenWidth, screenHeight),
-      // FloatingActionButton – only shown when a donor profile exists
-      // floatingActionButton: donor != null
-      //     ? FloatingActionButton(
-      //         onPressed: () async {
-      //           final result = await Navigator.push(
-      //             context,
-      //             MaterialPageRoute(builder: (_) => const Donate()),
-      //           );
-      //           if (result == true) _loadDonor();
-      //         },
-      //         backgroundColor: Colors.red,
-      //         child: Icon(
-      //           Icons.add_circle_outline_outlined,
-      //           color: Colors.white,
-      //           size: screenWidth * 0.08,
-      //         ),
-      //       )
-          //: null,
+     
     );
   }
 
@@ -136,6 +119,11 @@ class _MyBloodDetailsPageState extends ConsumerState<MyBloodDetailsPage> {
 
   Widget _donorCard(Map<String, dynamic> donor, double screenWidth, double screenHeight) {
     final name = donor['name'] ?? 'Not specified';
+   final dobRaw = donor['dateOfBirth'];
+
+final dateOfBirth = dobRaw != null
+    ? DateFormat('dd/MM/yyyy').format(DateTime.parse(dobRaw))
+    : "Not specified";
     final bloodGroup = donor['bloodGroup'] ?? 'Not specified';
     final phone = donor['phone'] ?? 'Not available';
     final address = donor['address'] as Map<String, dynamic>?;
@@ -149,7 +137,9 @@ class _MyBloodDetailsPageState extends ConsumerState<MyBloodDetailsPage> {
       padding: EdgeInsets.all(screenWidth * 0.04),
       child: Card(
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.04)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.04),
+        side: BorderSide(color: Colors.grey)
+        ),
         child: Padding(
           padding: EdgeInsets.all(screenWidth * 0.04),
           child: Column(
@@ -160,8 +150,8 @@ class _MyBloodDetailsPageState extends ConsumerState<MyBloodDetailsPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      name,
-                      style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold),
+                      bloodGroup,
+                      style: TextStyle(fontSize: screenWidth * 0.055, fontWeight: FontWeight.bold,color: Colors.red),
                     ),
                   ),
                   PopupMenuButton<String>(
@@ -188,7 +178,7 @@ class _MyBloodDetailsPageState extends ConsumerState<MyBloodDetailsPage> {
                                 onPressed: () {
                                   Navigator.pop(ctx, false);
                                 },
-                                child: const Text("Cancel"),
+                                child: const Text("Cancel",style: TextStyle(color: Colors.grey),),
                               ),
                               TextButton(
                                 onPressed: () {
@@ -229,11 +219,12 @@ class _MyBloodDetailsPageState extends ConsumerState<MyBloodDetailsPage> {
                       ),
                       const PopupMenuItem<String>(
                         value: 'delete',
+                        
                         child: Row(
                           children: [
-                            Icon(Icons.delete_forever, color: Colors.red, size: 20),
+                            Icon(Icons.delete_rounded, color: Colors.red, size: 20),
                             SizedBox(width: 12),
-                            Text('Delete'),
+                            Text('Delete',style: TextStyle(color: Colors.red),),
                           ],
                         ),
                       ),
@@ -242,9 +233,10 @@ class _MyBloodDetailsPageState extends ConsumerState<MyBloodDetailsPage> {
                 ],
               ),
               SizedBox(height: screenHeight * 0.008),
-              Text("Blood Group: $bloodGroup", style: TextStyle(fontSize: screenWidth * 0.04)),
-              Text("Phone: $phone", style: TextStyle(fontSize: screenWidth * 0.04)),
-              Text("Location: $fullLocation", style: TextStyle(fontSize: screenWidth * 0.04)),
+              Text("Name : $name", style: TextStyle(fontSize: screenWidth * 0.04,color: Colors.black,fontWeight: FontWeight.w500)),
+              Text("D.O.B : $dateOfBirth", style: TextStyle(fontSize: screenWidth * 0.04,color: Colors.black,fontWeight: FontWeight.w500)),
+              Text("Phone: $phone", style: TextStyle(fontSize: screenWidth * 0.04,color: Colors.black,fontWeight: FontWeight.w500)),
+              Text("Location: $fullLocation", style: TextStyle(fontSize: screenWidth * 0.04,color: Colors.black,fontWeight: FontWeight.w500)),
             ],
           ),
         ),

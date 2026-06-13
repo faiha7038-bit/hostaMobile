@@ -136,7 +136,7 @@ class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
         userId: widget.userId,
         page: 1,
         limit: 100,  // Get all prescriptions
-        date: dateParam,
+      //  date: dateParam,
       );
 
       print("✅ API Status: ${response.statusCode}");

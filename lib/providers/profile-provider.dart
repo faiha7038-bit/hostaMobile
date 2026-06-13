@@ -66,31 +66,7 @@ UserDataState copyWith({
     originalPhone: originalPhone ?? this.originalPhone,
   );
 }
-  // UserDataState copyWith({
-  //   Map<String, dynamic>? userData,
-  //   Map<String, dynamic>? donorData,
-  //   String? userId,
-  //   bool? isLoading,
-  //   bool? isEditing,
-  //   bool? isSaving,
-  //   File? imageFile,
-  //   String? originalName,
-  //   String? originalEmail,
-  //   String? originalPhone,
-  // }) {
-  //   return UserDataState(
-  //     userData: userData ?? this.userData,
-  //     donorData: donorData ?? this.donorData,
-  //     userId: userId ?? this.userId,
-  //     isLoading: isLoading ?? this.isLoading,
-  //     isEditing: isEditing ?? this.isEditing,
-  //     isSaving: isSaving ?? this.isSaving,
-  //     imageFile: imageFile ?? this.imageFile,
-  //     originalName: originalName ?? this.originalName,
-  //     originalEmail: originalEmail ?? this.originalEmail,
-  //     originalPhone: originalPhone ?? this.originalPhone,
-  //   );
-  // }
+
 }
 
 class UserDataNotifier extends StateNotifier<UserDataState> {
@@ -117,10 +93,7 @@ Future<void> deleteProfileImage() async {
 
     updatedUserData['imageUrl'] = null;
 
-    // state = state.copyWith(
-    //   imageFile: null,
-    //   userData: updatedUserData,
-    // );
+   
 state = state.copyWith(
   clearImage: true,
   userData: updatedUserData,
@@ -336,3 +309,4 @@ final phoneControllerProvider = Provider<TextEditingController>((ref) {
   ref.onDispose(() => controller.dispose());
   return controller;
 });
+

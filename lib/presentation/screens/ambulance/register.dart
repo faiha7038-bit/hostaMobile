@@ -1,5 +1,5 @@
-
 import 'dart:convert';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -49,18 +49,17 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
     "Basic Life Ambulance",
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _checkLogin();
-    _loadJson();
-    _loadUserPhone();
-    // _resetAmbulanceFlag();
-
-    if (widget.editData != null) {
-      _fillEditData();
-    }
+@override
+void initState() {
+  super.initState();
+  _checkLogin();
+  _loadJson();
+  if (widget.editData == null) {
+    _loadUserPhone();   
+  } else {
+    _fillEditData();    
   }
+}
 
   void _fillEditData() {
     final data = widget.editData!;
@@ -319,97 +318,114 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
     });
   }
 
-  void _onStateSelected(Map<String, dynamic> state) {
-    setState(() {
-      selectedState = state;
-      _stateController.text = state['name'];
+void _onStateSelected(Map<String, dynamic> state) {
+  setState(() {
+    selectedState = state;
+    _stateController.text = state['name'];
+    selectedDistrict = null;
+    _districtController.clear();
+    districts = (state['cities'] as List)
+        .map((d) => {'id': d['id'], 'name': d['name']})
+        .toList();
+    // If no districts, clear any previous district data
+    if (districts.isEmpty) {
       selectedDistrict = null;
       _districtController.clear();
-      districts = (state['cities'] as List)
-          .map((d) => {'id': d['id'], 'name': d['name']})
-          .toList();
-    });
-  }
-
+    }
+  });
+}
   void _onDistrictSelected(Map<String, dynamic> district) {
     setState(() {
       selectedDistrict = district;
       _districtController.text = district['name'];
     });
   }
+Future<void> _submit() async {
+  if (isLoading) return;
+  if (!_formKey.currentState!.validate()) return;
 
-  Future<void> _submit() async {
-    if (isLoading) return;
-    setState(() => isLoading = true);
+  // Custom validations
+// Custom validations
+if (_countryController.text.trim().isEmpty) {
+  showTopSnackBar(context, "Please select a country", isError: true);
+  return;
+}
+if (_stateController.text.trim().isEmpty) {
+  showTopSnackBar(context, "Please select a state", isError: true);
+  return;
+}
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('userId');
-      if (userId == null) throw Exception("User not logged in");
-
-      // Build payload with separate serviceName and vehicleType
-      final payload = {
-        "phone": _phoneController.text.trim(),
-        "serviceName": _serviceNameController.text.trim(),
-        "vehicleType": vehicleType,
-        "address": {
-          "country": selectedCountry?['name'] ?? _countryController.text,
-          "state": selectedState?['name'] ?? _stateController.text,
-          "district": selectedDistrict?['name'] ?? _districtController.text,
-          "place": _placeController.text.trim(),
-          "pincode": int.tryParse(_pincodeController.text.trim()) ?? 0,
-        },
-        "userId": int.parse(userId),
-      };
-
-      // Validation
-      if (_serviceNameController.text.trim().isEmpty) {
-        showTopSnackBar(context, "Service Name is required", isError: true);
-        setState(() => isLoading = false);
-        return;
-      }
-      if (vehicleType == null || vehicleType!.isEmpty) {
-        showTopSnackBar(context, "Vehicle Type is required", isError: true);
-        setState(() => isLoading = false);
-        return;
-      }
-
-      final notifier = ref.read(ambulanceListProvider.notifier);
-      bool success;
-
-      if (widget.editData == null) {
-        success = await notifier.createAmbulance(payload);
-      } else {
-        final ambulanceId = widget.editData!['id']?.toString();
-        if (ambulanceId == null) {
-          showTopSnackBar(context, "Ambulance ID missing", isError: true);
-          return;
-        }
-        success = await notifier.editAmbulance(ambulanceId, payload);
-      }
-
-      if (!mounted) return;
-
-      if (success) {
-         final prefs = await SharedPreferences.getInstance();
-  // ✅ Save a flag that user has registered ambulance
-  await prefs.setBool('ambulanceRegistered', true);
-        showTopSnackBar(
-          context,
-          widget.editData == null
-              ? "Registered Successfully"
-              : "Updated Successfully",
-        );
-        Navigator.pop(context, true);
-      } else {
-        showTopSnackBar(context, "This mobile number already registered. choose another mobile number ", isError: true);
-      }
-    } catch (e) {
-      showTopSnackBar(context, e.toString(), isError: true);
-    } finally {
-      if (mounted) setState(() => isLoading = false);
-    }
+// ✅ Only validate district if there are districts for the selected state
+if (districts.isNotEmpty && _districtController.text.trim().isEmpty) {
+  showTopSnackBar(context, "Please select a district", isError: true);
+  return;
+}
+  final pincode = _pincodeController.text.trim();
+  if (pincode.isEmpty) {
+    showTopSnackBar(context, "Pincode is required", isError: true);
+    return;
   }
+  if (pincode.length != 6) {
+    showTopSnackBar(context, "Pincode must be 6 digits", isError: true);
+    return;
+  }
+
+  setState(() => isLoading = true);
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+    if (userId == null) throw Exception("User not logged in");
+
+    final payload = {
+      "phone": _phoneController.text.trim(),
+      "serviceName": _serviceNameController.text.trim(),
+      "vehicleType": vehicleType,
+      "address": {
+        "country": selectedCountry?['name'] ?? _countryController.text,
+        "state": selectedState?['name'] ?? _stateController.text,
+        "district": selectedDistrict?['name'] ?? _districtController.text,
+        "place": _placeController.text.trim(),
+        "pincode": int.parse(pincode),
+      },
+      "userId": int.parse(userId),
+    };
+
+    final notifier = ref.read(ambulanceListProvider.notifier);
+    bool success;
+
+    if (widget.editData == null) {
+      success = await notifier.createAmbulance(payload);
+    } else {
+      final id = widget.editData!['id']?.toString();
+      if (id == null) throw Exception("ID missing");
+      success = await notifier.editAmbulance(id, payload);
+    }
+
+    if (!mounted) return;
+
+    if (success) {
+      await prefs.setBool('ambulanceRegistered', true);
+      showTopSnackBar(
+        context,
+        widget.editData == null ? "Registered Successfully" : "Updated Successfully",
+      );
+      Navigator.pop(context, {"refresh": true});
+    } else {
+      showTopSnackBar(
+        context,
+        "This mobile number already registered",
+        isError: true,
+      );
+    }
+  } catch (e) {
+    log("ERROR => $e");
+    showTopSnackBar(context, e.toString(), isError: true);
+  } finally {
+    if (mounted) setState(() => isLoading = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -593,6 +609,12 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
                   contentPadding: EdgeInsets.symmetric(
                       horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
                 ),
+                  validator: (value) {
+    if (value == null || value.trim().isEmpty) {
+      return "Place is required";
+    }
+    return null;
+  },
               ),
               SizedBox(height: screenHeight * 0.012),
 
@@ -609,6 +631,15 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
                   contentPadding: EdgeInsets.symmetric(
                       horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
                 ),
+                 validator: (value) {
+    if (value == null || value.trim().isEmpty) {
+      return "Pincode is required";
+    }
+    if (value.trim().length != 6) {
+      return "Pincode must be 6 digits";
+    }
+    return null;
+  },
               ),
               SizedBox(height: screenHeight * 0.025),
 
