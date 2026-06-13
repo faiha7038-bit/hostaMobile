@@ -4,13 +4,14 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:hive/hive.dart';
 import 'package:hosta/presentation/screens/blood/donate.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/widgets/donor-section.dart';
 import 'package:hosta/presentation/screens/blood/widgets/location-section.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../services/api_service.dart';
 
 class Blood extends StatefulWidget {
@@ -82,17 +83,7 @@ _initializeConnectivity();
 
   _loadDonationStatus();
 
-// _connectivitySubscription =
-//     Connectivity().onConnectivityChanged.listen((result) {
-//   final offline = result == ConnectivityResult.none;
 
-//   if (!mounted) return;
-
-//   setState(()  {
-//     isOffline = offline;
-//        _fetchDonors();
-//   });
-// });
 }
 Future<void> _initializeConnectivity() async {
 
@@ -169,20 +160,7 @@ Future<void> _loadUserData() async {
 
   print("🩸 UPDATED bloodId: $bloodId");
 }
-  // Future<void> _loadUserData() async {
-  //   try {
-  //     final prefs = await SharedPreferences.getInstance();
-  //     final storedBloodId = prefs.getString('bloodId');
-  //     final storedUserId = prefs.getString('userId');
-
-  //     setState(() {
-  //       bloodId = storedBloodId;
-  //       userId = storedUserId;
-  //     });
-  //   } catch (e) {
-  //     print("Error loading user data: $e");
-  //   }
-  // }
+ 
 Future<void> _fetchDonors() async {
   try {
     setState(() {
@@ -221,6 +199,7 @@ Future<void> _fetchDonors() async {
     });
 
     final response = await _apiService.getAllDonors(
+      
       bloodGroup: selectedBloodGroup.isEmpty ? null : selectedBloodGroup,
       country: selectedCountry.isEmpty ? null : selectedCountry,
       state: selectedState.isEmpty ? null : selectedState,
@@ -228,7 +207,7 @@ Future<void> _fetchDonors() async {
       place: selectedPlace.isEmpty ? null : selectedPlace,
       searchQuery: searchQuery.trim().isEmpty ? null : searchQuery.trim(),
     );
-
+log("responseofdonors:$response.");
     if (response.statusCode == 200 && response.data != null) {
       final donorList = response.data is List
           ? response.data
@@ -263,78 +242,6 @@ Future<void> _fetchDonors() async {
   }
 }
 
-  // Future<void> _fetchDonors() async {
-  //   print("🔵 _fetchDonors called with filters");
-  //   print("🔵 _fetchDonors called, searchQuery = '$searchQuery'");
-  //   try {
-  //     setState(() => isLoading = true);
-
-  //     // ✅ Build query parameters from current state
-  //     final response = await _apiService.getAllDonors(
-  //       bloodGroup: selectedBloodGroup.isEmpty ? null : selectedBloodGroup,
-  //       country: selectedCountry.isEmpty ? null : selectedCountry,
-  //       state: selectedState.isEmpty ? null : selectedState,
-  //       district: selectedDistrict.isEmpty ? null : selectedDistrict,
-  //       place: selectedPlace.isEmpty ? null : selectedPlace,
-  //       searchQuery: searchQuery.isEmpty ? null : searchQuery,
-  //       // pincode: null,  // if needed later
-  //       // userId: null,
-  //     );
-
-  //     print("📡 Status: ${response.statusCode}");
-  //     print("📦 Raw data: ${response.data}");
-
-  //     if (response.statusCode == 200 && response.data != null) {
-  //       List donorList = [];
-
-  //       if (response.data is Map && response.data['data'] != null) {
-  //         donorList = response.data['data'];
-  //       } else if (response.data is Map && response.data['donors'] != null) {
-  //         donorList = response.data['donors'];
-  //       } else if (response.data is List) {
-  //         donorList = response.data;
-  //       }
-
-  //       print("✅ Donors found: ${donorList.length}");
-
-  //       // Cache the *filtered* result (optional)
-  //       final prefs = await SharedPreferences.getInstance();
-  //       await prefs.setString('cached_donors', jsonEncode(donorList));
-
-  //       setState(() {
-  //         donors = donorList;
-  //         _extractLocationData(
-  //           donorList,
-  //         ); // update location dropdowns based on filtered list
-  //       });
-  //     } else {
-  //       setState(() => donors = []);
-  //     }
-  //   } catch (e, stack) {
-  //     print("❌ API error: $e");
-  //     print(stack);
-  //     // Fallback to cache (but cache might be outdated)
-  //     final prefs = await SharedPreferences.getInstance();
-  //     final cachedData = prefs.getString('cached_donors');
-  //     if (cachedData != null) {
-  //       final donorList = jsonDecode(cachedData);
-  //       setState(() {
-  //         donors = donorList;
-  //         _extractLocationData(donorList);
-  //       });
-  //     } else {
-  //       setState(() {
-  //         donors = [];
-  //         countries = [];
-  //         states = [];
-  //         districts = [];
-  //         places = [];
-  //       });
-  //     }
-  //   } finally {
-  //     setState(() => isLoading = false);
-  //   }
-  // }
 void _applyFiltersOffline() {
   List filtered = allDonors.where((donor) {
     final address = donor['address'] ?? {};
@@ -480,14 +387,30 @@ final matchesBlood =
     }
   }
 
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri url = Uri.parse("tel:$phoneNumber");
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
-    } else {
-      throw 'Could not launch $url';
-    }
+Future<void> _makePhoneCall(String phone) async {
+  if (phone.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Invalid phone number')),
+    );
+    return;
   }
+
+  var status = await Permission.phone.request();
+
+  if (status.isGranted) {
+    bool? res = await FlutterPhoneDirectCaller.callNumber(phone);
+
+    if (res != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Call failed')),
+      );
+    }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Phone permission denied')),
+    );
+  }
+}
 
   void _handleDonateNavigation() {
     if (userId == null) {
@@ -654,7 +577,7 @@ onChanged: (value) {
   );
 },
               decoration: InputDecoration(
-                hintText: "Search by name...",
+                hintText: "Search donors",
                 hintStyle: TextStyle(fontSize: screenWidth * 0.035),
                 prefixIcon: Icon(
                   Icons.search,
@@ -674,7 +597,7 @@ onChanged: (value) {
             ),
           ),
           SizedBox(width: screenWidth * 0.02),
-         if (!isOffline && bloodId == null)
+         if (!isOffline && bloodId == null )
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

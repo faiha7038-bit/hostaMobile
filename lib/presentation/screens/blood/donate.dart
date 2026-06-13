@@ -1,4 +1,3 @@
-
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,9 +9,9 @@ import 'package:hosta/common/top_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Donate extends ConsumerStatefulWidget {
-  final Map<String, dynamic>? editData;  // ← ADD THIS
+  final Map<String, dynamic>? editData; 
 
-  const Donate({super.key, this.editData}); // ← UPDATE CONSTRUCTOR
+  const Donate({super.key, this.editData}); 
 
   @override
   ConsumerState<Donate> createState() => _DonateState();
@@ -257,93 +256,7 @@ class _DonateState extends ConsumerState<Donate> {
     _districtController.text = district['name'].toString();
   }
 
-// Future<void> _submit() async {
-//   final formState = ref.read(donorFormProvider);
-//   final name = _nameController.text.trim();
-//   final phone = _phoneController.text.trim();
-//   final place = _placeController.text.trim();
-//   final pincode = _pincodeController.text.trim();
-//   final districts = formState.districts;
 
-//   if (phone.isEmpty ||
-//       name.isEmpty ||
-//       formState.dateOfBirth == null ||
-//       formState.bloodGroup == null ||
-//       formState.selectedCountry == null ||
-//       formState.selectedState == null ||
-//       (districts.isNotEmpty && formState.selectedDistrict == null) ||
-//       place.isEmpty ||
-//       pincode.isEmpty) {
-//     showTopSnackBar(context, "Please fill all required fields", isError: true);
-//     return;
-//   }
-
-//   final userId = await ref.read(userIdProvider.future);
-//   if (userId == null) {
-//     showTopSnackBar(context, "User not logged in", isError: true);
-//     return;
-//   }
-
-//   final payload = {
-//     "name": name,
-//     "phone": phone,
-//     "dateOfBirth": formState.dateOfBirth,
-//     "bloodGroup": formState.bloodGroup,
-//     "address": {
-//       "country": formState.selectedCountry!['name'].toString(),
-//       "state": formState.selectedState!['name'].toString(),
-//       "district": formState.selectedDistrict?['name']?.toString(),
-//       "place": place,
-//       "pincode": int.parse(pincode),
-//     },
-//     "userId": userId,
-//   };
-
-//   log("Payload: $payload");
-//   ref.read(donorFormProvider.notifier).setLoading(true);
-
-//   try {
-//     bool success; // still non-nullable, but now assigned in both branches
-
-//     if (widget.editData == null) {
-//       // CREATE
-//       print("👉 Calling donorCreationProvider");
-//       success = await ref.read(donorCreationProvider(payload).future);
-//       print("👉 donorCreationProvider returned: $success");
-//     } else {
-//       // UPDATE
-//       final donorId = widget.editData!['id']?.toString();
-//       if (donorId == null) {
-//         showTopSnackBar(context, "Donor ID missing", isError: true);
-//         ref.read(donorFormProvider.notifier).setLoading(false);
-//         return;
-//       }
-//       print("👉 Calling updateDonor for id $donorId");
-//       success = await ref.read(bloodProvider.notifier).updateDonor(donorId, payload);
-//       print("👉 updateDonor returned: $success");
-//     }
-
-//     if (success) {
-//       print("✅ Success is true, showing success snackbar");
-//       showTopSnackBar(
-//         context,
-//         widget.editData == null ? "Donor Registered Successfully" : "Donor Updated Successfully",
-//       );
-//       // Refresh the donor list after successful operation
-//       await ref.read(bloodProvider.notifier).fetchDonor(userId.toString());
-//       Navigator.pop(context, true);
-//     } else {
-//       print("❌ Success is false, showing error snackbar");
-//       showTopSnackBar(context, "Something went wrong", isError: true);
-//     }
-//   } catch (e, stack) {
-//     print("🔥 Exception caught in _submit: $e");
-//     print(stack);
-//     showTopSnackBar(context, e.toString(), isError: true);
-//   } finally {
-//     ref.read(donorFormProvider.notifier).setLoading(false);
-//   }
-// }
 Future<void> _submit() async {
   final formState = ref.read(donorFormProvider);
 
@@ -485,7 +398,7 @@ Future<void> _submit() async {
       showTopSnackBar(context, "Something went wrong", isError: true);
     }
   } catch (e) {
-    showTopSnackBar(context, e.toString(), isError: true);
+   // showTopSnackBar(context, e.toString(), isError: true);
   } finally {
     ref.read(donorFormProvider.notifier).setLoading(false);
   }

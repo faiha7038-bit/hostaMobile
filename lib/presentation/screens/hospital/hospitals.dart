@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
 import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/api_service.dart';
@@ -960,7 +962,43 @@ print(_calculateDistance(lat, lon));
         ),
       ),
     ),
-onPressed: () {
+onPressed: () async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId') ?? '';
+
+  if (userId.isEmpty) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Login Required"),
+        content: const Text(
+          "Please login to book an appointment.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const Signin(),
+                ),
+              );
+            },
+            child: const Text(
+              "Login",
+              style: TextStyle(color: Colors.green),
+            ),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,

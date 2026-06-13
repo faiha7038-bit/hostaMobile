@@ -13,17 +13,50 @@ class RegisterBooking extends StatefulWidget {
 
   @override
   State<RegisterBooking> createState() => _RegisterBookingState();
+
 }
 
 class _RegisterBookingState extends State<RegisterBooking> {
-  
+  List<int> getAvailableWeekdays() {
+  final Map<String, int> dayMap = {
+    'monday': DateTime.monday,
+    'tuesday': DateTime.tuesday,
+    'wednesday': DateTime.wednesday,
+    'thursday': DateTime.thursday,
+    'friday': DateTime.friday,
+    'saturday': DateTime.saturday,
+    'sunday': DateTime.sunday,
+  };
+
+  final List<int> availableDays = [];
+
+  // consultingOne
+  for (final item in widget.doctor.consultingOne) {
+    if (!item.isHoliday) {
+      availableDays.add(
+        dayMap[item.day.toLowerCase()]!,
+      );
+    }
+  }
+
+  // consultingTwo
+  for (final item in widget.doctor.consultingTwo) {
+    if (!item.isHoliday) {
+      availableDays.add(
+        dayMap[item.day.toLowerCase()]!,
+      );
+    }
+  }
+
+  return availableDays.toSet().toList();
+}
   final TextEditingController patientNameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController placeController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   DateTime? dob;
   DateTime? appointmentDate;
-  String? selectedTimeSlot;
+
   String? selectedGender;
   bool _isSubmitting = false;
   final _formKey = GlobalKey<FormState>();
@@ -32,26 +65,11 @@ int? _selectedPatientId;
 Map<String, dynamic>? _selectedPatient;
 bool _isLoadingPatients = true;
 bool _isAutoFilling = false;
-  List<String> get availableTimeSlots {
-    List<String> slots = [];
-    if (widget.doctor.consulting.morningSession != null) {
-      slots.add(widget.doctor.consulting.morningSession!.range);
-    }
-    if (widget.doctor.consulting.eveningSession != null) {
-      slots.add(widget.doctor.consulting.eveningSession!.range);
-    }
-    if (widget.doctor.outDoorConsulting != null) {
-      slots.add(widget.doctor.outDoorConsulting!.time.range);
-    }
-    return slots;
-  }
+
 
  @override
 void initState() {
   super.initState();
-  if (availableTimeSlots.isNotEmpty) {
-    selectedTimeSlot = availableTimeSlots.first;
-  }
   _fetchPatients();
 }
 
@@ -132,6 +150,7 @@ void _onPatientSelected(dynamic patient) {
           : (appointmentDate ?? now),
       firstDate: isPastOnly ? DateTime(1900) : now,
       lastDate: isPastOnly ? now : now.add(const Duration(days: 365)),
+      
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
@@ -548,20 +567,7 @@ const SizedBox(height: 16),
                       value: appointmentDate,
                       onTap: () => _selectDate(context, false),
                     ),
-                    // if (availableTimeSlots.isNotEmpty) ...[
-                    //   const SizedBox(height: 16),
-                    //   DropdownButtonFormField<String>(
-                    //     value: selectedTimeSlot,
-                    //     hint: const Text('Select Time Slot'),
-                    //     decoration: InputDecoration(
-                    //       labelText: 'Consulting Time',
-                    //       prefixIcon: const Icon(Icons.access_time, color: Colors.green),
-                    //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    //     ),
-                    //     items: availableTimeSlots.map((slot) => DropdownMenuItem(value: slot, child: Text(slot))).toList(),
-                    //     onChanged: (value) => setState(() => selectedTimeSlot = value),
-                    //   ),
-                    // ],
+                 
                     if (widget.doctor.consulting
                         .getAvailableSlots()
                         .isNotEmpty) ...[
@@ -633,18 +639,7 @@ const SizedBox(height: 16),
     );
   }
 
-  // Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, TextInputType keyboardType = TextInputType.text}) {
-  //   return TextField(
-  //     controller: controller,
-  //     keyboardType: keyboardType,
-  //     decoration: InputDecoration(
-  //       labelText: label,
-  //       prefixIcon: Icon(icon, color: Colors.green),
-  //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  //       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.green)),
-  //     ),
-  //   );
-  // }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -654,17 +649,7 @@ const SizedBox(height: 16),
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-// onChanged: (value) {
 
-//   if (_isAutoFilling) return;
-
-//   if (_selectedPatient != null) {
-//     setState(() {
-//       _selectedPatient = null;
-//       _selectedPatientId = null;
-//     });
-//   }
-// },
 
       autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: (value) {

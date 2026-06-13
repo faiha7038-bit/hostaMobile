@@ -191,7 +191,10 @@ log("🔐 Verified saved token: ${savedToken != null ? 'Exists' : 'NULL'}");
             context,
             MaterialPageRoute(builder: (_) => const Bottomnav()),
             (route) => false,
+            
           );
+          final prefs = await SharedPreferences.getInstance();
+final ambulanceId = prefs.getString('ambulanceId') ?? '';
         }
       } else {
         setState(() {

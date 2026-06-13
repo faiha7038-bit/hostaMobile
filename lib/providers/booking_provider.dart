@@ -53,11 +53,14 @@ class BookingState {
     int? currentPage,
   bool? hasNextPage,
   bool? isLoadingMore,
+  bool clearDate = false, 
   }) {
     return BookingState(
       selectedFilter: selectedFilter ?? this.selectedFilter,
       searchQuery: searchQuery ?? this.searchQuery,
-      selectedDate: selectedDate,
+  selectedDate: clearDate
+        ? null
+        : (selectedDate ?? this.selectedDate),
       isLoading: isLoading ?? this.isLoading,
       userId: userId ?? this.userId,
       isSocketConnected: isSocketConnected ?? this.isSocketConnected,
@@ -100,6 +103,8 @@ Future<void> loadMore() async {
     page: nextPage,
   );
 
+log("OLD BOOKINGS = ${state.bookings.length}");
+
   state = state.copyWith(isLoadingMore: false);
 }
 
@@ -128,16 +133,22 @@ Future<void> loadMore() async {
   );
 }
 
-  void updateSelectedDate(DateTime? date) {
-    state = state.copyWith(selectedDate: date);
-  }
+Future<void> updateSelectedDate(DateTime? date) async {
+  print("STATE DATE => $date");
 
-  void clearSelectedDate() {
-     log("🔥 BEFORE: ${state.selectedDate}");
+  state = state.copyWith(selectedDate: date);
 
-    state = state.copyWith(selectedDate: null);
-      log("🔥 AFTER: ${state.selectedDate}");
-  }
+  print("AFTER UPDATE => ${state.selectedDate}");
+
+  await fetchBookings();
+}
+Future<void> clearSelectedDate() async {
+  state = state.copyWith(clearDate: true);
+
+  log("DATE AFTER CLEAR = ${state.selectedDate}");
+
+  await fetchBookings();
+}
 
   void setLoading(bool loading) {
     state = state.copyWith(isLoading: loading);
@@ -183,26 +194,6 @@ void updateBookingStatus(String bookingId, String newStatus) {
   }
 
 
-// Future<void> loadUserIdAndFetchBookings() async {
-//   try {
-//     final prefs = await SharedPreferences.getInstance();
-    
-//     final storedUserId = prefs.getString('userId');
-    
-//     setUserId(storedUserId);
-//     print("📱 Loaded user ID for bookings: $storedUserId");
-
-//     if (storedUserId != null && storedUserId.isNotEmpty) {
-//       await fetchBookings();
-//     } else {
-//       setLoading(false);
-//       print("❌ No user ID found for bookings");
-//     }
-//   } catch (e) {
-//     print("❌ Error loading user ID: $e");
-//     setLoading(false);
-//   }
-// }
 
 Future<void> loadUserIdAndFetchBookings() async {
   try {
@@ -227,16 +218,20 @@ Future<void> loadUserIdAndFetchBookings() async {
   }
 }
 Future<void> fetchBookings({
+  
   bool reset = true,
   int? page,
 }) async {
   final userId = state.userId;
-
+log("RESET = $reset");
   if (userId == null || userId.isEmpty) {
     setLoading(false);
     return;
   }
-
+log("SELECTED DATE FROM STATE => ${state.selectedDate}");
+log("SELECTED DATE => ${state.selectedDate}");
+log("DATE SENT TO API => ${state.selectedDate == null ? null : DateFormat('yyyy-MM-dd').format(state.selectedDate!)}");
+log("DATE BEFORE RESET => ${state.selectedDate}");
   if (reset) {
     state = state.copyWith(
       currentPage: 1,
@@ -247,7 +242,13 @@ Future<void> fetchBookings({
   }
 
   try {
+    final formattedDate = state.selectedDate == null
+    ? null
+    : DateFormat('yyyy-MM-dd').format(state.selectedDate!);
+
+log("FORMATTED DATE BEFORE API = $formattedDate");
    final response = await _apiService.getAllBookings(
+    
   userId: userId,
   status: state.selectedFilter == "All"
       ? null
@@ -257,10 +258,11 @@ Future<void> fetchBookings({
   searchQuery: state.searchQuery.isEmpty
       ? null
       : state.searchQuery,
+  date: formattedDate,
   page: page ?? state.currentPage,
   limit: 10,
 );
-
+log("responseof=booking${response.data}");
     final data = response.data;
 
     List<Map<String, dynamic>> parsedBookings = [];
@@ -278,7 +280,7 @@ Future<void> fetchBookings({
       hasNextPage: pagination['hasNextPage'],
     currentPage: (page ?? state.currentPage),
     );
-
+log("API COUNT = ${parsedBookings.length}");
   } catch (e) {
     setBookings([]);
   } finally {
@@ -517,19 +519,7 @@ await _apiService.updateBooking(
   }
 }
 
-
 final filteredBookingsProvider =
     Provider<List<Map<String, dynamic>>>((ref) {
-  final state = ref.watch(bookingStateProvider);
-
-  final bookings = state.bookings;
-  final date = state.selectedDate;
-
-  return bookings.where((b) {
-    final matchDate = date == null
-        ? true
-        : b["date"] == DateFormat('yyyy-MM-dd').format(date);
-
-    return matchDate;
-  }).toList();
+  return ref.watch(bookingStateProvider).bookings;
 });

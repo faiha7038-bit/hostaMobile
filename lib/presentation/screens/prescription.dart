@@ -81,9 +81,9 @@ void _onScroll() {
         userId: widget.userId,
         page: 1,
         limit: 10,
-        date: selectedDate != null
-            ? DateFormat('yyyy-MM-dd').format(selectedDate!)
-            : null,
+        // date: selectedDate != null
+        //     ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+        //     : null,
       );
 
       if (response.statusCode == 200) {
@@ -124,9 +124,9 @@ Future<void> fetchMorePrescriptions() async {
       userId: widget.userId,
       page: nextPage,
       limit: 10,
-      date: selectedDate != null
-          ? DateFormat('yyyy-MM-dd').format(selectedDate!)
-          : null,
+      // date: selectedDate != null
+      //     ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+      //     : null,
     );
 
     if (response.statusCode == 200) {

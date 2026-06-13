@@ -234,11 +234,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         centerTitle: true,
         backgroundColor: const Color(0xFF28A745),
         elevation: 0,
+        
         actions: [
+            if ((userId ?? '').isNotEmpty)
           IconButton(
             icon: Icon(Icons.settings, color: Colors.white, size: screenWidth * 0.06),
             onPressed: _navigateToSettings,
           ),
+      
         ],
       ),
       body: isLoading
@@ -705,6 +708,7 @@ if (result == true) {
                                     //     );
                                     //   },
                                     // ),
+                                    if (userId != null && userId!.isNotEmpty) ...[
                                     const Divider(height: 0),
 
                                     _buildProfileOption(
@@ -715,6 +719,7 @@ if (result == true) {
                                       screenHeight: screenHeight,
                                       onTap: _navigateToSettings,
                                     ),
+                                    ],
                                     const Divider(height: 0),
                                     _buildProfileOption(
                                       icon: Icons.lock_outline,

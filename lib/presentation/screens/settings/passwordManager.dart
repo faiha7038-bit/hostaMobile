@@ -708,6 +708,8 @@ log("NEW PASS => ${_newPasswordController.text}");
     final screenHeight = MediaQuery.of(context).size.height;
     final TextEditingController newPasswordController = TextEditingController();
     final TextEditingController confirmPasswordController = TextEditingController();
+    bool _showNewPass = true;
+bool _showConfirmPass = true;
     bool isResetting = false;
 int resendAfter = 30;
 bool isVerifying = false;
@@ -740,11 +742,22 @@ String? otpError;
               SizedBox(height: screenHeight * 0.02),
               TextField(
                 controller: newPasswordController,
-                obscureText: true,
+                 obscureText: _showNewPass,
                 decoration: InputDecoration(
                   hintText: "New password (min. 6 characters)",
                   hintStyle: TextStyle(fontSize: screenWidth * 0.035),
                   prefixIcon: Icon(Icons.lock_outline, size: screenWidth * 0.05, color: Colors.green),
+                     suffixIcon: IconButton(
+      icon: Icon(
+        _showNewPass ? Icons.visibility_off : Icons.visibility,
+        color: Colors.black,
+      ),
+      onPressed: () {
+        setState(() {
+          _showNewPass = !_showNewPass;
+        });
+      },
+    ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(screenWidth * 0.03),
                     borderSide: BorderSide.none,
@@ -757,11 +770,22 @@ String? otpError;
               SizedBox(height: screenHeight * 0.015),
               TextField(
                 controller: confirmPasswordController,
-                obscureText: true,
+                obscureText: _showConfirmPass,
                 decoration: InputDecoration(
                   hintText: "Confirm new password",
                   hintStyle: TextStyle(fontSize: screenWidth * 0.035),
                   prefixIcon: Icon(Icons.lock_outline, size: screenWidth * 0.05, color: Colors.green),
+                    suffixIcon: IconButton(
+      icon: Icon(
+        _showConfirmPass ? Icons.visibility_off : Icons.visibility,
+        color: Colors.black,
+      ),
+      onPressed: () {
+        setState(() {
+          _showConfirmPass = !_showConfirmPass;
+        });
+      },
+    ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(screenWidth * 0.03),
                     borderSide: BorderSide.none,
