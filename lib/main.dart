@@ -2,12 +2,12 @@ import 'package:alarm/alarm.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' as firebase;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/firebase_options.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:hosta/services/api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,7 +49,7 @@ void main() async {
     print("✅ Permission: ${settings.authorizationStatus}");
     
     // Wait for iOS APNS token
-    await Future.delayed(const Duration(seconds: 2));
+   Future.delayed(const Duration(seconds: 2));
     
     String? apnsToken = await firebase.FirebaseMessaging.instance.getAPNSToken();
     print("✅ APNS TOKEN: $apnsToken");

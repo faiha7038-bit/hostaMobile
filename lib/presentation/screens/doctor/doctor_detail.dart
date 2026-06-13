@@ -1,7 +1,10 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/doctor_model.dart';
-import 'package:hosta/common/top_snackbar.dart';
+import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
 class DoctorDetailScreen extends StatefulWidget {
@@ -35,44 +38,22 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     _fetchDoctorDetails();
   }
   
-  Future<void> _fetchDoctorDetails() async {
-    if (doctorDetails != null) return; // Already have data
-    
-    if (!mounted) return;
-    
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-    
-    try {
-      final response = await ApiService().getDoctorById(widget.doctor.id.toString());
-      
-      if (!mounted) return;
-      
-      print("📡 Doctor Details Response: ${response.data}");
-      
-      if (response.data['success'] == true && response.data['data'] != null) {
-        setState(() {
-          doctorDetails = Doctor.fromJson(response.data['data']);
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          errorMessage = response.data['message'] ?? 'Failed to load doctor details';
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      print("❌ Error fetching doctor details: $e");
-      if (mounted) {
-        setState(() {
-          errorMessage = 'Error loading doctor details';
-          isLoading = false;
-        });
-      }
+Future<void> _fetchDoctorDetails() async {
+  try {
+    final response = await ApiService()
+        .getDoctorById(widget.doctor.id.toString());
+
+    log("DOCTOR RESPONSE => ${response.data}");
+
+    if (response.data['success'] == true) {
+      setState(() {
+        doctorDetails = Doctor.fromJson(response.data['data']);
+      });
     }
+  } catch (e) {
+    log("ERROR => $e");
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +176,7 @@ Container(
 ),
             /// TIMINGS
             Text(
-              "Available Timings",
+              "Available Days",
               style: TextStyle(
                 fontSize: isSmallScreen ? 16 : 20,
                 fontWeight: FontWeight.bold,
@@ -203,7 +184,18 @@ Container(
             ),
 
             SizedBox(height: screenHeight * 0.012),
+Wrap(
+  spacing: 8,
+  children: doctorDetails!.availableDays.map((day) {
+    return Chip(
+      label: Text(day),
+      backgroundColor: Colors.green.shade50,
+      avatar: const Icon(Icons.check, color: Colors.green, size: 18),
+    );
+  }).toList(),
+),
 
+SizedBox(height: 20),
             /// Morning Session
             if (doctorDetails!.consulting.morningSession != null)
               _timingTile(
@@ -275,7 +267,36 @@ Container(
                   SizedBox(height: screenHeight * 0.025),
                 ],
               ),
-                     SizedBox(height: screenHeight * 0.012),
+
+            /// REVIEWS
+            // Text(
+            //   "Patient Reviews",
+            //   style: TextStyle(
+            //     fontSize: isSmallScreen ? 16 : 20,
+            //     fontWeight: FontWeight.bold,
+            //   ),
+            // ),
+
+           // SizedBox(height: screenHeight * 0.012),
+
+            // ...reviews.map(
+            //   (r) => _reviewTile(r["name"], r["stars"], r["comment"], screenWidth),
+            // ),
+
+            SizedBox(height: screenHeight * 0.012),
+
+            /// ADD REVIEW BUTTON
+            // SizedBox(
+            //   width: double.infinity,
+            //   child: OutlinedButton(
+            //     onPressed: () => _showReviewDialog(),
+            //     style: OutlinedButton.styleFrom(
+            //       padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
+            //     ),
+            //     child: const Text("Write a Review"),
+            //   ),
+            // ),
+
             SizedBox(height: screenHeight * 0.03),
 
             /// BOOK BUTTON
@@ -287,17 +308,54 @@ Container(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(10)),
                   backgroundColor: Colors.green
                 ),
-                 onPressed: doctorDetails!.bookingOpen
-      ? () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  RegisterBooking(doctor: widget.doctor),
+         onPressed: doctorDetails!.bookingOpen
+    ? () async {
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getString('userId') ?? '';
+
+        if (userId.isEmpty) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text("Login Required",style: TextStyle(color: Colors.green),),
+              content: const Text(
+                "Please login to book an appointment.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const Signin(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Login",
+                    style: TextStyle(color: Colors.green),
+                  ),
+                ),
+              ],
             ),
           );
+          return;
         }
-      : null, 
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                RegisterBooking(doctor: widget.doctor),
+          ),
+        );
+      }
+    : null,
                 
                 child: Text(
                   doctorDetails!.bookingOpen ? "Book Appointment" : "CLOSED",
@@ -307,6 +365,7 @@ Container(
                     fontSize: isSmallScreen ? 14 : 16,
                   ),
                 ),
+                
               ),
             ),
           ],

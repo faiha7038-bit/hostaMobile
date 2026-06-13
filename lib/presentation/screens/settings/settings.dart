@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/settings/accountsettings.dart';
 import 'package:hosta/presentation/screens/settings/passwordManager.dart';

@@ -269,6 +269,56 @@ Future<void> _fetchHospitals({
   return false;
 }
 
+  // bool _isOpenNow(Map<String, dynamic> hospital) {
+  //   final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
+  //   if (workingHoursClinic != null && workingHoursClinic.isNotEmpty) {
+  //     return _isOpenNowNewFormat(hospital);
+  //   }
+
+  //   final workingHours = hospital["working_hours"] as List<dynamic>?;
+  //   if (workingHours == null || workingHours.isEmpty) return false;
+
+  //   final now = DateTime.now();
+  //   final today = [
+  //     "Monday",
+  //     "Tuesday",
+  //     "Wednesday",
+  //     "Thursday",
+  //     "Friday",
+  //     "Saturday",
+  //     "Sunday"
+  //   ][now.weekday - 1];
+
+  //   final todayHours = workingHours.firstWhere(
+  //     (day) => day["day"] == today,
+  //     orElse: () => null,
+  //   );
+
+  //   if (todayHours == null || todayHours["is_holiday"] == true) return false;
+
+  //   final open = todayHours["opening_time"];
+  //   final close = todayHours["closing_time"];
+  //   if (open == null || close == null) return false;
+
+  //   try {
+  //     int nowMinutes = now.hour * 60 + now.minute;
+  //     final openParts = open.split(":");
+  //     int openMinutes = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
+
+  //     final closeParts = close.split(":");
+  //     int closeMinutes = int.parse(closeParts[0]) * 60 +
+  //         int.parse(closeParts[1]);
+
+  //     if (closeMinutes < openMinutes) {
+  //       return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
+  //     } else {
+  //       return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+  //     }
+  //   } catch (_) {
+  //     return false;
+  //   }
+  // }
+
   bool _isOpenNowNewFormat(Map<String, dynamic> hospital) {
     final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
     if (workingHoursClinic == null || workingHoursClinic.isEmpty) return false;
@@ -464,7 +514,11 @@ List<dynamic> filteredHospitals = hospitals.where((hospital) {
   final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
   return matchesOpen;
 }).toList();
-   
+    // List<dynamic> filteredHospitals = hospitals.where((hospital) {
+    //   final matchesSearch = _matchesSearchQuery(hospital);
+    //   final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
+    //   return matchesSearch && matchesOpen;
+    // }).toList();
 if (filterNearest && userPosition != null) {
   filteredHospitals.sort((a, b) {
 
@@ -487,7 +541,21 @@ if (filterNearest && userPosition != null) {
     return aDist.compareTo(bDist);
   });
 }
-   
+    // if (filterNearest && userPosition != null) {
+    //   filteredHospitals.sort((a, b) {
+    //     final aDist = _calculateDistance(
+    //           (a["latitude"] ?? 0).toDouble(),
+    //           (a["longitude"] ?? 0).toDouble(),
+    //         ) ??
+    //         double.infinity;
+    //     final bDist = _calculateDistance(
+    //           (b["latitude"] ?? 0).toDouble(),
+    //           (b["longitude"] ?? 0).toDouble(),
+    //         ) ??
+    //         double.infinity;
+    //     return aDist.compareTo(bDist);
+    //   });
+    // }
 
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
@@ -538,7 +606,14 @@ if (filterNearest && userPosition != null) {
     },
   );
 },
+//                 onChanged: (value) async {
+//   setState(() {
+//     searchQuery = value;
+//   });
 
+//   await _fetchHospitals(query: value);
+// },
+                // onChanged: (value) => setState(() => searchQuery = value),
                 decoration: InputDecoration(
                   hintText: "Search hospitals...",
                   hintStyle: TextStyle(fontSize: screenWidth * 0.035),
@@ -805,7 +880,14 @@ print(_calculateDistance(lat, lon));
       color: Colors.blueGrey,
     ),
   ),
-            
+                // if (distance != null)
+                //   Text(
+                //     "${distance.toStringAsFixed(1)} km away",
+                //     style: TextStyle(
+                //       fontSize: screenWidth * 0.035,
+                //       color: Colors.blueGrey,
+                //     ),
+                //   ),
                 SizedBox(height: screenHeight * 0.0075),
                 Text(
                   address,

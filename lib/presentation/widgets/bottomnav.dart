@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app_badger_plus/flutter_app_badger_plus.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/screens/profile_show/profile.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../screens/home/home.dart';
 import '../screens/booking/booking.dart';
 import '../screens/notification/notifications.dart';
@@ -184,29 +187,53 @@ class BottomNavState extends ConsumerState<Bottomnav> {
     print('📱 Notification tapped, navigating to notifications page');
     
     if (mounted) {
-      _navigateToTab(2);
+      _navigateToTab(3);
     }
     
     _refetchNotifications();
   }
-
   void _navigateToTab(int index) {
-    if (index >= 0 && index < pages.length) {
-      setState(() {
-        currentTabIndex = index;
-      });
-      
-      _pageController.animateToPage(
-        index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-      
-      // if (index == 2) {
-      //   _markNotificationsAsRead();
-      // }
-    }
+  // Skip call button index
+  int pageIndex = index;
+
+  if (index > 2) {
+    pageIndex = index - 1;
   }
+
+  if (pageIndex >= 0 && pageIndex < pages.length) {
+    setState(() {
+      currentTabIndex = index;
+    });
+
+    _pageController.animateToPage(
+      pageIndex,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+
+    // if (index == 3) {
+    //   _markNotificationsAsRead();
+    // }
+  }
+}
+
+  // void _navigateToTab(int index) {
+  //   if (index >= 0 && index < pages.length) {
+  //     setState(() {
+  //       currentTabIndex = index;
+  //     });
+      
+  //     _pageController.animateToPage(
+  //       index,
+  //       duration: const Duration(milliseconds: 300),
+  //       curve: Curves.easeInOut,
+  //     );
+      
+  //     if (index == 3) {
+  //       _markNotificationsAsRead();
+  //     }
+  //   }
+  // }
 
   Future<void> _checkBadgeSupport() async {
     try {
@@ -360,6 +387,15 @@ class BottomNavState extends ConsumerState<Bottomnav> {
     }
   }
 
+Future<void> makePhoneCall(String phoneNumber) async {
+  bool? res = await FlutterPhoneDirectCaller.callNumber(phoneNumber);
+
+  if (res == true) {
+    print("Call Started");
+  } else {
+    print("Call Failed");
+  }
+}
   void _setupSocketListener() {
     try {
       const String serverUrl = 'https://www.zorrowtek.in';
@@ -371,7 +407,7 @@ class BottomNavState extends ConsumerState<Bottomnav> {
         'reconnectionAttempts': 5,
         'reconnectionDelay': 1000,
       });
-
+//9567900329
       socket!.on('connect', (_) {
         print("✅ Connected to server via Socket.IO");
         
@@ -514,7 +550,7 @@ class BottomNavState extends ConsumerState<Bottomnav> {
             onTap: () {
               _removeOverlay();
               if (mounted) {
-                _navigateToTab(2);
+                _navigateToTab(3);
               }
             },
             child: Container(
@@ -773,7 +809,7 @@ void updateNotificationCount(int count) {
               return Container(
                 color: Colors.white,
                 child: Icon(
-                  currentTabIndex == 3 ? Icons.person : Icons.person_outline,
+                  currentTabIndex == 4 ? Icons.person : Icons.person_outline,
                   color: Colors.green,
                   size: screenWidth * 0.05,
                 ),
@@ -801,7 +837,7 @@ void updateNotificationCount(int count) {
     } else {
       // No profile image - show default icon
       return Icon(
-        currentTabIndex == 3 ? Icons.person : Icons.person_outline,
+        currentTabIndex == 4 ? Icons.person : Icons.person_outline,
         color: Colors.white,
         size: screenWidth * 0.08,
       );
@@ -812,6 +848,7 @@ void updateNotificationCount(int count) {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+   
     
     print("🎯 Current notification count: $notificationCount");
     print("👤 User ID: $userId");
@@ -823,14 +860,21 @@ void updateNotificationCount(int count) {
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {
-          setState(() {
-            currentTabIndex = index;
-            if (index == 2) {
-              print("📢 Marking notifications as read from swipe");
-              _markNotificationsAsRead();
-            }
-          });
-        },
+  int navIndex = index;
+
+  // Adjust because call button exists in navbar
+  if (index >= 2) {
+    navIndex = index + 1;
+  }
+
+  setState(() {
+    currentTabIndex = navIndex;
+
+    if (navIndex == 3) {
+      _markNotificationsAsRead();
+    }
+  });
+},
         children: pages,
       ),
       bottomNavigationBar: Container(
@@ -873,6 +917,20 @@ void updateNotificationCount(int count) {
                 size: screenWidth * 0.07,
               ),
               label: "Bookings",
+            ),
+                BottomNavigationBarItem(
+                  
+     icon: IconButton(
+  onPressed: () {
+    makePhoneCall("9567900329");
+  },
+  icon: Icon(
+    Icons.add_call,
+    color: Colors.red,
+    size: screenWidth * 0.08,
+  ),
+),
+              label: "",
             ),
             BottomNavigationBarItem(
               icon: _buildNotificationWithBadge(),

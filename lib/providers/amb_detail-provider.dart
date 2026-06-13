@@ -112,6 +112,30 @@ Future<bool> deleteAmbulance(String ambulanceId) async {
     return false;
   }
 }
+
+//  Future<bool> deleteAmbulance(String ambulanceId) async {
+//   try {
+//     final response = await apiService.deleteAmbulance(ambulanceId);
+
+//     log("DELETE response status: ${response.statusCode}");
+
+//     if (response.statusCode == 200) {
+//       state = state.copyWith(
+//         ambulances: state.ambulances
+//             .where((item) =>
+//                 (item['_id'] ?? item['id']).toString() != ambulanceId)
+//             .toList(),
+//       );
+
+//       return true;
+//     }
+
+//     return false;
+//   } catch (e) {
+//     log("DELETE ERROR: $e");
+//     return false;
+//   }
+// }
 }
 
 final ambulanceListProvider = StateNotifierProvider<AmbulanceListNotifier, AmbulanceListState>(

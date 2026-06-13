@@ -30,6 +30,21 @@ final specialtiesProvider = FutureProvider.family<List<dynamic>, String>((ref, s
 // Keep searchQueryProvider to hold the current input text
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
+// Remove filteredSpecialtiesProvider – no longer needed
+
+
+// final filteredSpecialtiesProvider = Provider<List<dynamic>>((ref) {
+//   final specialties = ref.watch(specialtiesProvider);
+//   final searchQuery = ref.watch(searchQueryProvider);
+//   return specialties.when(
+//     data: (list) => searchQuery.isEmpty
+//         ? list
+//         : list.where((s) => (s['name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase())).toList(),
+//     loading: () => [],
+//     error: (_, __) => [],
+//   );
+// });
+
 // Hospitals for specialty provider (full hospital objects + doctors list)
 final hospitalsForSpecialtyProvider = StateProvider<List<Map<String, dynamic>>>((ref) => []);
 final hospitalsLoadingProvider = StateProvider<bool>((ref) => false);

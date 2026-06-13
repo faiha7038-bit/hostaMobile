@@ -8,6 +8,7 @@ import 'package:hosta/presentation/screens/ambulance/register.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/ambulance-provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -180,6 +181,38 @@ Future<void> _refreshAmbulanceId() async {
   ref.read(ambulanceIdProvider.notifier).state = ambulanceId ?? '';
 }
 
+//   void _handleAmbulanceRegister() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final userId = prefs.getString('userId');
+
+//     if (userId == null) {
+//       Navigator.push(
+//         context,
+//         MaterialPageRoute(builder: (context) => const Signin()),
+//       ).then((_) => _handleAmbulanceRegister());
+//         await _refreshAmbulanceId();
+//   await _fetchAmbulances();
+  
+//       return;
+//     }
+
+// print("🔄 Returned from AmbulanceRegister screen");
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(builder: (context) => const AmbulanceRegister()),
+//     ).then((_) => _fetchAmbulances());
+//   }
+
+  // Future<void> _callNumber(String phone) async {
+  //   final uri = Uri(scheme: 'tel', path: phone);
+  //   if (await canLaunchUrl(uri)) {
+  //     await launchUrl(uri);
+  //   } else {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Could not launch dialer')),
+  //     );
+  //   }
+  // }/
   Future<void> _callNumber(String phone) async {
   if (phone.trim().isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(

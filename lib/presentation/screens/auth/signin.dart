@@ -67,42 +67,36 @@ class _SigninState extends State<Signin> {
     });
     return true;
   }
+Future<void> _sendOtp() async {
+  log("Send OTP button tapped");
 
-  Future<void> _sendOtp() async {
-     log("Send OTP button tapped");
-    String rawPhone = phoneController.text.trim();
-    String cleanPhone = _cleanPhoneNumber(rawPhone);
-    
-    log("🚀 Sending OTP for phone: $cleanPhone");
-    
-    // Validate phone number
-    if (!_validatePhoneNumber(cleanPhone)) {
-      return;
-    }
+  String rawPhone = phoneController.text.trim();
+  String cleanPhone = _cleanPhoneNumber(rawPhone);
 
-    setState(() {
-      isSendingOtp = true;
-      phoneError = null;
-    });
+  log("🚀 Sending OTP for phone: $cleanPhone");
 
-    try {
-      // Try different phone number formats that your backend might expect
-      // Format 1: Just 10 digits (most common)
-      final requestData = {"phone": cleanPhone};
-      
-      // Format 2: With country code (uncomment if above doesn't work)
-      // final requestData = {"phone": "+91$cleanPhone"};
-      
-      // Format 3: With 91 prefix (uncomment if needed)
-      // final requestData = {"phone": "91$cleanPhone"};
-      
-      log("📤 API Request - Endpoint: /users/login");
-      log("📤 Request data: $requestData");
-      
-      final response = await _apiService.loginUser(requestData);
-log("HEADERS => ${response.headers.map}");      
-      log("📥 Response status: ${response.statusCode}");
-      log("📥 Response data: ${response.data}");
+  // Validate phone number
+  if (!_validatePhoneNumber(cleanPhone)) {
+    return;
+  }
+
+  setState(() {
+    isSendingOtp = true;
+    phoneError = null;
+  });
+
+  try {
+    final requestData = {
+      "phone": cleanPhone,
+    };
+
+    log("📤 API Request - Endpoint: /users/login");
+    log("📤 Request data: $requestData");
+
+    final response = await _apiService.loginUser(requestData);
+log("HEADERS => ${response.headers.map}");
+    log("📥 Response status: ${response.statusCode}");
+    log("📥 Response data: ${response.data}");
 
     setState(() {
       isSendingOtp = false;

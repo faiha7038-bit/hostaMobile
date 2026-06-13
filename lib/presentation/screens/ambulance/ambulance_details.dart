@@ -20,6 +20,12 @@ class _AmbulanceDetailsPageState extends ConsumerState<AmbulanceDetailsPage> {
     _loadAmbulances();
   }
 
+  // Future<void> _loadAmbulances() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final userId = prefs.getString('userId');
+  //   if (userId == null) return;
+  //   await ref.read(ambulanceListProvider.notifier).fetchAmbulances(userId: userId);
+  // }
 Future<void> _loadAmbulances() async {
   final prefs = await SharedPreferences.getInstance();
   final userId = prefs.getString('userId');

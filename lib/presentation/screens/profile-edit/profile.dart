@@ -16,6 +16,71 @@ void initState() {
 
   ref.read(userDataProvider.notifier).loadUserIdAndProfile();
 }
+void _showProfileOptions(
+  BuildContext context,
+  WidgetRef ref,
+) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return Consumer(
+        builder: (context, ref, child) {
+          final userState = ref.watch(userDataProvider);
+
+          final hasImage =
+              userState.userData?['imageUrl'] != null &&
+              userState.userData!['imageUrl'].toString().isNotEmpty;
+
+          return SafeArea(
+            child: Wrap(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: Text(
+                    hasImage ? "Change Photo" : "Choose Photo",
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+
+                    await ref
+                        .read(userDataProvider.notifier)
+                        .pickImage();
+                  },
+                ),
+
+                if (hasImage)
+                  ListTile(
+                    leading:
+                        const Icon(Icons.delete, color: Colors.red),
+                    title: const Text(
+                      "Delete Photo",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(context);
+
+                      await ref
+                          .read(userDataProvider.notifier)
+                          .deleteProfileImage();
+                    },
+                  ),
+
+                ListTile(
+                  leading: const Icon(Icons.cancel),
+                  title: const Text("Cancel"),
+                  onTap: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   Future<void> _initializeProfile() async {
     await ref.read(userDataProvider.notifier).loadUserIdAndProfile();
@@ -280,13 +345,16 @@ void initState() {
               Stack(
                 children: [
                   GestureDetector(
-                    onTap: userState.isEditing
-                        ? () async {
-                            await ref
-                                .read(userDataProvider.notifier)
-                                .pickImage();
-                          }
-                        : null,
+  onTap: () {
+  _showProfileOptions(context, ref);
+},
+                    // onTap: userState.isEditing
+                    //     ? () async {
+                    //         await ref
+                    //             .read(userDataProvider.notifier)
+                    //             .pickImage();
+                    //       }
+                        //: null,
                     child: CircleAvatar(
                       radius: screenWidth * 0.125,
                       backgroundColor: Colors.grey.shade200,
@@ -421,52 +489,93 @@ void initState() {
       ),
     );
   }
-
-  Widget _buildProfileImage(UserDataState userState, double screenWidth, double screenHeight) {
-    if (userState.userId == null || userState.userId!.isEmpty) {
-      return Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey);
-    }
-
-    // Show selected image if available
-    if (userState.imageFile != null) {
-      return ClipOval(
-        child: Image.file(
-          userState.imageFile!,
-          width: screenWidth * 0.25,
-          height: screenWidth * 0.25,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-
-    // Show existing profile image from server
-    final pictureData = userState.userData?['picture'];
-    String? profileImageUrl;
-
-    if (pictureData is Map<String, dynamic>) {
-      profileImageUrl = pictureData['imageUrl']?.toString();
-    }
-
-    if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          profileImageUrl,
-          width: screenWidth * 0.25,
-          height: screenWidth * 0.25,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            print("❌ Error loading network image: $error");
-            return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
-          },
-        ),
-      );
-    }
-
-    // Default avatar
-    return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
+Widget _buildProfileImage(UserDataState userState, double screenWidth, double screenHeight) {
+  if (userState.userId == null || userState.userId!.isEmpty) {
+    return Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey);
   }
+
+  // selected image
+  if (userState.imageFile != null) {
+    return ClipOval(
+      child: Image.file(
+        userState.imageFile!,
+        width: screenWidth * 0.25,
+        height: screenWidth * 0.25,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+
+  // server image (FIXED)
+  String? profileImageUrl = userState.userData?['imageUrl']?.toString();
+
+  if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+    return ClipOval(
+      child: Image.network(
+        profileImageUrl,
+        width: screenWidth * 0.25,
+        height: screenWidth * 0.25,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
+        },
+      ),
+    );
+  }
+
+  return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
+}
+  // Widget _buildProfileImage(UserDataState userState, double screenWidth, double screenHeight) {
+  //   if (userState.userId == null || userState.userId!.isEmpty) {
+  //     return Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey);
+  //   }
+
+  //   // Show selected image if available
+  //   if (userState.imageFile != null) {
+  //     return ClipOval(
+  //       child: Image.file(
+  //         userState.imageFile!,
+  //         width: screenWidth * 0.25,
+  //         height: screenWidth * 0.25,
+  //         fit: BoxFit.cover,
+  //       ),
+  //     );
+  //   }
+
+  //   // Show existing profile image from server
+  //   //final pictureData = userState.userData?['picture'];
+  //   final profileImageUrl = userState.userData?['imageUrl']?.toString();
+  //   String? profileImageUrl;
+
+  //   if (profileImageUrl is Map<String, dynamic>) {
+  //     profileImageUrl = profileImageUrl['imageUrl']?.toString();
+  //   }
+
+  //   if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+  //     return ClipOval(
+  //       child: Image.network(
+  //         profileImageUrl,
+  //         width: screenWidth * 0.25,
+  //         height: screenWidth * 0.25,
+  //         fit: BoxFit.cover,
+  //         errorBuilder: (context, error, stackTrace) {
+  //           print("❌ Error loading network image: $error");
+  //           return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
+  //         },
+  //         loadingBuilder: (context, child, loadingProgress) {
+  //           if (loadingProgress == null) return child;
+  //           return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
+  //         },
+  //       ),
+  //     );
+  //   }
+
+  //   // Default avatar
+  //   return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
+  // }
+
 }

@@ -82,6 +82,17 @@ _initializeConnectivity();
 
   _loadDonationStatus();
 
+// _connectivitySubscription =
+//     Connectivity().onConnectivityChanged.listen((result) {
+//   final offline = result == ConnectivityResult.none;
+
+//   if (!mounted) return;
+
+//   setState(()  {
+//     isOffline = offline;
+//        _fetchDonors();
+//   });
+// });
 }
 Future<void> _initializeConnectivity() async {
 
@@ -158,7 +169,20 @@ Future<void> _loadUserData() async {
 
   print("🩸 UPDATED bloodId: $bloodId");
 }
-  
+  // Future<void> _loadUserData() async {
+  //   try {
+  //     final prefs = await SharedPreferences.getInstance();
+  //     final storedBloodId = prefs.getString('bloodId');
+  //     final storedUserId = prefs.getString('userId');
+
+  //     setState(() {
+  //       bloodId = storedBloodId;
+  //       userId = storedUserId;
+  //     });
+  //   } catch (e) {
+  //     print("Error loading user data: $e");
+  //   }
+  // }
 Future<void> _fetchDonors() async {
   try {
     setState(() {
@@ -650,8 +674,7 @@ onChanged: (value) {
             ),
           ),
           SizedBox(width: screenWidth * 0.02),
-       //  if (!isOffline && bloodId == null)
-       if (!isOffline && userId != null && bloodId == null)
+         if (!isOffline && bloodId == null)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

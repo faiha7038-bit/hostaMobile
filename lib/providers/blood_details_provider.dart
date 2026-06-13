@@ -74,9 +74,13 @@ Future<void> deleteDonor() async {
     if (res.statusCode == 200 && res.data['success'] == true) {
       print("DELETE SUCCESS");
 
-      // 🔥 refresh from backend instead of blindly clearing
-      await fetchDonor(res.data['data']?['userId'] ?? '');
-      state = null; // optional fallback
+      // ✅ REMOVE LOCAL bloodId
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('bloodId');
+
+      // ✅ clear state
+      state = null;
+
     } else {
       print("DELETE FAILED => ${res.data}");
     }

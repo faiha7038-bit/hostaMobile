@@ -1,6 +1,5 @@
 
 import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +19,7 @@ class AmbulanceRegister extends ConsumerStatefulWidget {
 
 class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
   final _phoneController = TextEditingController();
-  final _serviceNameController = TextEditingController(); // NEW
+  final _serviceNameController = TextEditingController(); 
   final _placeController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _countryController = TextEditingController();
@@ -78,7 +77,12 @@ class _AmbulanceRegisterState extends ConsumerState<AmbulanceRegister> {
 
     _hydrateSelectionsFromSavedData();
   }
-
+// Future<void> _resetAmbulanceFlag() async {
+//   final prefs = await SharedPreferences.getInstance();
+//   await prefs.remove('ambulanceRegistered');
+//   await prefs.remove('ambulanceId');
+//   print("🔄 Ambulance flags reset");
+// }
   Future<void> _hydrateSelectionsFromSavedData() async {
     if (jsonData.isEmpty) return;
 

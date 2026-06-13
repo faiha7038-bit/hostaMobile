@@ -1,11 +1,15 @@
 import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'dart:io';
 import 'package:dio_smart_retry/dio_smart_retry.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 
 class ApiService {
@@ -331,8 +335,8 @@ Future<String?> _refresh(String refreshToken) async {
 
     print("📤 QUERY PARAMS: $queryParams");
 
-    return await _dio.get('/api/donors', queryParameters: queryParams);
-  }
+      return await _dio.get('/api/donors', queryParameters: queryParams);
+    }
 
   // CREATE donor
   Future<Response> createADonor(Map<String, dynamic> data) async {
@@ -456,6 +460,11 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
     return await _dio.get('/api/ambulance', queryParameters: queryParams);
   }
 
+  //  GET MY AMBULANCE
+  // Future<Response> getMyAmbulance(String id) async {
+  //   return await _dio.get('/api/ambulance/$id');
+  // }
+
   // DELETE ambulance
   Future<Response> deleteAmbulance(String id) async {
     return await _dio.delete('/api/ambulance/$id');
@@ -499,8 +508,23 @@ Future<Response> markAllAsRead(String role, String userId) async {
   Future<Response> createBooking(Map<String, dynamic> bookingData) async {
     print('📡 POST /api/booking');
     print('📡 Data: $bookingData');
+
+    //final prefs = await SharedPreferences.getInstance();
+    // final token = prefs.getString('authToken');
     return await _dio.post('/api/booking', data: bookingData);
 
+    // final response = await _dio.post(
+    //   '/api/booking',
+    //   data: bookingData,
+    //   options: Options(
+    //     headers: {
+    //       "Authorization": "Bearer $token",
+    //       "Content-Type": "application/json",
+    //     },
+    //   ),
+    // );
+
+    // return response; // ✅ THIS WAS MISSING
   }
 
   Future<Response> getAllBookings({
@@ -569,6 +593,8 @@ Future<Response> markAllAsRead(String role, String userId) async {
     return await _dio.post('/api/email', data: data);
   }
 
+  //forgot password
+  // SEND RESET PASSWORD OTP
   Future<Response> sendResetPasswordOtp(Map<String, dynamic> data) async {
     return await _dio.post('/api/users/auth/send-otp', data: data);
   }
@@ -583,10 +609,29 @@ Future<Response> markAllAsRead(String role, String userId) async {
     return await _dio.post('/api/users/auth/reset-password', data: data);
   }
 
+  // Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
+  //   return await _dio.post('/api/users/password', data: data);
+  // }
+  // ✅ CHANGE PASSWORD (new method)
   Future<Response> changePassword(Map<String, dynamic> data) async {
     return await _dio.put('/api/users/auth/change-password', data: data);
   }
-  
+  //   // ================= PHARMACY =================
+
+  // // GET all pharmacies
+  // Future<Response> getPharmacies() async {
+  //   return await _dio.get('/api/pharmacy');
+  //   // 🔥 change if your backend route is different
+  // }
+
+  // // CREATE pharmacy order
+  // Future<Response> createPharmacyOrder(Map<String, dynamic> data) async {
+  //   return await _dio.post('/api/pharmacy/order', data: data);
+  // }
+  // Future<Response> getAmbulance(String userId) async {
+  //   return await _dio.get('/api/ambulance/user/$userId');
+  // }
+
   //s3 imge
   Future<Map<String, dynamic>> uploadProfileImage(
     File file,
@@ -604,7 +649,9 @@ Future<Response> markAllAsRead(String role, String userId) async {
     print("id: $userId");
 
     try {
+      // =========================
       // 1. GET PRESIGNED URL
+      // =========================
       final res = await _dio.post(
         '/api/presignurl',
         data: {
@@ -612,7 +659,7 @@ Future<Response> markAllAsRead(String role, String userId) async {
           "contentType": "image/jpeg",
           "size": fileSize,
           "role": "user",
-          "id": int.parse(userId), 
+          "id": int.parse(userId),
         },
         options: Options(headers: {"Authorization": "Bearer $token"}),
       );
@@ -627,7 +674,9 @@ Future<Response> markAllAsRead(String role, String userId) async {
       print("key:$key");
       print("PRESIGN OK");
 
+      // =========================
       // 2. UPLOAD TO S3 (FIXED)
+      // =========================
       final bytes = await file.readAsBytes();
 
       final uploadRes = await http.put(
@@ -641,7 +690,10 @@ Future<Response> markAllAsRead(String role, String userId) async {
       if (uploadRes.statusCode != 200 && uploadRes.statusCode != 201) {
         throw Exception("S3 Upload Failed: ${uploadRes.body}");
       }
+
+      // =========================
       // 3. RETURN RESULT
+      // =========================
       return {
         "key": key,
         "imageUrl": "https://hostahealthcare.s3.eu-north-1.amazonaws.com/$key",

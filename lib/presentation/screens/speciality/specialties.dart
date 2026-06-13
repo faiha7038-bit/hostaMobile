@@ -219,15 +219,15 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                           color: Colors.grey,
                         ),
                       ),
-                      SizedBox(height: screenHeight * 0.01),
-                      Text(
-                        "Error: ${error.toString()}",
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.035,
-                          color: Colors.grey,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                     // SizedBox(height: screenHeight * 0.01),
+                      // Text(
+                      //  "Error: ${error.toString()}",
+                      //   style: TextStyle(
+                      //     fontSize: screenWidth * 0.035,
+                      //     color: Colors.grey,
+                      //   ),
+                      //   textAlign: TextAlign.center,
+                      // ),
                       SizedBox(height: screenHeight * 0.02),
                       ElevatedButton(
                         onPressed: () {

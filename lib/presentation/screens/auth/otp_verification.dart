@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
@@ -51,7 +52,7 @@ class _OtpVerificationState extends State<OtpVerification> {
           log("Auto-filling OTP: ${widget.backendOtp}");
 
           otpController.text = widget.backendOtp!;
-
+log("Backend OTP received: ${widget.backendOtp}");
           // Future.delayed(const Duration(milliseconds: 800), () {
           //   if (mounted && !isVerifying) {
           //     _verifyOtp();
@@ -115,12 +116,15 @@ log("🔵 _verifyOtp() CALLED with OTP: $otp");
   try {
     String? token = await FirebaseMsg().token;
 
-    final response = await widget.apiService.otpUser({
-      "phone": cleanPhone,
-      "otp": otp,
-      "FcmToken": token,
-    });
-
+    // final response = await widget.apiService.otpUser({
+    //   "phone": cleanPhone,
+    //   "otp": otp,
+    //   "FcmToken": token,
+    // });
+final response = await widget.apiService.otpUser({
+  "phone": cleanPhone,
+  "otp": otp,
+});
     log("Response status: ${response.statusCode}");
     log("Response data: ${response.data}");
 
@@ -201,13 +205,25 @@ log("🔐 Verified saved token: ${savedToken != null ? 'Exists' : 'NULL'}");
         isVerifying = false;
       });
     }
-  } catch (e) {
-    log("Error: $e");
-    setState(() {
-      otpError = "Something went wrong. Please try again.";
-      isVerifying = false;
-    });
-  }
+    } on DioException catch (e) {
+  log("❌ STATUS CODE: ${e.response?.statusCode}");
+  log("❌ RESPONSE DATA: ${e.response?.data}");
+
+  setState(() {
+    otpError =
+        e.response?.data["message"] ??
+        "Verification failed";
+
+    isVerifying = false;
+  });
+}
+  // } catch (e) {
+  //   log("Error: $e");
+  //   setState(() {
+  //     otpError = "Something went wrong. Please try again.";
+  //     isVerifying = false;
+  //   });
+  // }
 }
 
   @override

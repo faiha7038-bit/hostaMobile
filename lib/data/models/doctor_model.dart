@@ -33,7 +33,8 @@ class Doctor {
   String? hospitalName;
   String? hospitalAddress;
   String? hospitalPhone;
-
+final List<ConsultingOne> consultingOne;
+final List<ConsultingTwo> consultingTwo;
   Doctor({
     required this.id,
     required this.hospitalId,
@@ -68,6 +69,8 @@ class Doctor {
     required this.appointmentCount,
     required this.experience,
     this.imageUrl,
+    required this.consultingOne,
+required this.consultingTwo,
   });
 
   // Helper getters for UI
@@ -80,6 +83,7 @@ class Doctor {
     return Doctor(
       id: json['id'] ?? 0,
       hospitalId: json['hospitalId'] ?? 0,
+      hospitalName: json['hospitalName'],
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
       displayName: json['displayName'] ?? '',
@@ -113,6 +117,15 @@ class Doctor {
       appointmentCount: json['appointmentCount'] ?? 0,
       experience: json['experience']?.toString() ?? '',
       imageUrl: json['imageUrl'],
+      consultingOne: (json['consultingOne'] as List?)
+        ?.map((e) => ConsultingOne.fromJson(e))
+        .toList() ??
+    [],
+
+consultingTwo: (json['consultingTwo'] as List?)
+        ?.map((e) => ConsultingTwo.fromJson(e))
+        .toList() ??
+    [],
     );
   }
 
@@ -157,8 +170,22 @@ class Doctor {
        appointmentCount: appointmentCount, 
        experience: experience,
       imageUrl: imageUrl,
+      consultingOne: consultingOne,
+  consultingTwo: consultingTwo,
     );
   }
+List<String> get availableDays {
+  final days = <String>{
+    ...consultingOne
+        .where((e) => !e.isHoliday)
+        .map((e) => e.day),
+    ...consultingTwo
+        .where((e) => !e.isHoliday)
+        .map((e) => e.day),
+  };
+
+  return days.toList();
+}
 }
 
 // Address model
@@ -305,4 +332,42 @@ class ConsultingSlot {
     required this.title,
     required this.time,
   });
+}
+class ConsultingOne {
+  final String day;
+  final bool isHoliday;
+  final String openingTime;
+  final String closingTime;
+
+  ConsultingOne({
+    required this.day,
+    required this.isHoliday,
+    required this.openingTime,
+    required this.closingTime,
+  });
+
+  factory ConsultingOne.fromJson(Map<String, dynamic> json) {
+    return ConsultingOne(
+      day: json['day'] ?? '',
+      isHoliday: json['is_holiday'] ?? false,
+      openingTime: json['opening_time'] ?? '',
+      closingTime: json['closing_time'] ?? '',
+    );
+  }
+}
+class ConsultingTwo {
+  final String day;
+  final bool isHoliday;
+
+  ConsultingTwo({
+    required this.day,
+    required this.isHoliday,
+  });
+
+  factory ConsultingTwo.fromJson(Map<String, dynamic> json) {
+    return ConsultingTwo(
+      day: json['day'] ?? '',
+      isHoliday: json['is_holiday'] ?? false,
+    );
+  }
 }

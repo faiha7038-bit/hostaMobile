@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,38 +36,106 @@ class UserDataState {
     this.originalEmail,
     this.originalPhone,
   });
+UserDataState copyWith({
+  Map<String, dynamic>? userData,
+  Map<String, dynamic>? donorData,
+  String? userId,
+  bool? isLoading,
+  bool? isEditing,
+  bool? isSaving,
+  File? imageFile,
+  String? originalName,
+  String? originalEmail,
+  String? originalPhone,
+  bool clearImage = false,
+}) {
+  return UserDataState(
+    userData: userData ?? this.userData,
+    donorData: donorData ?? this.donorData,
+    userId: userId ?? this.userId,
+    isLoading: isLoading ?? this.isLoading,
+    isEditing: isEditing ?? this.isEditing,
+    isSaving: isSaving ?? this.isSaving,
 
-  UserDataState copyWith({
-    Map<String, dynamic>? userData,
-    Map<String, dynamic>? donorData,
-    String? userId,
-    bool? isLoading,
-    bool? isEditing,
-    bool? isSaving,
-    File? imageFile,
-    String? originalName,
-    String? originalEmail,
-    String? originalPhone,
-  }) {
-    return UserDataState(
-      userData: userData ?? this.userData,
-      donorData: donorData ?? this.donorData,
-      userId: userId ?? this.userId,
-      isLoading: isLoading ?? this.isLoading,
-      isEditing: isEditing ?? this.isEditing,
-      isSaving: isSaving ?? this.isSaving,
-      imageFile: imageFile ?? this.imageFile,
-      originalName: originalName ?? this.originalName,
-      originalEmail: originalEmail ?? this.originalEmail,
-      originalPhone: originalPhone ?? this.originalPhone,
-    );
-  }
+    imageFile: clearImage
+        ? null
+        : imageFile ?? this.imageFile,
+
+    originalName: originalName ?? this.originalName,
+    originalEmail: originalEmail ?? this.originalEmail,
+    originalPhone: originalPhone ?? this.originalPhone,
+  );
+}
+  // UserDataState copyWith({
+  //   Map<String, dynamic>? userData,
+  //   Map<String, dynamic>? donorData,
+  //   String? userId,
+  //   bool? isLoading,
+  //   bool? isEditing,
+  //   bool? isSaving,
+  //   File? imageFile,
+  //   String? originalName,
+  //   String? originalEmail,
+  //   String? originalPhone,
+  // }) {
+  //   return UserDataState(
+  //     userData: userData ?? this.userData,
+  //     donorData: donorData ?? this.donorData,
+  //     userId: userId ?? this.userId,
+  //     isLoading: isLoading ?? this.isLoading,
+  //     isEditing: isEditing ?? this.isEditing,
+  //     isSaving: isSaving ?? this.isSaving,
+  //     imageFile: imageFile ?? this.imageFile,
+  //     originalName: originalName ?? this.originalName,
+  //     originalEmail: originalEmail ?? this.originalEmail,
+  //     originalPhone: originalPhone ?? this.originalPhone,
+  //   );
+  // }
 }
 
 class UserDataNotifier extends StateNotifier<UserDataState> {
+Future<void> deleteProfileImage() async {
+  try {
+    final imageUrl = state.userData?['imageUrl'];
+
+    if (imageUrl == null || imageUrl.toString().isEmpty) {
+      return;
+    }
+
+    final key =
+        imageUrl.toString().split('.amazonaws.com/').last;
+
+    print("DELETE KEY => $key");
+
+    await ApiService().deleteProfileImage(
+      key,
+      state.userId!,
+    );
+
+    final updatedUserData =
+        Map<String, dynamic>.from(state.userData ?? {});
+
+    updatedUserData['imageUrl'] = null;
+
+    // state = state.copyWith(
+    //   imageFile: null,
+    //   userData: updatedUserData,
+    // );
+state = state.copyWith(
+  clearImage: true,
+  userData: updatedUserData,
+);
+    await loadProfile();
+
+    print("DELETE SUCCESS");
+  } catch (e) {
+    print("❌ delete error: $e");
+  }
+}
   final ApiService _apiService = ApiService();
 
   UserDataNotifier() : super(UserDataState());
+  
 
   Future<void> loadUserIdAndProfile() async {
     try {
@@ -126,85 +195,72 @@ Future<void> loadProfile({int retryCount = 0}) async {
 
   void cancelEditing() {
     state = state.copyWith(
+  isEditing: false,
+  clearImage: true,
+);
+    // state = state.copyWith(
+    //   isEditing: false,
+    //   imageFile: null,
+    // );
+  }
+
+Future<void> saveProfile({
+  required String name,
+  required String email,
+  required String phone,
+  required BuildContext context,
+}) async {
+  try {
+    state = state.copyWith(isSaving: true);
+
+   String? imageUrl;
+
+// 1. upload image if selected
+if (state.imageFile != null) {
+  final res = await _apiService.uploadProfileImage(
+    state.imageFile!,
+    state.userId!,
+  );
+
+  final key = res["key"];
+
+  // 🔥 FIX: build proper URL
+imageUrl = res["imageUrl"];
+}
+
+    // 2. update user
+   final payload = {
+  "name": name.trim(),
+  "email": email.trim(),
+  "phone": phone.trim(),
+  if (imageUrl != null) "imageUrl": imageUrl,
+};
+
+    await _apiService.updateUser(state.userId!, payload);
+
+    // 3. update state
+    state = state.copyWith(
+      isSaving: false,
       isEditing: false,
       imageFile: null,
+      originalName: name,
+      originalEmail: email,
+      originalPhone: phone,
     );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Profile updated")),
+    );
+
+    await loadProfile();
+  } catch (e) {
+    state = state.copyWith(isSaving: false);
+    print("❌ saveProfile error: $e");
   }
-
-  Future<void> saveProfile({
-    required String name,
-    required String email,
-    required String phone,
-    required BuildContext context,
-  }) async {
-    if (state.userId == null || state.userId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User ID not found")),
-      );
-      return;
-    }
-
-    if (name.trim().isEmpty || email.trim().isEmpty || phone.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields")),
-      );
-      return;
-    }
-
-    try {
-      state = state.copyWith(isSaving: true);
-
-      final payload = {
-        "name": name.trim(),
-        "email": email.trim(),
-        "phone": phone.trim(),
-      };
-
-      // Use the new method that handles image upload
-      //await _apiService.updateUserWithImage(state.userId!, payload, state.imageFile);
-await _apiService.updateUser(state.userId!, payload);
-      // Update original values
-      state = state.copyWith(
-        isEditing: false,
-        isSaving: false,
-        imageFile: null,
-        originalName: name,
-        originalEmail: email,
-        originalPhone: phone,
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Profile updated successfully"),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Reload to get updated data
-      await loadProfile();
-    } on DioException catch (dioError) {
-      state = state.copyWith(isSaving: false);
-      String errorMessage = "Something went wrong";
-
-      if (dioError.response != null) {
-        try {
-          errorMessage = dioError.response?.data['message'] ?? errorMessage;
-        } catch (_) {}
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-    } catch (e) {
-      state = state.copyWith(isSaving: false);
-      print("❌ Error saving profile: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error saving profile: $e")),
-      );
-    }
-  }
+}
 
   Future<void> pickImage() async {
-    if (!state.isEditing) return;
+    //if (!state.isEditing) return;
 
     try {
       final pickedFile = await ImagePicker().pickImage(
