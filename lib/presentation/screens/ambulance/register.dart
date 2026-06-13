@@ -425,76 +425,7 @@ if (districts.isNotEmpty && _districtController.text.trim().isEmpty) {
     if (mounted) setState(() => isLoading = false);
   }
 }
-// Future<void> _submit() async {
-//   if (isLoading) return;
-//   setState(() => isLoading = true);
 
-//   try {
-//     final prefs = await SharedPreferences.getInstance();
-
-//     final userId = prefs.getString('userId');
-//     if (userId == null) throw Exception("User not logged in");
-
-//     final payload = {
-//       "phone": _phoneController.text.trim(),
-//       "serviceName": _serviceNameController.text.trim(),
-//       "vehicleType": vehicleType,
-//       "address": {
-//         "country": selectedCountry?['name'] ?? _countryController.text,
-//         "state": selectedState?['name'] ?? _stateController.text,
-//         "district": selectedDistrict?['name'] ?? _districtController.text,
-//         "place": _placeController.text.trim(),
-//         "pincode": int.tryParse(_pincodeController.text.trim()) ?? 0,
-//       },
-//       "userId": int.parse(userId),
-//     };
-
-//     final notifier = ref.read(ambulanceListProvider.notifier);
-
-//     bool success;
-
-//     if (widget.editData == null) {
-//       success = await notifier.createAmbulance(payload);
-//     } else {
-//       final id = widget.editData!['id']?.toString();
-//       if (id == null) throw Exception("ID missing");
-
-//       success = await notifier.editAmbulance(id, payload);
-//     }
-
-//     log("API SUCCESS => $success");
-
-//     if (!mounted) return;
-
-//     if (success) {
-//       await prefs.setBool('ambulanceRegistered', true);
-
-//       log("AFTER SAVE => ${prefs.getBool('ambulanceRegistered')}");
-
-//       showTopSnackBar(
-//         context,
-//         widget.editData == null
-//             ? "Registered Successfully"
-//             : "Updated Successfully",
-//       );
-
-//     Navigator.pop(context, {
-//   "refresh": true
-// });
-//     } else {
-//       showTopSnackBar(
-//         context,
-//         "This mobile number already registered",
-//         isError: true,
-//       );
-//     }
-//   } catch (e) {
-//     log("ERROR => $e");
-//     showTopSnackBar(context, e.toString(), isError: true);
-//   } finally {
-//     if (mounted) setState(() => isLoading = false);
-//   }
-// }
 
   @override
   Widget build(BuildContext context) {

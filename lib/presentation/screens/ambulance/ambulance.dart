@@ -24,8 +24,10 @@ class _AmbulanceState extends ConsumerState<Ambulance> {
 final TextEditingController _searchController = TextEditingController();
 StreamSubscription? _connectivitySubscription;
 String? userId;
+
 List<dynamic> _filterOfflineData(
   List<dynamic> list,
+  
 ) {
   final query = ref
       .read(searchQueryProvider)
@@ -172,30 +174,15 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
     if (showLoader) ref.read(isLoadingProvider.notifier).state = false;
   }
 }
-// Future<void> _fetchAmbulances({bool showLoader = true}) async {
-//   try {
-//     if (showLoader) {
-//       ref.read(isLoadingProvider.notifier).state = true;
-//     }
 
-//     await ref.read(ambulanceListProvider.notifier)
-    
-//         .fetchAmbulances(userId: '');
-
-//   } catch (e) {
-//     if (mounted) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(content: Text('Error: $e')),
-//       );
-//     }
-//   }
-// }
 Future<void> _refreshAmbulanceId() async {
+  
   final prefs = await SharedPreferences.getInstance();
 
   String? ambulanceId =
       prefs.getString('ambulanceId');
-
+log("userId => $userId");
+log("ambulanceId => $ambulanceId");
   bool hasRegistered =
       prefs.getBool('ambulanceRegistered') ?? false;
 
@@ -392,6 +379,7 @@ final ambulanceList = isOffline
 
   @override
   Widget build(BuildContext context) {
+    
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLoading = ref.watch(isLoadingProvider);
@@ -405,6 +393,14 @@ final ambulanceList = isOffline
     final ambulanceId = ref.watch(ambulanceIdProvider);
     log("ambulanceId${ambulanceId}");
 
+  log("userId => $userId");
+  log("ambulanceId => $ambulanceId");
+  log("ambulanceList count => ${ambulanceList.length}");
+final hasMyAmbulance = ambulanceList.any(
+  (amb) => amb['userId']?.toString() == userId,
+);
+
+log("hasMyAmbulance => $hasMyAmbulance");
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
@@ -492,7 +488,8 @@ _debounce = Timer(const Duration(milliseconds: 500), () async {
 )
                       ),
                       SizedBox(width: screenWidth * 0.02),
-                    if (!isOffline && (userId == null || ambulanceId == null || ambulanceId.isEmpty))
+                 if (!isOffline &&
+    (userId == null || !hasMyAmbulance))
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,

@@ -567,20 +567,7 @@ const SizedBox(height: 16),
                       value: appointmentDate,
                       onTap: () => _selectDate(context, false),
                     ),
-                    // if (availableTimeSlots.isNotEmpty) ...[
-                    //   const SizedBox(height: 16),
-                    //   DropdownButtonFormField<String>(
-                    //     value: selectedTimeSlot,
-                    //     hint: const Text('Select Time Slot'),
-                    //     decoration: InputDecoration(
-                    //       labelText: 'Consulting Time',
-                    //       prefixIcon: const Icon(Icons.access_time, color: Colors.green),
-                    //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    //     ),
-                    //     items: availableTimeSlots.map((slot) => DropdownMenuItem(value: slot, child: Text(slot))).toList(),
-                    //     onChanged: (value) => setState(() => selectedTimeSlot = value),
-                    //   ),
-                    // ],
+                 
                     if (widget.doctor.consulting
                         .getAvailableSlots()
                         .isNotEmpty) ...[
@@ -652,18 +639,7 @@ const SizedBox(height: 16),
     );
   }
 
-  // Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, TextInputType keyboardType = TextInputType.text}) {
-  //   return TextField(
-  //     controller: controller,
-  //     keyboardType: keyboardType,
-  //     decoration: InputDecoration(
-  //       labelText: label,
-  //       prefixIcon: Icon(icon, color: Colors.green),
-  //       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  //       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Colors.green)),
-  //     ),
-  //   );
-  // }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -673,17 +649,7 @@ const SizedBox(height: 16),
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-// onChanged: (value) {
 
-//   if (_isAutoFilling) return;
-
-//   if (_selectedPatient != null) {
-//     setState(() {
-//       _selectedPatient = null;
-//       _selectedPatientId = null;
-//     });
-//   }
-// },
 
       autovalidateMode: AutovalidateMode.onUserInteraction,
       validator: (value) {

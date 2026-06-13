@@ -98,20 +98,21 @@ Future<void> fetchAmbulances() async {
       await cacheBox.put('all_ambulances', jsonEncode(newData));
 
       // ----- BUTTON FIX: Update SharedPreferences flags -----
-      final prefs = await SharedPreferences.getInstance();
-      if (newData.isNotEmpty) {
-        final firstAmbulance = newData.first as Map<String, dynamic>;
-        final firstId = (firstAmbulance['_id'] ?? firstAmbulance['id']).toString();
-        await prefs.setBool('ambulanceRegistered', true);
-        await prefs.setString('ambulanceId', firstId);
-      } else {
-        await prefs.remove('ambulanceRegistered');
-        await prefs.remove('ambulanceId');
-      }
+      // final prefs = await SharedPreferences.getInstance();
+      // if (newData.isNotEmpty) {
+      //   final firstAmbulance = newData.first as Map<String, dynamic>;
+      //   final firstId = (firstAmbulance['_id'] ?? firstAmbulance['id']).toString();
+      //   await prefs.setBool('ambulanceRegistered', true);
+      //   await prefs.setString('ambulanceId', firstId);
+      // } else {
+      //   await prefs.remove('ambulanceRegistered');
+      //   await prefs.remove('ambulanceId');
+      // }
 
       // Update UI state
       state = newData;
       _ref.read(allAmbulancesProvider.notifier).state = newData;
+      log("AMBULANCE DATA => $newData");
     }
   } catch (e) {
     log("FETCH ERROR: $e – loading from cache");

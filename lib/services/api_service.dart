@@ -1,219 +1,3 @@
-// import 'dart:developer';
-// import 'package:dio/dio.dart';
-// import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-// import 'dart:io';
-// import 'package:dio_smart_retry/dio_smart_retry.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:path_provider/path_provider.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:cookie_jar/cookie_jar.dart';
-
-// class ApiService {
-//   bool _isRefreshing = false;
-//   late final Dio _dio;
-//   late final Dio _refreshDio;
-//   late final PersistCookieJar cookieJar;
-// bool _cookieInitialized = false;
-//     Future<String?>? _refreshTokenFuture;
-    
-//   // ✅ Add constructor
-//   ApiService() {
-//       log("ApiService instance => ${hashCode}");
-//     // _dio = Dio(BaseOptions(baseUrl: "https://zorrowtek.in",
-//     //  connectTimeout: const Duration(seconds: 30),
-//     //   receiveTimeout: const Duration(seconds: 30),
-//     //     headers: {
-//     //     'Content-Type': 'application/json',
-//     //   },
-//     //   ));
-
-//     _dio = Dio(
-//       BaseOptions(
-//         baseUrl: "https://zorrowtek.in",
-//         connectTimeout: const Duration(seconds: 30),
-//         receiveTimeout: const Duration(seconds: 30),
-//         headers: {'Content-Type': 'application/json'},
-//         receiveDataWhenStatusError: true,
-//       ),
-//     );
-
-//     _refreshDio = Dio(
-//       BaseOptions(
-//         baseUrl: "https://zorrowtek.in",
-//         connectTimeout: const Duration(seconds: 30),
-//         receiveTimeout: const Duration(seconds: 30),
-//         headers: {'Content-Type': 'application/json'},
-//         receiveDataWhenStatusError: true,
-//       ),
-//     );
-  
-//     // _dio.interceptors.add(CookieManager(cookieJar));
-//     // _refreshDio.interceptors.add(CookieManager(cookieJar));
-
-//     _dio.interceptors.add(
-//       InterceptorsWrapper(
-//         onRequest: (options, handler) async {
-//           final prefs = await SharedPreferences.getInstance();
-
-//           final token = prefs.getString('authToken');
-
-//           if (token != null && token.isNotEmpty) {
-//             options.headers['Authorization'] = 'Bearer $token';
-
-//             log("🔐 TOKEN ADDED");
-//             log("TOKEN => $token");
-// log("HEADER => ${options.headers}");
-//           }
-
-//           log("📡 ${options.method} ${options.path}");
-
-//           handler.next(options);
-//         }, // onRequest: (options, handler) async {
-
-//         //   final prefs =
-//         //       await SharedPreferences.getInstance();
-
-//         //   final token =
-//         //       prefs.getString('authToken');
-
-//         //   if (token != null &&
-//         //       token.isNotEmpty) {
-//         //     options.headers['Authorization'] =
-//         //         'Bearer $token';
-
-//         //     print("🔐 TOKEN ADDED");
-//         //   }
-
-//         //   print(
-//         //       "📡 ${options.method} ${options.path}");
-
-//         //   handler.next(options);
-//         // },
-
-//         // ================= 401 HANDLER =================
-//  onError: (error, handler) async {
-//   log("🔥 ON ERROR CALLED");
-//   log("STATUS => ${error.response?.statusCode}");
-//   log("PATH => ${error.requestOptions.path}");
-
-//   final request = error.requestOptions;
-
-//   // Only handle 401 Unauthorized
-//   if (error.response?.statusCode != 401) {
-//     return handler.next(error);
-//   }
-
-//   // Avoid infinite loop on the refresh endpoint itself
-//   if (request.path.contains('/api/users/refresh')) {
-//     return handler.next(error);
-//   }
-
-//   final prefs = await SharedPreferences.getInstance();
-  
-//   // Try to get refresh token from SharedPreferences first
-//   String? refreshToken = prefs.getString('refreshToken');
-  
-//   // If not found, fallback to cookies
-//   if (refreshToken == null || refreshToken.isEmpty) {
-//     refreshToken = await _getRefreshTokenFromCookies();
-//   }
-
-//   if (refreshToken == null || refreshToken.isEmpty) {
-//     log("⚠️ No refresh token available – clearing session");
-//     await prefs.clear();
-//     await cookieJar.deleteAll();  // also clear cookies
-//     return handler.next(error);
-//   }
-
-//   try {
-//     // Use a future to prevent multiple concurrent refresh calls
-//     _refreshTokenFuture ??= _refresh(refreshToken);
-//     final newToken = await _refreshTokenFuture;
-//     _refreshTokenFuture = null;
-
-//     if (newToken == null) {
-//       log("❌ Refresh failed – clearing session");
-//       await prefs.clear();
-//       await cookieJar.deleteAll();
-//       return handler.next(error);
-//     }
-
-//     // Update the failed request with the new token and retry
-//     request.headers['Authorization'] = 'Bearer $newToken';
-//     final response = await _dio.fetch(request);
-//     return handler.resolve(response);
-//   } catch (e) {
-//     log("❌ Refresh exception: $e");
-//     _refreshTokenFuture = null;
-//     await prefs.clear();
-//     await cookieJar.deleteAll();
-//     return handler.next(error);
-//   }
-// }
-//       ),
-//     );
-//     // ================= RETRY =================
-
-//     _dio.interceptors.add(
-//       RetryInterceptor(
-//         dio: _dio,
-//         retries: 3,
-//         retryDelays: const [
-//           Duration(seconds: 1),
-//           Duration(seconds: 2),
-//           Duration(seconds: 3),
-//         ],
-//       ),
-//     );
-//   }
- 
-//  Future<void> init() async {
-//   final dir = await getApplicationDocumentsDirectory();
-
-//   cookieJar = PersistCookieJar(
-//     storage: FileStorage("${dir.path}/.cookies/"),
-//   );
-
-//   _dio.interceptors.add(CookieManager(cookieJar));
-//   _refreshDio.interceptors.add(CookieManager(cookieJar));
-
-//   _cookieInitialized = true;
-
-//   log("✅ CookieJar initialized");
-// }
- 
-//  Future<String?> _getRefreshTokenFromCookies() async {
-//   final uri = Uri.parse('https://zorrowtek.in/api/users/refresh');
-//   final cookies = await cookieJar.loadForRequest(uri);
-//   for (var cookie in cookies) {
-//     if (cookie.name == 'refreshToken') return cookie.value;
-//   }
-//   return null;
-// }
-// Future<String?> _refresh(String refreshToken) async {
-//   final res = await _refreshDio.post(
-//     '/api/users/refresh',
-//     data: {'refreshToken': refreshToken},
-//   );
-
-//   final newToken = res.data['accessToken'];
-
-//   if (newToken != null) {
-//     final prefs = await SharedPreferences.getInstance();
-
-//     await prefs.setString('authToken', newToken);
-
-//     // 👇 THIS is the correct place
-//     _dio.options.headers['Authorization'] = 'Bearer $newToken';
-//     _refreshDio.options.headers['Authorization'] = 'Bearer $newToken';
-//   }
-
-//   return newToken;
-// }
-//   // Refresh Token -
-//   Future<Response> refreshUserToken(Map<String, dynamic> data) async {
-//     return await _dio.post('/api/users/refresh', data: data);
-//   }
 import 'dart:developer';
 import 'dart:io';
 import 'package:dio/dio.dart';
@@ -368,14 +152,7 @@ log("COOKIE COUNT => ${cookies.length}");
   return newToken;
 }
 
-  // ---------------- LOGIN ----------------
-  // Future<Response> loginUser(Map<String, dynamic> data) async {
-  //   return await dio.post('/api/users/login/phone', data: data);
-  // }
 
-  // Future<Response> otpUser(Map<String, dynamic> data) async {
-  //   return await dio.post('/api/users/otp', data: data);
-  // }
 
   // ---------------- PRESCRIPTION ----------------
   Future<Response> getPrescriptions({
@@ -393,19 +170,7 @@ log("COOKIE COUNT => ${cookies.length}");
     );
   }
 
-  // ---------------- BOOKING ----------------
-  // Future<Response> createBooking(Map<String, dynamic> data) async {
-  //   return await dio.post('/api/booking', data: data);
-  // }
 
-  // Future<Response> getBookings({String? userId}) async {
-  //   return await dio.get(
-  //     '/api/booking',
-  //     queryParameters: {
-  //       if (userId != null) "userId": userId,
-  //     },
-  //   );
-  // }
 
   // ---------------- NOTIFICATIONS ----------------
   Future<Response> getNotifications(String userId) async {
@@ -437,21 +202,7 @@ log("COOKIE COUNT => ${cookies.length}");
     );
   }
 
-  // Future<Response> getAllCarousel({
-  //   double? latitude,
-  //   double? longitude,
-  // }) async {
-  //   final Map<String, dynamic> queryParams = {};
 
-  //   // Use provided coordinates or fallback defaults
-  //   queryParams['lat'] = (latitude ?? 10.995653).toString();
-  //   queryParams['lng'] = (longitude ?? 75.991806).toString();
-
-  //   return await _dio.get(
-  //     '/api/ads/nearby',
-  //     queryParameters: queryParams,
-  //   );
-  // }
 
   // GET all hospitals
   Future<Response> getAllHospitals(
@@ -473,9 +224,7 @@ log("COOKIE COUNT => ${cookies.length}");
     );
   }
 
-  //   Future<Response> getAllHospitalsSpeciality(String search) async {
-  //   return await _dio.get('/api/hospital/filter/$search');
-  // }
+
 
   Future<Response> getAHospitalsReview(String id) async {
     return await dio.get('/api/reviews/hospital/$id');
@@ -531,10 +280,7 @@ log("COOKIE COUNT => ${cookies.length}");
     return await dio.get('/api/donors', queryParameters: queryParams);
   }
 
-  // GET single donor
-  // Future<Response> getADonor(String id) async {
-  //   return await _dio.get('/api/donors/$id');
-  // }
+
 
   // CREATE donor
   Future<Response> createADonor(Map<String, dynamic> data) async {
@@ -553,12 +299,6 @@ log("COOKIE COUNT => ${cookies.length}");
     return await dio.delete('/api/donors/$id');
   }
 
-  // LOGIN
-  // Future<Response> loginUser(Map<String, dynamic> data) async {
-  //   log("response$data");
-  //     log("COOKIES => $cookieJar");
-  //   return await _dio.post('/api/users/login/phone', data: data);
-  // }
 Future<Response> loginUser(Map<String, dynamic> data) async {
   log("LOGIN ApiService instance => ${hashCode}");
   final response = await dio.post(
@@ -574,13 +314,7 @@ final cookies = await cookieJar.loadForRequest(
 for (final c in cookies) {
   log("COOKIE => ${c.name} = ${c.value}");
 }
-  // final cookies = await cookieJar.loadForRequest(
-  //   Uri.parse("https://zorrowtek.in"),
-  // );
-
-  // for (var c in cookies) {
-  //   log("COOKIE => ${c.name} = ${c.value}");
-  // }
+ 
 
   return response;
 }
@@ -785,24 +519,7 @@ log("date=$date");
     return await dio.put('/api/booking/$bookingId', data: data);
   }
 
-  /// Get doctors with optional filters
-  // Future<Response> getDoctors({
 
-  //   String? hospitalId,
-  //   String? speciality,
-  //   String? id,
-  // }) async {
-  //   final queryParams = <String, dynamic>{};
-  //   if (hospitalId != null) queryParams['id'] = hospitalId;
-  //   if (speciality != null) queryParams['speciality'] = speciality;
-  //    // ✅ key: 'speciality'
-  //   if (id != null) queryParams['id'] = id;
-  //   log("$id");
-  //    log("$hospitalId");
-  //    log("$queryParams");
-  //   return await _dio.get('/api/doctor', queryParameters: queryParams);
-
-  // }
   Future<Response> getDoctors({
     String? hospitalId,
     String? speciality,

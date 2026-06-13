@@ -33,7 +33,20 @@ Future<void> _loadAmbulances() async {
   await ref.read(ambulanceListProvider.notifier).fetchAmbulances(userId: userId);
   
   final state = ref.read(ambulanceListProvider);
-  
+  if (state.ambulances.isEmpty) {
+  await prefs.remove('ambulanceRegistered');
+  await prefs.remove('ambulanceId');
+} else {
+  final firstAmbulance = state.ambulances.first;
+
+  final ambulanceId =
+      (firstAmbulance['id'] ?? firstAmbulance['_id']).toString();
+
+  await prefs.setBool('ambulanceRegistered', true);
+  await prefs.setString('ambulanceId', ambulanceId);
+
+  log("Saved ambulanceId => $ambulanceId");
+}
   // ✅ If no ambulances left, clear the registration flag
   if (state.ambulances.isEmpty) {
     await prefs.remove('ambulanceRegistered');
@@ -158,8 +171,10 @@ Future<void> _loadAmbulances() async {
 
     return Card(
       margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.04)),
+      //elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.04),
+      side: BorderSide(color: Colors.grey)
+      ),
       child: Padding(
         padding: EdgeInsets.all(screenWidth * 0.04),
         child: Column(
