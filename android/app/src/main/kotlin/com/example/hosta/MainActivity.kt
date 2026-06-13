@@ -1,4 +1,4 @@
-package com.zorrowtech.hostamanagers
+package com.example.hostamanagers
 
 import io.flutter.embedding.android.FlutterActivity
 

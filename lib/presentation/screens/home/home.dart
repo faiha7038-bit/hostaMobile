@@ -97,12 +97,12 @@ class HomeNotifier extends StateNotifier<HomeState> {
   //   _startAutoRefresh();
 
   // }
-  Future<void> init() async {  // ← async ചേർത്തു
-  if (_isInitialized) return;  // ← ഈ line add ചെയ്യുക
-  _isInitialized = true;  // ← ഈ line add ചെയ്യുക
+  Future<void> init() async {  
+  if (_isInitialized) return; 
+  _isInitialized = true; 
   
-  await _checkLocationStatus();  // ← await ചേർത്തു
-  await _getLocationAndFetchData();  // ← await ചേർത്തു
+  await _checkLocationStatus();  
+  await _getLocationAndFetchData();  
   _startAutoRefresh();
 }
 

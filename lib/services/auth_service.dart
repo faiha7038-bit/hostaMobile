@@ -1,37 +1,44 @@
-import 'package:hosta/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  final ApiService _apiService = ApiService();
+  static final AuthService instance = AuthService._();
 
-  Future<String?> refreshAccessToken(String refreshToken) async {
-    try {
-      // ApiService- refreshUserToken function call 
-      final response = await _apiService.refreshUserToken({
-        'refreshToken': refreshToken,
-      });
-         
-      if (response.statusCode == 200) {
-        // Backend-
-        String newAccessToken = response.data['accessToken'];
-        
-        // Secure storage- save  (shared_preferences / flutter_secure_storage)
-        await saveAccessToken(newAccessToken);
-        
-        return newAccessToken;
-      } else {
-        print('Refresh failed: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      print('Error refreshing token: $e');
-      return null;
-    }
+  AuthService._();
+
+  Future<SharedPreferences> get _prefs async =>
+      SharedPreferences.getInstance();
+
+  // ================= ACCESS TOKEN =================
+
+  Future<void> saveAccessToken(String token) async {
+    final prefs = await _prefs;
+    await prefs.setString('authToken', token);
   }
 
-  // Save access token
-  Future<void> saveAccessToken(String token) async {
-    
-    // final prefs = await SharedPreferences.getInstance();
-    // await prefs.setString('access_token', token);
+  Future<String?> getAccessToken() async {
+    final prefs = await _prefs;
+    return prefs.getString('authToken');
+  }
+
+  // ================= REFRESH TOKEN =================
+
+  Future<void> saveRefreshToken(String token) async {
+    final prefs = await _prefs;
+    await prefs.setString('refreshToken', token);
+  }
+
+  Future<String?> getRefreshToken() async {
+    final prefs = await _prefs;
+    return prefs.getString('refreshToken');
+  }
+
+  // ================= CLEAR =================
+
+  Future<void> clearAuth() async {
+    final prefs = await _prefs;
+
+    await prefs.remove('authToken');
+    await prefs.remove('refreshToken');
+    await prefs.remove('userId');
   }
 }

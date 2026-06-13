@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:core';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +21,9 @@ class BookingState {
   final bool isSocketConnected;
   final List<Map<String, dynamic>> bookings;
   final TextEditingController searchController;
+  final int currentPage;
+  final bool hasNextPage;
+  final bool isLoadingMore;
 
   BookingState({
     this.selectedFilter = "All",
@@ -27,7 +33,12 @@ class BookingState {
     this.userId,
     this.isSocketConnected = false,
     this.bookings = const [],
+
     required this.searchController,
+      this.currentPage = 1,
+    this.hasNextPage = true,
+    this.isLoadingMore = false,
+    
   });
 
   BookingState copyWith({
@@ -39,16 +50,22 @@ class BookingState {
     bool? isSocketConnected,
     List<Map<String, dynamic>>? bookings,
     TextEditingController? searchController,
+    int? currentPage,
+  bool? hasNextPage,
+  bool? isLoadingMore,
   }) {
     return BookingState(
       selectedFilter: selectedFilter ?? this.selectedFilter,
       searchQuery: searchQuery ?? this.searchQuery,
-      selectedDate: selectedDate ?? this.selectedDate,
+      selectedDate: selectedDate,
       isLoading: isLoading ?? this.isLoading,
       userId: userId ?? this.userId,
       isSocketConnected: isSocketConnected ?? this.isSocketConnected,
       bookings: bookings ?? this.bookings,
       searchController: searchController ?? this.searchController,
+       currentPage: currentPage ?? this.currentPage,
+    hasNextPage: hasNextPage ?? this.hasNextPage,
+    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
   }
 }
@@ -62,6 +79,7 @@ final bookingStateProvider = StateNotifierProvider<BookingNotifier, BookingState
 });
 
 class BookingNotifier extends StateNotifier<BookingState> {
+  Timer? _debounce;
   IO.Socket? _socket;
   final ApiService _apiService = ApiService();
 
@@ -70,8 +88,22 @@ class BookingNotifier extends StateNotifier<BookingState> {
       searchController: TextEditingController(),
     ),
   );
+Future<void> loadMore() async {
+  if (state.isLoadingMore || !state.hasNextPage) return;
 
-  void updateSelectedFilter(String filter) {
+  state = state.copyWith(isLoadingMore: true);
+
+  final nextPage = state.currentPage + 1;
+
+  await fetchBookings(
+    reset: false,
+    page: nextPage,
+  );
+
+  state = state.copyWith(isLoadingMore: false);
+}
+
+  Future<void> updateSelectedFilter(String filter)async {
     state = state.copyWith(
       selectedFilter: filter,
       selectedDate: filter == "All" ? null : state.selectedDate,
@@ -80,18 +112,31 @@ class BookingNotifier extends StateNotifier<BookingState> {
     if (filter == "All") {
       state.searchController.clear();
     }
+     await fetchBookings();
   }
 
-  void updateSearchQuery(String query) {
-    state = state.copyWith(searchQuery: query);
-  }
+  Future<void> updateSearchQuery(String query) async {
+  state = state.copyWith(searchQuery: query);
+
+  _debounce?.cancel();
+
+  _debounce = Timer(
+    const Duration(milliseconds: 500),
+    ()  {
+       fetchBookings();
+    },
+  );
+}
 
   void updateSelectedDate(DateTime? date) {
     state = state.copyWith(selectedDate: date);
   }
 
   void clearSelectedDate() {
+     log("🔥 BEFORE: ${state.selectedDate}");
+
     state = state.copyWith(selectedDate: null);
+      log("🔥 AFTER: ${state.selectedDate}");
   }
 
   void setLoading(bool loading) {
@@ -110,42 +155,33 @@ class BookingNotifier extends StateNotifier<BookingState> {
     state = state.copyWith(bookings: bookings);
   }
 
-  void updateBookingStatus(String bookingId, String newStatus) {
-    final updatedBookings = state.bookings.map((booking) {
-      if (booking["id"] == bookingId) {
-        return {...booking, "status": newStatus};
-      }
-      return booking;
-    }).toList();
-    state = state.copyWith(bookings: updatedBookings);
-  }
+  // void updateBookingStatus(String bookingId, String newStatus) {
+  //   final updatedBookings = state.bookings.map((booking) {
+  //     if (booking["id"] == bookingId) {
+  //       return {...booking, "status": newStatus};
+  //     }
+  //     return booking;
+  //   }).toList();
+  //   state = state.copyWith(bookings: updatedBookings);
+  // }
+void updateBookingStatus(String bookingId, String newStatus) {
+  final updatedBookings = state.bookings.map((booking) {
+    if (booking["id"].toString() == bookingId.toString()) {
+      return {
+        ...booking,
+        "status": newStatus,
+      };
+    }
+    return booking;
+  }).toList();
 
+  state = state.copyWith(bookings: updatedBookings);
+}
   Future<void> initializeData() async {
     await loadUserIdAndFetchBookings();
     setupSocketListener();
   }
 
-
-// Future<void> loadUserIdAndFetchBookings() async {
-//   try {
-//     final prefs = await SharedPreferences.getInstance();
-    
-//     final storedUserId = prefs.getString('userId');
-    
-//     setUserId(storedUserId);
-//     print("📱 Loaded user ID for bookings: $storedUserId");
-
-//     if (storedUserId != null && storedUserId.isNotEmpty) {
-//       await fetchBookings();
-//     } else {
-//       setLoading(false);
-//       print("❌ No user ID found for bookings");
-//     }
-//   } catch (e) {
-//     print("❌ Error loading user ID: $e");
-//     setLoading(false);
-//   }
-// }
 
 Future<void> loadUserIdAndFetchBookings() async {
   try {
@@ -169,7 +205,10 @@ Future<void> loadUserIdAndFetchBookings() async {
     setLoading(false);
   }
 }
-Future<void> fetchBookings() async {
+Future<void> fetchBookings({
+  bool reset = true,
+  int? page,
+}) async {
   final userId = state.userId;
 
   if (userId == null || userId.isEmpty) {
@@ -177,42 +216,50 @@ Future<void> fetchBookings() async {
     return;
   }
 
-  setLoading(true);
+  if (reset) {
+    state = state.copyWith(
+      currentPage: 1,
+      bookings: [],
+      hasNextPage: true,
+       isLoading: state.bookings.isEmpty,
+    );
+  }
 
   try {
-    final response = await _apiService.getAllBookings(
-        userId: userId,
-    );
-    print("FULL RESPONSE = ${response.data}");
-List<Map<String, dynamic>> parsedBookings = [];
- if (response.data is Map) {
-      final data = response.data;
-      
-      if (data.containsKey('data') && data['data'] is List) {
-        parsedBookings = _parseBookings(data['data']);
-      } 
-      else if (data.containsKey('bookings') && data['bookings'] is List) {
-        parsedBookings = _parseBookings(data['bookings']);
-      }
-      else if (data['success'] == true && data['bookings'] != null) {
-        parsedBookings = _parseBookings(data['bookings']);
-      }
-      else {
-        // If response itself is the bookings object
-        parsedBookings = _parseBookings([data]);
-      }
-    } 
-    else if (response.data is List) {
-      parsedBookings = _parseBookings(response.data);
-    }
- 
-    setBookings(parsedBookings);
-    print("✅ Loaded ${parsedBookings.length} bookings");
-    
-  } catch (e) {
-    print("❌ Error fetching bookings: $e");
+   final response = await _apiService.getAllBookings(
+  userId: userId,
+  status: state.selectedFilter == "All"
+      ? null
+      : state.selectedFilter.toLowerCase() == "cancelled"
+          ? "cancel"
+          : state.selectedFilter.toLowerCase(),
+  searchQuery: state.searchQuery.isEmpty
+      ? null
+      : state.searchQuery,
+  page: page ?? state.currentPage,
+  limit: 10,
+);
 
-     setBookings([]);
+    final data = response.data;
+
+    List<Map<String, dynamic>> parsedBookings = [];
+
+    if (data is Map && data['data'] is List) {
+      parsedBookings = _parseBookings(data['data']);
+    }
+
+    final pagination = data['pagination'];
+
+    state = state.copyWith(
+      bookings: reset
+          ? parsedBookings
+          : [...state.bookings, ...parsedBookings],
+      hasNextPage: pagination['hasNextPage'],
+    currentPage: (page ?? state.currentPage),
+    );
+
+  } catch (e) {
+    setBookings([]);
   } finally {
     setLoading(false);
   }
@@ -220,6 +267,8 @@ List<Map<String, dynamic>> parsedBookings = [];
 
 List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
   return bookingsData.map<Map<String, dynamic>>((b) {
+    log("BOOKING RAW = $b");
+log("CONSULTING TIME = ${b["consulting_time"]}");
     return {
       "id": b["id"]?.toString() ?? "",
 
@@ -245,20 +294,36 @@ List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
       ),
 
       "status": (b["status"] ?? "pending").toString().toLowerCase(),
+      // "time": b["consultingTime"]?.toString() ?? 
+      //         b["time"]?.toString() ?? 
+      //         b["booking_time"]?.toString() ?? 
+      //         "N/A",
+      
+   
 
-      "time": b["consulting_time"]?.toString() ??
-          b["consultingTime"]?.toString() ??
-          "N/A",
-
-      "patient_name": b["patient_name"]?.toString() ?? "",
-
-      "patient_phone": b["patient_phone"]?.toString() ?? "",
-
-      "patient_place": b["patient_place"]?.toString() ?? "",
+      // TOKEN
+      "token": b["token"]?.toString() ?? "Not Assigned",
+      "time": b["consulting_time"]?.toString() ?? 
+        b["consultingTime"]?.toString() ?? 
+        b["time"]?.toString() ?? 
+        b["booking_time"]?.toString() ?? 
+        "",
+        
+      "patient_name": b["patientName"]?.toString() ?? 
+                      b["patient_name"]?.toString() ?? 
+                      "",
+      "patient_phone": b["patientPhone"]?.toString() ?? 
+                       b["patient_phone"]?.toString() ?? 
+                       "",
+      "patient_place": b["patientPlace"]?.toString() ?? 
+                       b["patient_place"]?.toString() ?? 
+                       "",
+                       
     };
+    
   }).toList();
+  
 }
-
 
   String _parseDate(dynamic date) {
     try {
@@ -380,26 +445,32 @@ List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
     }
   }
 
-  Future<void> cancelBooking(Map<String, dynamic> booking) async {
-    final bookingId = booking["id"].toString();
-    final hospitalId = booking["hospital_id"].toString();
+ Future<void> cancelBooking(Map<String, dynamic> booking) async {
+  final bookingId = booking["id"].toString();
+  final hospitalId = booking["hospital_id"].toString();
 
-    if (bookingId.isEmpty || hospitalId.isEmpty) {
-      throw Exception("Invalid booking data");
-    }
-
-    try {
-      await _apiService.updateBooking(bookingId, hospitalId, {
-        "status": "cancel",
-      });
-      
-      updateBookingStatus(bookingId, "cancel");
-      await fetchBookings(); // Refresh to ensure consistency
-    } catch (e) {
-      print("❌ Error cancelling booking: $e");
-      rethrow;
-    }
+  if (bookingId.isEmpty || hospitalId.isEmpty) {
+    throw Exception("Invalid booking data");
   }
+
+  try {
+await _apiService.updateBooking(
+  bookingId,
+  {"status": "cancel"},
+);
+
+    updateBookingStatus(
+      bookingId,
+      "cancel",
+    );
+
+    await fetchBookings();
+
+  } catch (e) {
+    print("❌ Error cancelling booking: $e");
+    rethrow;
+  }
+}
 
   void refreshBookings() {
     fetchBookings();
@@ -425,29 +496,19 @@ List<Map<String, dynamic>> _parseBookings(List<dynamic> bookingsData) {
   }
 }
 
-// ─────────────────────────────────────────────
-//  HELPER PROVIDERS
-// ─────────────────────────────────────────────
 
-final filteredBookingsProvider = Provider<List<Map<String, dynamic>>>((ref) {
+final filteredBookingsProvider =
+    Provider<List<Map<String, dynamic>>>((ref) {
   final state = ref.watch(bookingStateProvider);
+
   final bookings = state.bookings;
-  final selectedFilter = state.selectedFilter;
-  final searchQuery = state.searchQuery;
-  final selectedDate = state.selectedDate;
+  final date = state.selectedDate;
 
   return bookings.where((b) {
-    final matchesFilter = selectedFilter == "All" ||
-        b["status"] == selectedFilter.toLowerCase();
-    final matchesSearch = b["hospital"].toString().toLowerCase().contains(
-          searchQuery.toLowerCase(),
-        ) ||
-        b["doctor"].toString().toLowerCase().contains(
-          searchQuery.toLowerCase(),
-        );
-    final matchesDate = selectedDate == null ||
-        b["date"] == DateFormat('yyyy-MM-dd').format(selectedDate);
-    return matchesFilter && matchesSearch && matchesDate;
+    final matchDate = date == null
+        ? true
+        : b["date"] == DateFormat('yyyy-MM-dd').format(date);
+
+    return matchDate;
   }).toList();
 });
-

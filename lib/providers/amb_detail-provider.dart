@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
 final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
@@ -80,19 +81,27 @@ class AmbulanceListNotifier extends StateNotifier<AmbulanceListState> {
     }
   }
 
- Future<bool> deleteAmbulance(String ambulanceId) async {
+Future<bool> deleteAmbulance(String ambulanceId) async {
   try {
     final response = await apiService.deleteAmbulance(ambulanceId);
 
     log("DELETE response status: ${response.statusCode}");
 
     if (response.statusCode == 200) {
-      state = state.copyWith(
-        ambulances: state.ambulances
-            .where((item) =>
-                (item['_id'] ?? item['id']).toString() != ambulanceId)
-            .toList(),
-      );
+      // Update local state by removing the deleted ambulance
+      final updatedList = state.ambulances
+          .where((item) => (item['_id'] ?? item['id']).toString() != ambulanceId)
+          .toList();
+
+      state = state.copyWith(ambulances: updatedList);
+
+      // ✅ If the user has no ambulances left, clear the registration flag
+      if (updatedList.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('ambulanceRegistered');
+        await prefs.remove('ambulanceId');
+        log("🔄 Cleared ambulance flag – user has no ambulances left");
+      }
 
       return true;
     }

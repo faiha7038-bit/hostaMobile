@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:developer';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/ambulance/register.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/ambulance-provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -19,23 +22,135 @@ class Ambulance extends ConsumerStatefulWidget {
 class _AmbulanceState extends ConsumerState<Ambulance> {
   Timer? _debounce;
 final TextEditingController _searchController = TextEditingController();
+StreamSubscription? _connectivitySubscription;
+List<dynamic> _filterOfflineData(
+  List<dynamic> list,
+) {
+  final query = ref
+      .read(searchQueryProvider)
+      .toLowerCase();
+
+  final country =
+      ref.read(selectedCountryProvider);
+
+  final state =
+      ref.read(selectedStateProvider);
+
+  final district =
+      ref.read(selectedDistrictProvider);
+
+  final place =
+      ref.read(selectedPlaceProvider);
+
+  return list.where((amb) {
+
+    final address =
+        amb['address'] ?? {};
+
+    final serviceName =
+        (amb['serviceName'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final vehicleType =
+        (amb['vehicleType'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final ambCountry =
+        (address['country'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final ambState =
+        (address['state'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final ambDistrict =
+        (address['district'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final ambPlace =
+        (address['place'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final matchesSearch =
+        query.isEmpty ||
+        serviceName.contains(query) ||
+        vehicleType.contains(query);
+
+    final matchesCountry =
+        country.isEmpty ||
+        ambCountry ==
+            country.toLowerCase();
+
+    final matchesState =
+        state.isEmpty ||
+        ambState ==
+            state.toLowerCase();
+
+    final matchesDistrict =
+        district.isEmpty ||
+        ambDistrict ==
+            district.toLowerCase();
+
+    final matchesPlace =
+        place.isEmpty ||
+        ambPlace ==
+            place.toLowerCase();
+
+    return matchesSearch &&
+        matchesCountry &&
+        matchesState &&
+        matchesDistrict &&
+        matchesPlace;
+
+  }).toList();
+}
   @override
 void dispose() {
   _debounce?.cancel();
   _searchController.dispose();
+  _connectivitySubscription?.cancel();
   super.dispose();
 }
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+       await _checkInternet();
       _fetchAmbulances();
-     //  _refreshAmbulanceId();
-    });
+       _refreshAmbulanceId();
+     _connectivitySubscription =
+    Connectivity().onConnectivityChanged.listen((results) {
+
+  final hasInternet =
+      !results.contains(ConnectivityResult.none);
+
+  ref.read(isOfflineProvider.notifier).state =
+      !hasInternet;
+
+  log("Offline Status: ${!hasInternet}");
+});
+});
+  
   }
   
+Future<void> _checkInternet() async {
+  final results = await Connectivity().checkConnectivity();
 
+  final hasInternet =
+      !results.contains(ConnectivityResult.none);
+
+  ref.read(isOfflineProvider.notifier).state =
+      !hasInternet;
+
+  log("Initial Offline Status: ${!hasInternet}");
+}
 Future<void> _fetchAmbulances({bool showLoader = true}) async {
   try {
     if (showLoader) {
@@ -54,41 +169,41 @@ Future<void> _fetchAmbulances({bool showLoader = true}) async {
     }
   }
 }
-// Future<void> _refreshAmbulanceId() async {
-//   final prefs = await SharedPreferences.getInstance();
-//   final id = prefs.getString('ambulanceId');
-//   ref.read(ambulanceIdProvider.notifier).state = id;
-// }
-
-  void _handleAmbulanceRegister() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString('userId');
-
-    if (userId == null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const Signin()),
-      ).then((_) => _handleAmbulanceRegister());
-      return;
-    }
-
-print("🔄 Returned from AmbulanceRegister screen");
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AmbulanceRegister()),
-    ).then((_) => _fetchAmbulances());
+Future<void> _refreshAmbulanceId() async {
+  final prefs = await SharedPreferences.getInstance();
+  String? ambulanceId = prefs.getString('ambulanceId');
+  if (
+    ambulanceId == null || ambulanceId.isEmpty) {
+    bool hasRegistered = prefs.getBool('ambulanceRegistered') ?? false;
+    ambulanceId = hasRegistered ? 'yes' : '';
   }
+  ref.read(ambulanceIdProvider.notifier).state = ambulanceId ?? '';
+}
 
   Future<void> _callNumber(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
+  if (phone.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Invalid phone number')),
+    );
+    return;
+  }
+
+  var status = await Permission.phone.request();
+
+  if (status.isGranted) {
+    bool? res = await FlutterPhoneDirectCaller.callNumber(phone);
+
+    if (res != true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch dialer')),
+        const SnackBar(content: Text('Call failed')),
       );
     }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Phone permission denied')),
+    );
   }
+}
 
   Future<void> _openMap(double lat, double lon) async {
     final uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
@@ -116,7 +231,15 @@ print("🔄 Returned from AmbulanceRegister screen");
 
   // Extract distinct countries from current ambulance list
   List<String> getFilteredCountries() {
-    final ambulanceList = ref.read(ambulanceListProvider);
+   // final ambulanceList = ref.read(ambulanceListProvider);
+final isOffline =
+    ref.watch(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? _filterOfflineData(
+        ref.watch(allAmbulancesProvider),
+      )
+    : ref.watch(ambulanceListProvider);
     final countries = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -130,7 +253,11 @@ print("🔄 Returned from AmbulanceRegister screen");
   List<String> getFilteredStates(String country) {
     if (country.isEmpty) return [];
     final normalizedCountry = _normalize(country);
-    final ambulanceList = ref.read(ambulanceListProvider);
+   final isOffline = ref.read(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? ref.read(allAmbulancesProvider)
+    : ref.read(ambulanceListProvider);
     final states = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -149,7 +276,11 @@ print("🔄 Returned from AmbulanceRegister screen");
     if (country.isEmpty || state.isEmpty) return [];
     final normalizedCountry = _normalize(country);
     final normalizedState = _normalize(state);
-    final ambulanceList = ref.read(ambulanceListProvider);
+    final isOffline = ref.read(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? ref.read(allAmbulancesProvider)
+    : ref.read(ambulanceListProvider);
     final districts = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -171,7 +302,11 @@ print("🔄 Returned from AmbulanceRegister screen");
     final normalizedCountry = _normalize(country);
     final normalizedState = _normalize(state);
     final normalizedDistrict = _normalize(district);
-    final ambulanceList = ref.read(ambulanceListProvider);
+  final isOffline = ref.read(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? ref.read(allAmbulancesProvider)
+    : ref.read(ambulanceListProvider);
     final places = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -197,7 +332,13 @@ print("🔄 Returned from AmbulanceRegister screen");
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLoading = ref.watch(isLoadingProvider);
-    final ambulanceList = ref.watch(ambulanceListProvider);  // already filtered by backend
+  final isOffline = ref.watch(isOfflineProvider);
+
+final ambulanceList = isOffline
+    ? _filterOfflineData(
+        ref.watch(allAmbulancesProvider),
+      )
+    : ref.watch(ambulanceListProvider); // already filtered by backend
     final ambulanceId = ref.watch(ambulanceIdProvider);
     log("ambulanceId${ambulanceId}");
 
@@ -258,10 +399,13 @@ print("🔄 Returned from AmbulanceRegister screen");
     if (_debounce?.isActive ?? false) {
       _debounce!.cancel();
     }
+_debounce = Timer(const Duration(milliseconds: 500), () async {
 
-   _debounce = Timer(const Duration(milliseconds: 500), () async {
-  ref.read(searchQueryProvider.notifier).state = value.trim();
+  ref.read(searchQueryProvider.notifier).state =
+      value.trim();
+
   await _fetchAmbulances(showLoader: false);
+
 });
   },
   decoration: InputDecoration(
@@ -285,7 +429,8 @@ print("🔄 Returned from AmbulanceRegister screen");
 )
                       ),
                       SizedBox(width: screenWidth * 0.02),
-                      if (ambulanceId == null)
+                      if (!isOffline &&
+                        (ambulanceId == null || ambulanceId.isEmpty))
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
@@ -297,7 +442,28 @@ print("🔄 Returned from AmbulanceRegister screen");
                               borderRadius: BorderRadius.circular(screenWidth * 0.025),
                             ),
                           ),
-                          onPressed: _handleAmbulanceRegister,
+                          onPressed: () async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  if (userId == null) {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const Signin()),
+    );
+    return;
+  }
+
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const AmbulanceRegister()),
+  );
+
+  if (result == true) {
+    await _refreshAmbulanceId();
+    await _fetchAmbulances();
+  }
+},
                           child: Text("Register", style: TextStyle(color: Colors.white)),
                         ),
                     ],
@@ -324,14 +490,14 @@ print("🔄 Returned from AmbulanceRegister screen");
                                 ),
                               ),
                               SizedBox(height: screenHeight * 0.01),
-                              Text(
-                                "Try adjusting your filters",
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.035,
-                                  color: Colors.grey,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
+                              // Text(
+                              //   "Try adjusting your filters",
+                              //   style: TextStyle(
+                              //     fontSize: screenWidth * 0.035,
+                              //     color: Colors.grey,
+                              //   ),
+                              //   textAlign: TextAlign.center,
+                              // ),
                               SizedBox(height: screenHeight * 0.025),
                               ElevatedButton(
                                 onPressed: _refreshData,

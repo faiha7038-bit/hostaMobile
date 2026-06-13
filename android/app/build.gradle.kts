@@ -39,7 +39,7 @@ android {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as? String ?: "androiddebugkey"
             keyPassword = keystoreProperties["keyPassword"] as? String ?: "android"
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) } ?: file("debug.keystore")
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
             storePassword = keystoreProperties["storePassword"] as? String ?: "android"
         }
     }
@@ -65,7 +65,7 @@ flutter {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.window:window:1.0.0")
     implementation("androidx.window:window-java:1.0.0")
 }

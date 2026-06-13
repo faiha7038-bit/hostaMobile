@@ -5,18 +5,47 @@ import 'package:hosta/presentation/screens/settings/accountsettings.dart';
 import 'package:hosta/presentation/screens/settings/passwordManager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
-Future<void> _logout(BuildContext context) async {
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool isLoggedIn = false;
+  @override
+  void initState() {
+    
+    // TODO: implement initState
+    super.initState();
+      _checkLogin();
+  }
+  Future<void> _checkLogin() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('authToken');
+
+  setState(() {
+    isLoggedIn = token != null;
+  });
+}
+  Future<void> _logout(BuildContext context) async {
   final prefs = await SharedPreferences.getInstance();
 
-  print("BEFORE CLEAR => ${prefs.getKeys()}");
-
-  await prefs.clear();
-
-  print("AFTER CLEAR => ${prefs.getKeys()}");
-
+  // Store bloodId before clearing (if needed)
+  final bloodId = prefs.getString('bloodId');
+  
+  // Clear only non-essential data
+  await prefs.remove('userId');
+  await prefs.remove('authToken');
+  // Keep bloodId
+  if (bloodId != null) {
+    await prefs.setString('bloodId', bloodId);
+  }
+  
+  // OR more simply: don't clear bloodId at all
+  // await prefs.clear(); // ❌ DON'T use this
+  
   if (context.mounted) {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const Signin()),
@@ -25,6 +54,7 @@ Future<void> _logout(BuildContext context) async {
   }
 }
 
+// Future<void> _logout(BuildContext context) async {
   void _confirmLogout(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -101,6 +131,7 @@ Future<void> _logout(BuildContext context) async {
         child: Column(
           children: [
             // Password Manager
+            if (isLoggedIn)
             GestureDetector(
               onTap: () {
                 Navigator.push(

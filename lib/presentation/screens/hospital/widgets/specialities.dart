@@ -23,6 +23,8 @@ class _SpecialtiesTabState extends State<SpecialtiesTab> {
 
   @override
   void initState() {
+
+  log("HOSPITAL ID: ${widget.hospital["id"]}");
     super.initState();
     _specialtiesFuture = _fetchDoctorsGroupedByDepartment();
   }

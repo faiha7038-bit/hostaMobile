@@ -280,23 +280,3 @@ final phoneControllerProvider = Provider<TextEditingController>((ref) {
   ref.onDispose(() => controller.dispose());
   return controller;
 });
-
-// Sync controllers with user data
-// final syncControllersProvider = Provider((ref) {
-//   final userDataState = ref.watch(userDataProvider);
-//   final nameController = ref.read(nameControllerProvider);
-//   final emailController = ref.read(emailControllerProvider);
-//   final phoneController = ref.read(phoneControllerProvider);
-  
-//   if (userDataState.originalName != null && nameController.text.isEmpty) {
-//     nameController.text = userDataState.originalName!;
-//   }
-//   if (userDataState.originalEmail != null && emailController.text.isEmpty) {
-//     emailController.text = userDataState.originalEmail!;
-//   }
-//   if (userDataState.originalPhone != null && phoneController.text.isEmpty) {
-//     phoneController.text = userDataState.originalPhone!;
-//   }
-  
-//   return null;
-// });

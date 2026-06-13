@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
+import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hosta/presentation/screens/blood/donate.dart';
@@ -44,154 +48,354 @@ class _BloodState extends State<Blood> {
   List<String> places = [];
   String? bloodId;
   String? userId;
-
+bool _hasDonated = false;   
+bool _isLoading = true;      
   final ApiService _apiService = ApiService();
+late Box cacheBox;
+bool isOffline = false;
+Timer? _debounce;
+List<dynamic> allDonors = [];
+final Map<String, List<String>> compatibilityMap = {
+  "A+": ["A+", "A-", "O+", "O-"],
+  "A-": ["A-", "O-"],
+  "B+": ["B+", "B-", "O+", "O-"],
+  "B-": ["B-", "O-"],
+  "O+": ["O+", "O-"],
+  "O-": ["O-"],
+  "AB+": ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"],
+  "AB-": ["AB-", "A-", "B-", "O-"],
+};
+StreamSubscription? _connectivitySubscription;
+@override
+void dispose() {
+  _debounce?.cancel();
+  _connectivitySubscription?.cancel();
+  super.dispose();
+}
+@override
+void initState() {
+  super.initState();
 
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-    _fetchDonors();
+  cacheBox = Hive.box('blood_cache');
+_initializeConnectivity();
+  _bootstrap();
+
+  _loadDonationStatus();
+
+}
+Future<void> _initializeConnectivity() async {
+
+  // ✅ Initial internet check
+final hasInternet = await _checkInternet();
+
+setState(() {
+  isOffline = !hasInternet;
+});
+
+  print("INITIAL OFFLINE => $isOffline");
+
+  // ✅ Listen for realtime changes
+  _connectivitySubscription =
+      Connectivity().onConnectivityChanged.listen((result) async {
+
+  final hasInternet = await _checkInternet();
+
+final offline = !hasInternet;
+
+    if (!mounted) return;
+
+    setState(() {
+      isOffline = offline;
+    });
+
+    print("CHANGED OFFLINE => $isOffline");
+
+    await _fetchDonors();
+  });
+}
+Future<bool> _checkInternet() async {
+  try {
+
+    final result = await InternetAddress.lookup('google.com');
+
+    return result.isNotEmpty &&
+        result[0].rawAddress.isNotEmpty;
+
+  } on SocketException catch (_) {
+
+    return false;
   }
+}
+Future<void> _loadDonationStatus() async {
+  final prefs = await SharedPreferences.getInstance();
+  setState(() {
+    _hasDonated = prefs.getBool('hasDonated') ?? false;
+    _isLoading = false;
+  });
+}
+Future<void> _bootstrap() async {
+  await _loadUserData();
+  await _fetchDonors();
+}
+  // void initState() {
+  //   super.initState();
+  //   _loadUserData();
+  //   _fetchDonors();
+  //   _init();
+  // }
+Future<void> _loadUserData() async {
+  final prefs = await SharedPreferences.getInstance();
 
-  Future<void> _loadUserData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedBloodId = prefs.getString('bloodId');
-      final storedUserId = prefs.getString('userId');
+  final storedBloodId = prefs.getString('bloodId');
+  final storedUserId = prefs.getString('userId');
 
+  if (!mounted) return;
+
+  setState(() {
+    bloodId = storedBloodId;
+    userId = storedUserId;
+  });
+
+  print("🩸 UPDATED bloodId: $bloodId");
+}
+  
+Future<void> _fetchDonors() async {
+  try {
+    setState(() {
+      isLoading = true;
+    });
+
+    final hasInternet = await _checkInternet();
+
+    // =========================
+    // OFFLINE MODE
+    // =========================
+    if (!hasInternet) {
       setState(() {
-        bloodId = storedBloodId;
-        userId = storedUserId;
+        isOffline = true;
       });
-    } catch (e) {
-      print("Error loading user data: $e");
-    }
-  }
-// Future<void> _fetchDonors() async {
-//   setState(() => isLoading = true);
 
-//   var box = Hive.box('donorsBox');
+      final cachedData = cacheBox.get('all_donors');
 
-//   // 1. show offline data instantly
-//  final cachedRaw = box.get('donors', defaultValue: []);
-
-// final cached = List<Map<String, dynamic>>.from(cachedRaw);
-
-// setState(() {
-//   donors = cached;
-// });
-
- 
-
-//   try {
-//     final response = await _apiService.getAllDonors(
-//       bloodGroup: selectedBloodGroup.isEmpty ? null : selectedBloodGroup,
-//       country: selectedCountry.isEmpty ? null : selectedCountry,
-//       state: selectedState.isEmpty ? null : selectedState,
-//       district: selectedDistrict.isEmpty ? null : selectedDistrict,
-//       place: selectedPlace.isEmpty ? null : selectedPlace,
-//       name: searchQuery.isEmpty ? null : searchQuery,
-//     );
-
-//     if (response.statusCode == 200) {
-//       List donorList = [];
-
-// if (response.data is Map) {
-//   donorList = List<Map<String, dynamic>>.from(
-//     response.data['data'] ?? [],
-//   );
-// }
-
-//       setState(() {
-//         donors = donorList;
-//       });
-
-//       // save to Hive
-//     await box.put(
-//   'donors',
-//   List<Map<String, dynamic>>.from(donorList),
-// );
-//     }
-//   } catch (e) {
-//     print("Offline mode active (Hive cache used)");
-//   } finally {
-//     setState(() => isLoading = false);
-//   }
-// }
-  Future<void> _fetchDonors() async {
-    print("🔵 _fetchDonors called with filters");
-    print("🔵 _fetchDonors called, searchQuery = '$searchQuery'");
-    try {
-      setState(() => isLoading = true);
-
-      // ✅ Build query parameters from current state
-      final response = await _apiService.getAllDonors(
-        bloodGroup: selectedBloodGroup.isEmpty ? null : selectedBloodGroup,
-        country: selectedCountry.isEmpty ? null : selectedCountry,
-        state: selectedState.isEmpty ? null : selectedState,
-        district: selectedDistrict.isEmpty ? null : selectedDistrict,
-        place: selectedPlace.isEmpty ? null : selectedPlace,
-        name: searchQuery.isEmpty ? null : searchQuery,
-        // pincode: null,  // if needed later
-        // userId: null,
-      );
-
-      print("📡 Status: ${response.statusCode}");
-      print("📦 Raw data: ${response.data}");
-
-      if (response.statusCode == 200 && response.data != null) {
-        List donorList = [];
-
-        if (response.data is Map && response.data['data'] != null) {
-          donorList = response.data['data'];
-        } else if (response.data is Map && response.data['donors'] != null) {
-          donorList = response.data['donors'];
-        } else if (response.data is List) {
-          donorList = response.data;
-        }
-
-        print("✅ Donors found: ${donorList.length}");
-
-        // Cache the *filtered* result (optional)
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('cached_donors', jsonEncode(donorList));
-
-        setState(() {
-          donors = donorList;
-          _extractLocationData(
-            donorList,
-          ); // update location dropdowns based on filtered list
-        });
-      } else {
-        setState(() => donors = []);
-      }
-    } catch (e, stack) {
-      print("❌ API error: $e");
-      print(stack);
-      // Fallback to cache (but cache might be outdated)
-      final prefs = await SharedPreferences.getInstance();
-      final cachedData = prefs.getString('cached_donors');
       if (cachedData != null) {
-        final donorList = jsonDecode(cachedData);
-        setState(() {
-          donors = donorList;
-          _extractLocationData(donorList);
-        });
+        allDonors = List<dynamic>.from(jsonDecode(cachedData));
+        _applyFiltersOffline();
       } else {
         setState(() {
           donors = [];
-          countries = [];
-          states = [];
-          districts = [];
-          places = [];
         });
       }
-    } finally {
-      setState(() => isLoading = false);
+
+      return;
+    }
+
+    // =========================
+    // ONLINE MODE
+    // =========================
+    setState(() {
+      isOffline = false;
+    });
+
+    final response = await _apiService.getAllDonors(
+      bloodGroup: selectedBloodGroup.isEmpty ? null : selectedBloodGroup,
+      country: selectedCountry.isEmpty ? null : selectedCountry,
+      state: selectedState.isEmpty ? null : selectedState,
+      district: selectedDistrict.isEmpty ? null : selectedDistrict,
+      place: selectedPlace.isEmpty ? null : selectedPlace,
+      searchQuery: searchQuery.trim().isEmpty ? null : searchQuery.trim(),
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      final donorList = response.data is List
+          ? response.data
+          : response.data['data'] ?? [];
+
+      // cache
+      await cacheBox.put('all_donors', jsonEncode(donorList));
+
+      allDonors = donorList;
+
+      setState(() {
+        donors = donorList;
+      });
+
+      _extractLocationData(donorList);
+    }
+  } catch (e) {
+    print("ERROR => $e");
+
+    final cachedData = cacheBox.get('all_donors');
+
+    if (cachedData != null) {
+      allDonors = List<dynamic>.from(jsonDecode(cachedData));
+      _applyFiltersOffline();
+    }
+  } finally {
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
+}
 
+  // Future<void> _fetchDonors() async {
+  //   print("🔵 _fetchDonors called with filters");
+  //   print("🔵 _fetchDonors called, searchQuery = '$searchQuery'");
+  //   try {
+  //     setState(() => isLoading = true);
+
+  //     // ✅ Build query parameters from current state
+  //     final response = await _apiService.getAllDonors(
+  //       bloodGroup: selectedBloodGroup.isEmpty ? null : selectedBloodGroup,
+  //       country: selectedCountry.isEmpty ? null : selectedCountry,
+  //       state: selectedState.isEmpty ? null : selectedState,
+  //       district: selectedDistrict.isEmpty ? null : selectedDistrict,
+  //       place: selectedPlace.isEmpty ? null : selectedPlace,
+  //       searchQuery: searchQuery.isEmpty ? null : searchQuery,
+  //       // pincode: null,  // if needed later
+  //       // userId: null,
+  //     );
+
+  //     print("📡 Status: ${response.statusCode}");
+  //     print("📦 Raw data: ${response.data}");
+
+  //     if (response.statusCode == 200 && response.data != null) {
+  //       List donorList = [];
+
+  //       if (response.data is Map && response.data['data'] != null) {
+  //         donorList = response.data['data'];
+  //       } else if (response.data is Map && response.data['donors'] != null) {
+  //         donorList = response.data['donors'];
+  //       } else if (response.data is List) {
+  //         donorList = response.data;
+  //       }
+
+  //       print("✅ Donors found: ${donorList.length}");
+
+  //       // Cache the *filtered* result (optional)
+  //       final prefs = await SharedPreferences.getInstance();
+  //       await prefs.setString('cached_donors', jsonEncode(donorList));
+
+  //       setState(() {
+  //         donors = donorList;
+  //         _extractLocationData(
+  //           donorList,
+  //         ); // update location dropdowns based on filtered list
+  //       });
+  //     } else {
+  //       setState(() => donors = []);
+  //     }
+  //   } catch (e, stack) {
+  //     print("❌ API error: $e");
+  //     print(stack);
+  //     // Fallback to cache (but cache might be outdated)
+  //     final prefs = await SharedPreferences.getInstance();
+  //     final cachedData = prefs.getString('cached_donors');
+  //     if (cachedData != null) {
+  //       final donorList = jsonDecode(cachedData);
+  //       setState(() {
+  //         donors = donorList;
+  //         _extractLocationData(donorList);
+  //       });
+  //     } else {
+  //       setState(() {
+  //         donors = [];
+  //         countries = [];
+  //         states = [];
+  //         districts = [];
+  //         places = [];
+  //       });
+  //     }
+  //   } finally {
+  //     setState(() => isLoading = false);
+  //   }
+  // }
+void _applyFiltersOffline() {
+  List filtered = allDonors.where((donor) {
+    final address = donor['address'] ?? {};
+
+   final donorName =
+    (
+      donor['fullName'] ??
+      donor['name'] ??
+      donor['userName'] ??
+      ''
+    )
+    .toString()
+    .toLowerCase();
+    log("DONOR NAME => $donorName");
+log("SEARCH => $searchQuery");
+
+    final bloodGroup =
+        (donor['bloodGroup'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final country =
+        (address['country'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final state =
+        (address['state'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final district =
+        (address['district'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final place =
+        (address['place'] ?? '')
+            .toString()
+            .toLowerCase();
+
+    final matchesSearch =
+        searchQuery.isEmpty ||
+        donorName.contains(searchQuery.toLowerCase());
+
+final compatibleGroups =
+    compatibilityMap[selectedBloodGroup] ?? [];
+
+final matchesBlood =
+    selectedBloodGroup.isEmpty ||
+    compatibleGroups
+        .map((e) => e.toLowerCase())
+        .contains(bloodGroup);
+
+    final matchesCountry =
+        selectedCountry.isEmpty ||
+        country == selectedCountry.toLowerCase();
+
+    final matchesState =
+        selectedState.isEmpty ||
+        state == selectedState.toLowerCase();
+
+    final matchesDistrict =
+        selectedDistrict.isEmpty ||          
+        district == selectedDistrict.toLowerCase();
+
+    final matchesPlace =
+        selectedPlace.isEmpty ||
+        place == selectedPlace.toLowerCase();
+
+    return matchesSearch &&
+        matchesBlood &&
+        matchesCountry &&
+        matchesState &&
+        matchesDistrict &&
+        matchesPlace;
+  }).toList();
+
+  setState(() {
+    donors = filtered;
+    _extractLocationData(allDonors);
+  });
+  log("SEARCH => $searchQuery");
+  log("TOTAL => ${allDonors.length}");
+}
   void _extractLocationData(List<dynamic> donorList) {
     final uniqueCountries = <String>{};
     final uniqueStates = <String>{};
@@ -267,22 +471,25 @@ class _BloodState extends State<Blood> {
         context,
         MaterialPageRoute(builder: (context) => const Signin()),
       ).then((_) {
+         //_init();
         _loadUserData();
+
       });
     } else if (bloodId == null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const Donate()),
-      ).then((_) {
-        _loadUserData();
-      });
+ Navigator.push(
+  context,
+  MaterialPageRoute(builder: (context) => const Donate()),
+).then((value) async {
+  await _loadUserData();   // 🔥 reload bloodId AFTER return
+  await _fetchDonors();   // optional refresh list
+});
     }
   }
 
-  void _refreshData() {
-    _fetchDonors();
-    _loadUserData();
-  }
+Future<void> _refreshData() async {
+  await _loadUserData();   
+  await _fetchDonors();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -347,7 +554,7 @@ class _BloodState extends State<Blood> {
                   selectedDistrict = district;
                   selectedPlace = place;
                 });
-                _fetchDonors();
+              _fetchDonors();
               },
               onClear: () {
                 print("📍 Location cleared"); // Debug print
@@ -357,7 +564,7 @@ class _BloodState extends State<Blood> {
                   selectedDistrict = '';
                   selectedPlace = '';
                   selectedBloodGroup = '';
-                  searchQuery = '';
+                 searchQuery = '';
                 });
                 _fetchDonors();
               },
@@ -385,6 +592,7 @@ class _BloodState extends State<Blood> {
   }
 
   Widget _buildSearchAndDonate(double screenWidth, double screenHeight) {
+    log("BUTTON CHECK => $isOffline");
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: screenWidth * 0.04,
@@ -394,11 +602,33 @@ class _BloodState extends State<Blood> {
         children: [
           Expanded(
             child: TextField(
-              onChanged: (value) {
-                print("✏️ TextField changed: '$value'");
-                setState(() => searchQuery = value);
-                _fetchDonors();
-              },
+onChanged: (value) {
+
+  if (_debounce?.isActive ?? false) {
+    _debounce!.cancel();
+  }
+
+  _debounce = Timer(
+    const Duration(milliseconds: 500),
+    () async {
+
+      setState(() {
+        searchQuery = value.trim();
+      });
+
+      // ✅ OFFLINE
+      if (isOffline) {
+
+        _applyFiltersOffline();
+
+      } else {
+
+        // ✅ ONLINE
+        await _fetchDonors();
+      }
+    },
+  );
+},
               decoration: InputDecoration(
                 hintText: "Search by name...",
                 hintStyle: TextStyle(fontSize: screenWidth * 0.035),
@@ -420,7 +650,8 @@ class _BloodState extends State<Blood> {
             ),
           ),
           SizedBox(width: screenWidth * 0.02),
-          if (bloodId == null)
+       //  if (!isOffline && bloodId == null)
+       if (!isOffline && userId != null && bloodId == null)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -432,7 +663,10 @@ class _BloodState extends State<Blood> {
                   borderRadius: BorderRadius.circular(screenWidth * 0.025),
                 ),
               ),
-              onPressed: _handleDonateNavigation,
+              onPressed: isOffline
+    ? null
+    : _handleDonateNavigation,
+             // onPressed: _handleDonateNavigation,
               child: Text(
                 "Donate",
                 style: TextStyle(
@@ -474,7 +708,7 @@ class _BloodState extends State<Blood> {
                 setState(() {
                   selectedBloodGroup = bg == "All" ? '' : bg;
                 });
-                _fetchDonors();
+                 _fetchDonors();
               },
             ),
           );

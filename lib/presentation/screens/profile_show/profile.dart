@@ -572,6 +572,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                       MaterialPageRoute(
                                         builder: (context) =>
                                             PrescriptionDetailsScreen(
+                                              userId: userId,
                                               // userId: userId,
                                             ),
                                       ),
