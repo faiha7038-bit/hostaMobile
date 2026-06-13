@@ -49,29 +49,7 @@ class AmbulanceListNotifier extends StateNotifier<AmbulanceListState> {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
     }
   }
-// Future<bool> createAmbulance(Map<String, dynamic> payload) async {
-//   try {
-//     final response = await apiService.createAmbulance(payload);
-//     if (response.statusCode == 200 || response.statusCode == 201) {
-//       if (response.data['success'] == true) {
-//         final newAmbulance = response.data['data'] as Map<String, dynamic>;
-//         final ambulanceId = (newAmbulance['id'] ?? newAmbulance['_id']).toString();
 
-//         final prefs = await SharedPreferences.getInstance();
-//         await prefs.setBool('ambulanceRegistered', true);
-//         await prefs.setString('ambulanceId', ambulanceId);
-
-//         final updatedList = [newAmbulance, ...state.ambulances];
-//         state = state.copyWith(ambulances: updatedList);
-//         return true;
-//       }
-//     }
-//     return false;
-//   } on DioException catch (e) {
-//     log("CREATE ERROR => $e");
-//     return false;
-//   }
-// }
   Future<bool> createAmbulance(Map<String, dynamic> payload) async {
     try {
       final response = await apiService.createAmbulance(payload);
@@ -135,29 +113,6 @@ Future<bool> deleteAmbulance(String ambulanceId) async {
   }
 }
 
-//  Future<bool> deleteAmbulance(String ambulanceId) async {
-//   try {
-//     final response = await apiService.deleteAmbulance(ambulanceId);
-
-//     log("DELETE response status: ${response.statusCode}");
-
-//     if (response.statusCode == 200) {
-//       state = state.copyWith(
-//         ambulances: state.ambulances
-//             .where((item) =>
-//                 (item['_id'] ?? item['id']).toString() != ambulanceId)
-//             .toList(),
-//       );
-
-//       return true;
-//     }
-
-//     return false;
-//   } catch (e) {
-//     log("DELETE ERROR: $e");
-//     return false;
-//   }
-// }
 }
 
 final ambulanceListProvider = StateNotifierProvider<AmbulanceListNotifier, AmbulanceListState>(

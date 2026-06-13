@@ -75,7 +75,7 @@ class _SettingsPageState extends State<SettingsPage> {
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Cancel',
-                style: TextStyle(fontSize: screenWidth * 0.04),
+                style: TextStyle(fontSize: screenWidth * 0.04,color: Colors.grey),
               ),
             ),
             TextButton(

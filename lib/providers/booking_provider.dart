@@ -194,26 +194,6 @@ void updateBookingStatus(String bookingId, String newStatus) {
   }
 
 
-// Future<void> loadUserIdAndFetchBookings() async {
-//   try {
-//     final prefs = await SharedPreferences.getInstance();
-    
-//     final storedUserId = prefs.getString('userId');
-    
-//     setUserId(storedUserId);
-//     print("📱 Loaded user ID for bookings: $storedUserId");
-
-//     if (storedUserId != null && storedUserId.isNotEmpty) {
-//       await fetchBookings();
-//     } else {
-//       setLoading(false);
-//       print("❌ No user ID found for bookings");
-//     }
-//   } catch (e) {
-//     print("❌ Error loading user ID: $e");
-//     setLoading(false);
-//   }
-// }
 
 Future<void> loadUserIdAndFetchBookings() async {
   try {
@@ -543,18 +523,3 @@ final filteredBookingsProvider =
     Provider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(bookingStateProvider).bookings;
 });
-// final filteredBookingsProvider =
-//     Provider<List<Map<String, dynamic>>>((ref) {
-//   final state = ref.watch(bookingStateProvider);
-
-//   final bookings = state.bookings;
-//   final date = state.selectedDate;
-
-//   return bookings.where((b) {
-//     final matchDate = date == null
-//         ? true
-//         : b["date"] == DateFormat('yyyy-MM-dd').format(date);
-
-//     return matchDate;
-//   }).toList();
-// });

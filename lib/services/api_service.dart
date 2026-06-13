@@ -713,34 +713,7 @@ log("date=$date");
       queryParameters: {'hospitalId': hospitalId, 'userId': userId},
     );
   }
-  //prescription
-//  Future<Response> getPrescriptions({
-//   String? userId,
-//   int page = 1,
-//   int limit = 10,
-//   String? date,
-// }) async {
 
-//   final Map<String, dynamic> queryParams = {};
-
-//   if (userId != null && userId.isNotEmpty) {
-//     queryParams['userId'] = userId;
-//   }
-
-//   queryParams['page'] = page;
-//   queryParams['limit'] = limit;
-
-//   if (date != null && date.isNotEmpty) {
-//     queryParams['date'] = date;
-//   }
-
-//   print("📤 PRESCRIPTION QUERY PARAMS: $queryParams");
-
-//   return await dio.get(
-//     '/api/prescription',
-//     queryParameters: queryParams,
-//   );
-// }
 Future<Response> getCategories({
   String? searchQuery,
   int page = 1,

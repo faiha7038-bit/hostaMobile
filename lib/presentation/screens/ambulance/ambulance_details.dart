@@ -186,7 +186,7 @@ Future<void> _loadAmbulances() async {
                 Expanded(
                   child: Text(
                     serviceName,
-                    style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: screenWidth * 0.045, fontWeight: FontWeight.bold,color: Colors.black),
                   ),
                 ),
                 PopupMenuButton<String>(
@@ -210,7 +210,7 @@ Future<void> _loadAmbulances() async {
                           title: const Text("Delete Ambulance"),
                           content: const Text("Are you sure you want to delete this ambulance record?"),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel",style: TextStyle(color: Colors.grey),)),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
                               child: const Text("Delete", style: TextStyle(color: Colors.red)),
@@ -246,9 +246,9 @@ Future<void> _loadAmbulances() async {
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_forever, color: Colors.red, size: 20),
+                          Icon(Icons.delete_rounded, color: Colors.red, size: 20),
                           SizedBox(width: 12),
-                          Text('Delete'),
+                          Text('Delete',style: TextStyle(color: Colors.red),),
                         ],
                       ),
                     ),
@@ -257,10 +257,10 @@ Future<void> _loadAmbulances() async {
               ],
             ),
             SizedBox(height: screenHeight * 0.008),
-            Text("Service: $serviceName", style: TextStyle(fontSize: screenWidth * 0.04)),
-            Text("Vehicle Type: $vehicleType", style: TextStyle(fontSize: screenWidth * 0.04)),
-            Text("Phone: $phone", style: TextStyle(fontSize: screenWidth * 0.04)),
-            Text("Location: $fullLocation", style: TextStyle(fontSize: screenWidth * 0.04)),
+            Text("Service : $serviceName", style: TextStyle(fontSize: screenWidth * 0.04,fontWeight: FontWeight.w500,color: Colors.grey.shade700)),
+            Text("Vehicle Type : $vehicleType", style: TextStyle(fontSize: screenWidth * 0.04,fontWeight: FontWeight.w500,color: Colors.grey.shade700)),
+            Text("Phone : $phone", style: TextStyle(fontSize: screenWidth * 0.04,fontWeight: FontWeight.w500,color: Colors.grey.shade700)),
+            Text("Location : $fullLocation", style: TextStyle(fontSize: screenWidth * 0.04,fontWeight: FontWeight.w500,color: Colors.grey.shade700)),
           ],
         ),
       ),

@@ -4,13 +4,14 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:hive/hive.dart';
 import 'package:hosta/presentation/screens/blood/donate.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/widgets/donor-section.dart';
 import 'package:hosta/presentation/screens/blood/widgets/location-section.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../services/api_service.dart';
 
 class Blood extends StatefulWidget {
@@ -198,6 +199,7 @@ Future<void> _fetchDonors() async {
     });
 
     final response = await _apiService.getAllDonors(
+      
       bloodGroup: selectedBloodGroup.isEmpty ? null : selectedBloodGroup,
       country: selectedCountry.isEmpty ? null : selectedCountry,
       state: selectedState.isEmpty ? null : selectedState,
@@ -205,7 +207,7 @@ Future<void> _fetchDonors() async {
       place: selectedPlace.isEmpty ? null : selectedPlace,
       searchQuery: searchQuery.trim().isEmpty ? null : searchQuery.trim(),
     );
-
+log("responseofdonors:$response.");
     if (response.statusCode == 200 && response.data != null) {
       final donorList = response.data is List
           ? response.data
@@ -385,14 +387,30 @@ final matchesBlood =
     }
   }
 
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri url = Uri.parse("tel:$phoneNumber");
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
-    } else {
-      throw 'Could not launch $url';
-    }
+Future<void> _makePhoneCall(String phone) async {
+  if (phone.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Invalid phone number')),
+    );
+    return;
   }
+
+  var status = await Permission.phone.request();
+
+  if (status.isGranted) {
+    bool? res = await FlutterPhoneDirectCaller.callNumber(phone);
+
+    if (res != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Call failed')),
+      );
+    }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Phone permission denied')),
+    );
+  }
+}
 
   void _handleDonateNavigation() {
     if (userId == null) {
@@ -579,7 +597,7 @@ onChanged: (value) {
             ),
           ),
           SizedBox(width: screenWidth * 0.02),
-         if (!isOffline && bloodId == null)
+         if (!isOffline && bloodId == null )
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
