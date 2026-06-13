@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/alarm.service.dart';
 
-
-// ─────────────────────────────────────────────
 //  STATE CLASSES
-// ─────────────────────────────────────────────
-
 class ReminderState {
   final TextEditingController medicineController;
   final TextEditingController notesController;
@@ -47,10 +43,7 @@ class ReminderState {
   }
 }
 
-// ─────────────────────────────────────────────
 //  PROVIDERS
-// ─────────────────────────────────────────────
-
 final reminderStateProvider = StateNotifierProvider<ReminderNotifier, ReminderState>((ref) {
   return ReminderNotifier();
 });
@@ -131,18 +124,12 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
   }
 }
 
-// ─────────────────────────────────────────────
 //  ALARM SERVICE PROVIDER
-// ─────────────────────────────────────────────
-
 final alarmServiceProvider = Provider<AlarmService>((ref) {
   return AlarmService();
 });
 
-// ─────────────────────────────────────────────
 //  HELPER PROVIDERS
-// ─────────────────────────────────────────────
-
 final weekDaysProvider = Provider<List<String>>((ref) {
   return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 });

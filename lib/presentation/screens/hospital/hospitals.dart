@@ -495,38 +495,6 @@ bool _isOpenNowNoBreak(Map<String, dynamic> hospital) {
     );
   }
 
-  // ========== FIXED SEARCH LOGIC - HANDLES ADDRESS MAP ==========
-  // bool _matchesSearchQuery(Map<String, dynamic> hospital) {
-  //   if (searchQuery.isEmpty) return true;
-
-  //   final cleanQuery = searchQuery.replaceAll(' ', '').toLowerCase();
-  //   final hospitalName = (hospital["name"] ?? '')
-  //       .toString()
-  //       .replaceAll(' ', '')
-  //       .toLowerCase();
-
-  //   // Convert address (Map or String) to plain string for searching
-  //   String getAddressString(dynamic addr) {
-  //     if (addr == null) return '';
-  //     if (addr is String) return addr;
-  //     if (addr is Map) {
-  //       final parts = <String>[];
-  //       if (addr['place'] != null) parts.add(addr['place'].toString());
-  //       if (addr['district'] != null) parts.add(addr['district'].toString());
-  //       if (addr['state'] != null) parts.add(addr['state'].toString());
-  //       return parts.join(' ');
-  //     }
-  //     return '';
-  //   }
-
-  //   final rawAddress = getAddressString(hospital["address"]);
-  //   final hospitalAddress = rawAddress.replaceAll(' ', '').toLowerCase();
-
-  //   return hospitalName.contains(cleanQuery) ||
-  //       hospitalAddress.contains(cleanQuery);
-  // }
-
-  // ========== BUILD METHODS ==========
 
   @override
   Widget build(BuildContext context) {

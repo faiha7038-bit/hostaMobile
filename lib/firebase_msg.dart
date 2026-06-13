@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,9 +26,27 @@ class FirebaseMsg {
   Future<String?> initFCM() async {
     if (_token != null) return _token; // already initialized
 
+
+ if (Firebase.apps.isEmpty) {
+     await Firebase.initializeApp();
+   // print('⚠️ No Firebase app, but continuing anyway...');
+    // Don't initialize here - let the platform handle it
+  }
+
     try {
       print('🔍 DEBUG: Starting FCM initialization...');
-
+ try {
+      if (Firebase.apps.isEmpty) {
+        // This should not happen, but just in case
+        print('⚠️ No Firebase app found, initializing...');
+        // You might need to add firebase_options.dart import
+        // await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      } else {
+        print('✅ Firebase app already exists: ${Firebase.apps.first.name}');
+      }
+    } catch (e) {
+      print('⚠️ Firebase check error: $e');
+    }
       // Initialize local notifications
       await _initializeLocalNotifications();
 
@@ -186,14 +205,13 @@ class FirebaseMsg {
       android: androidDetails,
       iOS: iosDetails,
     );
-
-    await localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      notification.title ?? 'New Notification',
-      notification.body ?? 'You have a new message',
-      details,
-      payload: message.data.isNotEmpty ? message.data.toString() : null,
-    );
+await localNotifications.show(
+  DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
+  notification.title ?? 'New Notification',
+  notification.body ?? 'You have a new message',
+  details,
+  payload: message.data.isNotEmpty ? message.data.toString() : null,
+);
   }
 
   Future<void> _handleMessageOpenedApp(RemoteMessage message) async {
@@ -209,49 +227,58 @@ class FirebaseMsg {
 
   // ================== Background Handler ==================
   @pragma('vm:entry-point')
-  static Future<void> _firebaseBackgroundMessageHandler(RemoteMessage message) async {
-    print('\n📱 BACKGROUND MESSAGE RECEIVED');
-    print('📱 Message ID: ${message.messageId}');
-    print('📱 From: ${message.from}');
-    print('📱 Sent Time: ${message.sentTime}');
-
-    final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
-
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings();
-    const InitializationSettings settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
-    await localNotifications.initialize(settings);
-
-    if (message.notification != null) {
-      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-        'high_importance_channel',
-        'High Importance Notifications',
-        channelDescription: 'This channel is used for important notifications.',
-        importance: Importance.max,
-        priority: Priority.high,
-        playSound: true,
-      );
-
-      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
-
-      const NotificationDetails details = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
-      await localNotifications.show(
-        DateTime.now().millisecondsSinceEpoch.remainder(100000),
-        message.notification?.title ?? 'New Notification',
-        message.notification?.body ?? 'You have a new message',
-        details,
-      );
-    }
-
-    if (message.data.isNotEmpty) print('📱 Data payload: ${message.data}');
-    print('📱 END OF BACKGROUND MESSAGE\n');
+static Future<void> _firebaseBackgroundMessageHandler(
+  RemoteMessage message) async {
+  
+  // ✅ CRITICAL: Ensure Firebase is initialized in background isolate
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp();
+    print('✅ Firebase initialized in background handler');
   }
+  
+  print('\n📱 BACKGROUND MESSAGE RECEIVED');
+  print('📱 Message ID: ${message.messageId}');
+  
+  final FlutterLocalNotificationsPlugin localNotifications = 
+      FlutterLocalNotificationsPlugin();
+  
+  // Initialize local notifications if not already
+  const AndroidInitializationSettings androidSettings = 
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const DarwinInitializationSettings iosSettings = 
+      DarwinInitializationSettings();
+  const InitializationSettings settings = InitializationSettings(
+    android: androidSettings,
+    iOS: iosSettings,
+  );
+  
+  await localNotifications.initialize(settings);
+  
+  if (message.notification != null) {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'high_importance_channel',
+      'High Importance Notifications',
+      channelDescription: 'This channel is used for important notifications.',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+    
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
+    
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    
+    await localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
+      message.notification?.title ?? 'New Notification',
+      message.notification?.body ?? 'You have a new message',
+      details,
+    );
+  }
+  
+  print('📱 END OF BACKGROUND MESSAGE\n');
+}
 }

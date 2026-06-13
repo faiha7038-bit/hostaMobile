@@ -1,5 +1,3 @@
-// lib/models/medicine_reminder_model.dart (New File)
-
 class MedicineReminder {
   final String medicineName;
   final String? notes;
@@ -17,7 +15,6 @@ class MedicineReminder {
     this.endDate,
   });
 
-  // JSON ആക്കി മാറ്റാൻ - API-ക്ക് send ചെയ്യാൻ
   Map<String, dynamic> toJson() {
     return {
       'medicineName': medicineName,

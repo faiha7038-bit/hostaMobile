@@ -23,13 +23,21 @@ class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
   ScrollController scrollController = ScrollController();
   final TextEditingController _dateController = TextEditingController();
   DateTime? selectedDate;
+  
+  // Store ALL prescriptions from API
+  List<dynamic> allPrescriptions = [];
+  // Display filtered prescriptions
   List<dynamic> prescriptions = [];
+  
   bool isLoading = true;
   final ApiService _apiService = ApiService();
   bool isRequestInProgress = false;
   bool _hasReachedEnd = false;
   Timer? _debounceTimer;
-bool _noMoreData = false; // add this with other variables
+  bool _noMoreData = false;
+  
+  Map<int, String> patientNames = {};
+
   @override
   void initState() {
     super.initState();
@@ -45,122 +53,164 @@ bool _noMoreData = false; // add this with other variables
     super.dispose();
   }
 
-void _clearDateFilter() {
-  setState(() {
-    selectedDate = null;
-    _dateController.clear();
-    prescriptions.clear();
-    currentPage = 1;
-    totalPages = 1;
-    _hasReachedEnd = false;
-    _noMoreData = false;   // add
-  });
-  fetchPrescriptions();
-}
+  void _clearDateFilter() {
+    setState(() {
+      selectedDate = null;
+      _dateController.clear();
+      _applyLocalDateFilter();  // ✅ Local filter re-apply
+    });
+  }
 
-void _onScroll() {
-  if (_debounceTimer?.isActive == true) return;
-  if (!scrollController.hasClients) return;
-  if (isFetchingMore || isRequestInProgress) return;
-  if (_hasReachedEnd || _noMoreData) return;   // added _noMoreData
-  if (currentPage >= totalPages) return;
-  if (prescriptions.isEmpty) return;
-  // ... rest unchanged
-}
+  void _onScroll() {
+    if (_debounceTimer?.isActive == true) return;
+    if (!scrollController.hasClients) return;
+    if (isFetchingMore || isRequestInProgress) return;
+    if (_hasReachedEnd || _noMoreData) return;
+    if (currentPage >= totalPages) return;
+    if (prescriptions.isEmpty) return;
+    
+    if (scrollController.position.pixels >= 
+        scrollController.position.maxScrollExtent - 200) {
+      fetchMorePrescriptions();
+    }
+  }
+
+  // ✅✅✅ LOCAL FILTER FUNCTION ✅✅✅
+  void _applyLocalDateFilter() {
+    print("🔍 Applying local filter...");
+    print("📅 Selected date: $selectedDate");
+    
+    if (selectedDate == null) {
+      // No filter - show all prescriptions
+      prescriptions = List.from(allPrescriptions);
+      print("📊 No filter - showing all ${prescriptions.length} items");
+    } else {
+      // Filter by selected date
+      final filterDate = DateFormat('yyyy-MM-dd').format(selectedDate!);
+      print("📅 Filter date: $filterDate");
+      
+      prescriptions = allPrescriptions.where((prescription) {
+        final createdAt = prescription['createdAt'];
+        if (createdAt == null) return false;
+        
+        final prescriptionDate = DateFormat('yyyy-MM-dd').format(DateTime.parse(createdAt));
+        final isMatch = prescriptionDate == filterDate;
+        
+        if (isMatch) {
+          print("  ✅ Match: ID ${prescription['id']} - Date: $prescriptionDate");
+        }
+        
+        return isMatch;
+      }).toList();
+      
+      print("📊 Local filter found ${prescriptions.length} items for $filterDate");
+    }
+    
+    // Reset pagination for filtered results
+    currentPage = 1;
+    totalPages = (prescriptions.length / 10).ceil();
+    if (totalPages == 0) totalPages = 1;
+    _hasReachedEnd = currentPage >= totalPages;
+    _noMoreData = false;
+    
+    setState(() {});
+  }
 
   Future<void> fetchPrescriptions() async {
-   setState(() {
-    isLoading = true;
-    isFetchingMore = false;
-    _hasReachedEnd = false;
-    _noMoreData = false;   // reset
-  });
+    setState(() {
+      isLoading = true;
+      isFetchingMore = false;
+      _hasReachedEnd = false;
+      _noMoreData = false;
+    });
 
     try {
+      // Send date to API (optional, may not work)
+      String? dateParam;
+      if (selectedDate != null) {
+        dateParam = DateFormat('yyyy-MM-dd').format(selectedDate!);
+        print("📅 Sending date to API: $dateParam");
+      }
+      
       final response = await _apiService.getPrescriptions(
         userId: widget.userId,
         page: 1,
-        limit: 10,
-        // date: selectedDate != null
-        //     ? DateFormat('yyyy-MM-dd').format(selectedDate!)
-        //     : null,
+        limit: 100,  // Get all prescriptions
+      //  date: dateParam,
       );
 
+      print("✅ API Status: ${response.statusCode}");
+      
       if (response.statusCode == 200) {
-        setState(() {
-          prescriptions = response.data['data'];
-          totalPages = response.data['pagination']['totalPages'];
-          currentPage = 1;
-          _hasReachedEnd = currentPage >= totalPages;
-        });
+        final data = response.data['data'] as List;
+        print("📊 Total items from API: ${data.length}");
+        
+        // Store all data
+        allPrescriptions = data;
+        _fetchPatientNames(allPrescriptions);
+        
+        // ✅✅ Apply local filter (THIS IS THE KEY!) ✅✅
+        _applyLocalDateFilter();
+        
+        print("📊 After local filter: ${prescriptions.length} items");
       }
     } catch (e) {
-      print(e);
+      print("❌ Error: $e");
     } finally {
       setState(() {
         isLoading = false;
       });
     }
   }
-
-Future<void> fetchMorePrescriptions() async {
-  // Stop if already loading, reached end, or no more data
-  if (isFetchingMore || isRequestInProgress) return;
-  if (_hasReachedEnd || _noMoreData) return;
-  if (currentPage >= totalPages) {
-    setState(() => _hasReachedEnd = true);
-    return;
-  }
-
-  setState(() {
-    isFetchingMore = true;
-    isRequestInProgress = true;
-  });
-
-  try {
-    final nextPage = currentPage + 1;
-    print("📡 Loading page $nextPage of $totalPages");
-    final response = await _apiService.getPrescriptions(
-      userId: widget.userId,
-      page: nextPage,
-      limit: 10,
-      // date: selectedDate != null
-      //     ? DateFormat('yyyy-MM-dd').format(selectedDate!)
-      //     : null,
-    );
-
-    if (response.statusCode == 200) {
-      final newData = response.data['data'] as List;
-      final pagination = response.data['pagination'];
-      final newTotalPages = pagination['totalPages'];
-
-      // 🔥 CRITICAL: If the returned data has fewer than 10 items, it's the last page
-      if (newData.length < 10) {
-        _noMoreData = true;
+  
+  void _fetchPatientNames(List<dynamic> prescriptionsList) {
+    for (var prescription in prescriptionsList) {
+      final patientId = prescription['patientId'];
+      if (patientId != null && !patientNames.containsKey(patientId)) {
+        if (prescription['patientName'] != null) {
+          patientNames[patientId] = prescription['patientName'];
+        } else {
+          patientNames[patientId] = 'Patient $patientId';
+        }
       }
-
-      setState(() {
-        prescriptions.addAll(newData);
-        currentPage = nextPage;
-        totalPages = newTotalPages;
-        _hasReachedEnd = currentPage >= totalPages || _noMoreData;
-      });
-    }
-  } catch (e) {
-    print(e);
-    // On error, assume no more data to avoid endless retries
-    setState(() => _noMoreData = true);
-  } finally {
-    if (mounted) {
-      setState(() {
-        isFetchingMore = false;
-        isRequestInProgress = false;
-      });
     }
   }
-}
+
+  Future<void> fetchMorePrescriptions() async {
+    if (isFetchingMore || isRequestInProgress) return;
+    if (_hasReachedEnd || _noMoreData) return;
+    if (currentPage >= totalPages) {
+      setState(() => _hasReachedEnd = true);
+      return;
+    }
+
+    setState(() {
+      isFetchingMore = true;
+      isRequestInProgress = true;
+    });
+
+    // Simulate loading for pagination
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    setState(() {
+      currentPage++;
+      _hasReachedEnd = currentPage >= totalPages;
+      isFetchingMore = false;
+      isRequestInProgress = false;
+    });
+  }
+
+  List<dynamic> getCurrentPageItems() {
+    int start = (currentPage - 1) * 10;
+    int end = start + 10;
+    if (start >= prescriptions.length) return [];
+    if (end > prescriptions.length) end = prescriptions.length;
+    return prescriptions.sublist(start, end);
+  }
 
   Future<void> _downloadPrescription() async {
+    if (prescriptions.isEmpty) return;
+    
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -171,7 +221,7 @@ Future<void> fetchMorePrescriptions() async {
             children: [
               pw.Text(
                 "Medical Prescription",
-                style: pw.TextStyle(fontSize: 20),
+                style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
               ),
               pw.SizedBox(height: 20),
               ...prescriptions.map((prescription) {
@@ -179,23 +229,46 @@ Future<void> fetchMorePrescriptions() async {
                 final formattedDate = createdAt != null
                     ? DateFormat('dd MMM yyyy').format(DateTime.parse(createdAt))
                     : 'N/A';
+                    
+                // final doctorName = prescription['prescribedBy'] != null 
+                //     ? prescription['prescribedBy'] 
+                //     : 'Doctor ID: ${prescription['doctorId'] ?? 'N/A'}';
+                final doctorName =
+    prescription['prescribedBy'] ??
+    prescription['doctorName'] ??
+    'Doctor ID: ${prescription['doctorId'] ?? 'N/A'}';
+                    
+                final patientId = prescription['patientId'] ?? 'N/A';
+                final patientName = patientNames[patientId] ?? 
+                                    prescription['patientName'] ?? 
+                                    'Patient $patientId';
+                
                 return pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text("Doctor: ${prescription['prescribedBy'] ?? 'N/A'}"),
-                    pw.Text("Patient: ${prescription['patientName'] ?? 'N/A'}"),
-                    pw.Text("Date: $formattedDate"),
+                    pw.Text("Doctor: $doctorName", 
+                           style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                    pw.Text("Patient: $patientName", 
+                           style: pw.TextStyle(fontSize: 12)),
+                    pw.Text("Patient ID: $patientId", 
+                           style: pw.TextStyle(fontSize: 12)),
+                    pw.Text("Prescription ID: ${prescription['id']}", 
+                           style: pw.TextStyle(fontSize: 12)),
+                    pw.Text("Date: $formattedDate", 
+                           style: pw.TextStyle(fontSize: 12)),
                     pw.SizedBox(height: 10),
-                    pw.Text("Complaint: ${prescription['complaint'] ?? ''}"),
+                    pw.Text("Complaint: ${prescription['complaint'] ?? ''}",
+                           style: pw.TextStyle(fontSize: 12)),
                     pw.SizedBox(height: 10),
-                    pw.Text("Medicines:", style: pw.TextStyle(fontSize: 16)),
+                    pw.Text("Medicines:", 
+                           style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 10),
                     ...((prescription['medications'] ?? []) as List).map((med) {
                       return pw.Text(
-                        "${med['name'] ?? med['medicine_name']} "
-                        "- ${med['dosage']} "
-                        "- ${med['frequency']} "
-                        "- ${med['timing']}",
+                        "- ${med['name'] ?? med['medicine_name']} "
+                        "(${med['dosage']}mg) "
+                        "${med['frequency']} - ${med['timing']}",
+                        style: pw.TextStyle(fontSize: 11),
                       );
                     }),
                     pw.SizedBox(height: 25),
@@ -214,22 +287,25 @@ Future<void> fetchMorePrescriptions() async {
     final file = File("${dir.path}/prescription.pdf");
     await file.writeAsBytes(await pdf.save());
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: Text("Prescription Preview"),
-            backgroundColor: Colors.green,
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: const Text("Prescription Preview"),
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            body: PdfPreview(build: (format) => pdf.save()),
           ),
-          body: PdfPreview(build: (format) => pdf.save()),
         ),
-      ),
-    );
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Prescription downloaded successfully")),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Prescription PDF ready")),
+      );
+    }
   }
 
   @override
@@ -245,6 +321,8 @@ Future<void> fetchMorePrescriptions() async {
     final bodyFontSize = isDesktop ? 14.0 : (isTablet ? 13.0 : 12.0);
     final smallFontSize = isDesktop ? 12.0 : (isTablet ? 11.0 : 10.0);
     final spacing = isDesktop ? 24.0 : (isTablet ? 20.0 : 16.0);
+
+    final currentItems = getCurrentPageItems();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FC),
@@ -271,81 +349,151 @@ Future<void> fetchMorePrescriptions() async {
         child: Column(
           children: [
             // Filter Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
               child: TextField(
                 controller: _dateController,
                 readOnly: true,
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: context,
-                    initialDate: DateTime.now(),
+                    initialDate: selectedDate ?? DateTime.now(),
                     firstDate: DateTime(2020),
                     lastDate: DateTime(2030),
                   );
-                if (picked != null) {
-  setState(() {
-    selectedDate = picked;
-    _dateController.text = DateFormat('dd MMM yyyy').format(picked);
-    prescriptions.clear();
-    currentPage = 1;
-    totalPages = 1;
-    _hasReachedEnd = false;
-    _noMoreData = false;   // add
-  });
-  fetchPrescriptions();
-}
+                  if (picked != null) {
+                    print("📅 Date selected: ${DateFormat('yyyy-MM-dd').format(picked)}");
+                    setState(() {
+                      selectedDate = picked;
+                      _dateController.text = DateFormat('dd MMM yyyy').format(picked);
+                    });
+                    // ✅ Apply local filter when date selected
+                    _applyLocalDateFilter();
+                  }
                 },
                 decoration: InputDecoration(
                   hintText: "Filter by date",
-                  prefixIcon: Icon(Icons.calendar_today, color: Colors.green),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: Colors.green, width: 2),
-                  ),
+                  prefixIcon: const Icon(Icons.calendar_today, color: Colors.green),
                   suffixIcon: selectedDate != null
                       ? IconButton(
-                          icon: Icon(Icons.close, color: Colors.red),
+                          icon: const Icon(Icons.close, color: Colors.red),
                           onPressed: _clearDateFilter,
                         )
                       : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
             ),
-            SizedBox(height: spacing),
+            const SizedBox(height: 12),
 
-            // Medical Center Card
+            // Filter indicator
+            if (selectedDate != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.filter_alt, size: 16, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Filtered: ${DateFormat('dd MMM yyyy').format(selectedDate!)}",
+                      style: TextStyle(fontSize: 12, color: Colors.green.shade700),
+                    ),
+                  ],
+                ),
+              ),
+            
+            const SizedBox(height: 12),
+
+            // Prescriptions List
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : prescriptions.isEmpty
-                      ? const Center(child: Text("No prescriptions found"))
+                  : currentItems.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.medical_information, 
+                                   size: 64, color: Colors.grey.shade400),
+                              const SizedBox(height: 16),
+                              Text(
+                                selectedDate != null 
+                                    ? "No prescriptions found for ${DateFormat('dd MMM yyyy').format(selectedDate!)}"
+                                    : "No prescriptions found",
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                              ),
+                              if (selectedDate != null) ...[
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  onPressed: _clearDateFilter,
+                                  icon: const Icon(Icons.clear),
+                                  label: const Text("Clear Filter"),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
                       : ListView.builder(
                           controller: scrollController,
-                          itemCount: prescriptions.length +
-                              (isFetchingMore || (_hasReachedEnd && prescriptions.isNotEmpty) ? 1 : 0),
+                          itemCount: currentItems.length + (isFetchingMore ? 1 : 0),
                           itemBuilder: (context, index) {
-                            if (index < prescriptions.length) {
-                              final prescription = prescriptions[index];
+                            if (index < currentItems.length) {
+                              final prescription = currentItems[index];
                               final meds = prescription['medications'] ?? [];
                               final createdAt = prescription['createdAt'];
                               final formattedDate = createdAt != null
                                   ? DateFormat('dd MMM yyyy').format(DateTime.parse(createdAt))
                                   : 'N/A';
+                              
+                              // final doctorName = prescription['prescribedBy'] != null 
+                              //     ? prescription['prescribedBy'] 
+                              //     : 'Doctor ID: ${prescription['doctorId'] ?? 'N/A'}';
+                              final doctorName =
+    prescription['prescribedBy'] ??
+    prescription['doctorName'] ??
+    'Doctor ID: ${prescription['doctorId'] ?? 'N/A'}';
+                              final patientId = prescription['patientId'] ?? 'N/A';
+                              final patientName = patientNames[patientId] ?? 
+                                                  prescription['patientName'] ?? 
+                                                  'Patient $patientId';
 
-                              return Padding(
-                                padding: EdgeInsets.only(bottom: spacing),
-                                child: _buildCard(
+                              return Card(
+                                margin: EdgeInsets.only(bottom: spacing),
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // HEADER
                                       Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.all(10),
+                                            padding: const EdgeInsets.all(12),
                                             decoration: BoxDecoration(
                                               color: Colors.green.shade100,
                                               borderRadius: BorderRadius.circular(12),
@@ -353,138 +501,244 @@ Future<void> fetchMorePrescriptions() async {
                                             child: const Icon(
                                               Icons.local_hospital,
                                               color: Colors.green,
+                                              size: 24,
                                             ),
                                           ),
                                           const SizedBox(width: 12),
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                prescription['prescribedBy'] ?? "Doctor Not Available",
-                                                style: TextStyle(
-                                                  color: Colors.green,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: subtitleFontSize,
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    const Icon(Icons.person, size: 16, color: Colors.green),
+                                                    const SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: Text(
+                                                        doctorName,
+                                                        style: TextStyle(
+                                                          color: Colors.green,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: subtitleFontSize,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                "Prescription ID : ${prescription['id']}",
-                                                style: TextStyle(
-                                                  fontSize: bodyFontSize,
-                                                  color: Colors.grey.shade600,
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    const Icon(Icons.person, size: 14, color: Colors.blue),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      patientName,
+                                                      style: TextStyle(
+                                                        fontSize: bodyFontSize,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.grey.shade800,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.blue.shade50,
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: Text(
+                                                        "ID: $patientId",
+                                                        style: TextStyle(
+                                                          fontSize: smallFontSize,
+                                                          color: Colors.blue.shade700,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
-                                              Text(
-                                                formattedDate,
-                                                style: TextStyle(
-                                                  fontSize: bodyFontSize,
-                                                  color: Colors.grey.shade600,
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.receipt, size: 12, color: Colors.grey.shade500),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      "Prescription #${prescription['id']}",
+                                                      style: TextStyle(
+                                                        fontSize: smallFontSize,
+                                                        color: Colors.grey.shade600,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    Icon(Icons.calendar_today, size: 12, color: Colors.grey.shade500),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      formattedDate,
+                                                      style: TextStyle(
+                                                        fontSize: smallFontSize,
+                                                        color: Colors.grey.shade600,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ],
                                       ),
-                                      SizedBox(height: spacing),
-
-                                      // COMPLAINT
-                                      Text(
-                                        "Complaint",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: bodyFontSize,
+                                      const SizedBox(height: 16),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.shade50,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              "Complaint",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              prescription['complaint'] ?? "No complaint mentioned",
+                                              style: TextStyle(fontSize: bodyFontSize),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        prescription['complaint'] ?? "N/A",
-                                        style: TextStyle(fontSize: bodyFontSize),
-                                      ),
-                                      SizedBox(height: spacing),
-
-                                      // MEDICINES
-                                      Text(
+                                      const SizedBox(height: 16),
+                                      const Text(
                                         "Medicines",
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          fontSize: subtitleFontSize,
+                                          fontSize: 15,
                                           color: Colors.green,
                                         ),
                                       ),
-                                      SizedBox(height: spacing * 0.5),
-                                      Column(
-                                        children: meds.map<Widget>((med) {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(bottom: 12),
-                                            child: _medicineCard(
-                                              color: Colors.green,
-                                              name: med['name'] ??
-                                                  med['medicine_name'] ??
-                                                  'Unknown Medicine',
-                                              dosage: med['dosage'] ?? '',
-                                              days: med['duration'] ?? '',
-                                              time: med['timing'] ?? '',
-                                              freq: med['frequency'] ?? '',
-                                              bodyFontSize: bodyFontSize,
-                                              smallFontSize: smallFontSize,
-                                              isSmallScreen: isSmallScreen,
+                                      const SizedBox(height: 8),
+                                      ...meds.map((med) => Container(
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade50,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: Colors.grey.shade200),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.medication, size: 20, color: Colors.green),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    med['name'] ?? med['medicine_name'] ?? 'Unknown',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.w600,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Wrap(
+                                                    spacing: 12,
+                                                    children: [
+                                                      Text("${med['dosage']} mg", 
+                                                           style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                                      Text(med['frequency'] ?? '', 
+                                                           style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                                      Text(med['timing'] ?? '', 
+                                                           style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                                      Text("${med['duration']} days", 
+                                                           style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          );
-                                        }).toList(),
-                                      ),
+                                          ],
+                                        ),
+                                      )),
+                                      if (prescription['investigations'] != null && 
+                                          (prescription['investigations'] as List).isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        const Text(
+                                          "Investigations",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Wrap(
+                                          spacing: 8,
+                                          children: (prescription['investigations'] as List).map((inv) {
+                                            return Chip(
+                                              label: Text(inv.toString()),
+                                              backgroundColor: Colors.green.shade50,
+                                              labelStyle: TextStyle(fontSize: smallFontSize),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
+                                      if (prescription['advice'] != null && 
+                                          prescription['advice'].toString().isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        const Text(
+                                          "Advice",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          prescription['advice'],
+                                          style: TextStyle(fontSize: bodyFontSize),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
                               );
-                            } else {
-                              // Bottom: loader or end message
-                              if (isFetchingMore) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  child: Center(child: CircularProgressIndicator()),
-                                );
-                              } else if (_hasReachedEnd && prescriptions.isNotEmpty) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  child: Center(
-                                    child: Text(
-                                      "✨ No more prescriptions",
-                                      style: TextStyle(color: Colors.grey.shade600),
-                                    ),
-                                  ),
-                                );
-                              }
-                              return const SizedBox.shrink();
+                            } else if (isFetchingMore) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
                             }
+                            return const SizedBox.shrink();
                           },
                         ),
             ),
 
-            // Download Button
-            SizedBox(
-              width: double.infinity,
-              height: isSmallScreen ? 45 : 50,
-              child: ElevatedButton.icon(
-                onPressed: _downloadPrescription,
-                icon: Icon(Icons.download, size: isSmallScreen ? 18 : 20),
-                label: Text(
-                  "Download Prescription (PDF)",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: bodyFontSize,
+            Container(
+              padding: const EdgeInsets.only(top: 8),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: prescriptions.isEmpty ? null : _downloadPrescription,
+                  icon: const Icon(Icons.download),
+                  label: const Text(
+                    "Download All Prescriptions (PDF)",
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
             ),
-            SizedBox(height: spacing),
           ],
         ),
       ),
@@ -500,172 +754,6 @@ Future<void> fetchMorePrescriptions() async {
           Icon(icon, size: isSmallScreen ? 18 : 20),
           Text(label, style: TextStyle(fontSize: isSmallScreen ? 9 : 11)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _medicineCard({
-    required Color color,
-    required String name,
-    required String dosage,
-    required String days,
-    required String time,
-    required String freq,
-    required double bodyFontSize,
-    required double smallFontSize,
-    required bool isSmallScreen,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.medication,
-                  color: color,
-                  size: isSmallScreen ? 20 : 24,
-                ),
-              ),
-              SizedBox(width: isSmallScreen ? 8 : 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: bodyFontSize + 2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    children: [
-                      _chip(dosage, color, smallFontSize),
-                      _chip(days, Colors.grey, smallFontSize),
-                    ],
-                  ),
-                ],
-              ),
-              if (!isSmallScreen)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    "$days days",
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: smallFontSize,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          SizedBox(height: isSmallScreen ? 8 : 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    time == "Morning"
-                        ? Icons.wb_sunny_outlined
-                        : Icons.nights_stay_outlined,
-                    size: isSmallScreen ? 14 : 16,
-                    color: Colors.orange,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(time, style: TextStyle(fontSize: bodyFontSize)),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.refresh,
-                    size: isSmallScreen ? 14 : 16,
-                    color: Colors.blue,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(freq, style: TextStyle(fontSize: bodyFontSize)),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  "$days Days",
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontSize: smallFontSize - 1,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(String text, Color color, double fontSize) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: fontSize,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

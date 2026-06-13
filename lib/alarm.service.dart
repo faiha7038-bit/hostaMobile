@@ -1,8 +1,6 @@
 import 'package:alarm/alarm.dart';
 
-// ─────────────────────────────────────────────
 //  ALARM SERVICE
-// ─────────────────────────────────────────────
 class AlarmService {
   /// Call once from main() before runApp()
   static Future<void> init() async {
@@ -27,14 +25,14 @@ class AlarmService {
     final settings = AlarmSettings(
       id: id,
       dateTime: alarmTime,
-      assetAudioPath: 'assets/alarm.mp3',
+      assetAudioPath: 'assets/alarm.mp3.wav',
       loopAudio: true,
       vibrate: true,
       warningNotificationOnKill: true,
       androidFullScreenIntent: true,
       volumeSettings: VolumeSettings.fade(
-        volume: 0.8,
-        fadeDuration: const Duration(seconds: 3),
+        volume: 0.9,
+        fadeDuration: const Duration(seconds: 4),
         volumeEnforced: true,
       ),
       notificationSettings: NotificationSettings(
@@ -48,7 +46,10 @@ class AlarmService {
     await Alarm.set(alarmSettings: settings);
   }
 
-  static Future<void> cancelAlarm(int id) async {
+static Future<void> cancelAlarm(int id) async {
     await Alarm.stop(id);
+  }
+  static Future<void> cancelAlarms() async {
+    await Alarm.stopAll();
   }
 }

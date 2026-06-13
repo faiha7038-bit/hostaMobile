@@ -12,6 +12,15 @@
 .swiftpm/
 migrate_working_dir/
 
+# Ignore all build folders
+**/build/
+
+# Ignore android backup folder
+android_backup/
+
+# Ignore APK files
+*.apk
+
 # IntelliJ related
 *.iml
 *.ipr

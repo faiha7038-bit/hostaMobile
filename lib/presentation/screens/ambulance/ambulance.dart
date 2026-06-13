@@ -8,6 +8,7 @@ import 'package:hosta/presentation/screens/ambulance/register.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/ambulance-provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 

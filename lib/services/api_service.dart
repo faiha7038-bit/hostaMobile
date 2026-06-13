@@ -173,10 +173,27 @@ log("COOKIE COUNT => ${cookies.length}");
 
 
   // ---------------- NOTIFICATIONS ----------------
-  Future<Response> getNotifications(String userId) async {
-    return await dio.get('/api/notifications/user/no-read/$userId');
+  
+Future<Response> getNotifications({int page = 1, int limit = 10}) async {
+  return await dio.get('/api/notification?page=$page&limit=$limit');
+}
+Future<Response> getNotificationsByRole(String role, String id, {int page = 1, int limit = 10}) async {
+  return await dio.get('/api/notification/$role/$id?page=$page&limit=$limit');
+}
+//  Mark single notification as read
+  Future<Response> markNotificationAsRead(String role, String userId, String notificationId) async {
+    return await dio.patch('/api/notification/read/$role/$userId/$notificationId');
   }
 
+//  Mark all as read
+Future<Response> markAllAsRead(String role, String userId) async {
+  return await dio.patch('/api/notification/read-all/$role/$userId');
+}
+
+//  DELETE - Delete notification
+  Future<Response> deleteNotification(String notificationId) async {
+    return await dio.delete('/api/notification/$notificationId');
+  }
   //Medicine Reminder CREATE
   Future<Response> createMedicineReminder(Map<String, dynamic> data) async {
     return await dio.post('/api/medicinereminders', data: data);

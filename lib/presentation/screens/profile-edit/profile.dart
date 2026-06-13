@@ -15,18 +15,6 @@ void initState() {
   super.initState();
 
   ref.read(userDataProvider.notifier).loadUserIdAndProfile();
-
-  // ref.listen(userDataProvider, (prev, next) {
-  //   final nameController = ref.read(nameControllerProvider);
-  //   final emailController = ref.read(emailControllerProvider);
-  //   final phoneController = ref.read(phoneControllerProvider);
-
-  //   if (!next.isEditing) {
-  //     nameController.text = next.originalName ?? '';
-  //     emailController.text = next.originalEmail ?? '';
-  //     phoneController.text = next.originalPhone ?? '';
-  //   }
-  // });
 }
 void _showProfileOptions(
   BuildContext context,
