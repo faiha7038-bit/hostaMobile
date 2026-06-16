@@ -455,6 +455,10 @@ for (final c in cookies) {
   }
 
   // GET Notifications
+
+// Future<Response> getAllNotifications(String id) async {
+//   return await dio.get('/api/notifications/user/all/$id');
+// }
   Future<Response> getAllNotificationRead(String id) async {
     return await dio.get('/api/notifications/user/read/$id');
   }
