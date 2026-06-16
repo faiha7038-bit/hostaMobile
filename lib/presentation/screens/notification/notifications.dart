@@ -383,12 +383,12 @@ class _NotificationsState extends State<Notifications> {
       iOS: DarwinNotificationDetails(),
     );
     
-    await flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
-      data['title'] ?? 'New Notification',
-      data['message'] ?? 'You have a new notification',
-      platformChannelSpecifics,
-    );
+    // await flutterLocalNotificationsPlugin.show(
+    //   DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
+    //   data['title'] ?? 'New Notification',
+    //   data['message'] ?? 'You have a new notification',
+    //   platformChannelSpecifics,
+    // );
   }
 
   void _updateFilteredList() {
