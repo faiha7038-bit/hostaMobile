@@ -5,6 +5,7 @@ import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:hosta/services/token_manager.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -160,6 +161,7 @@ if (authToken != null &&
     authToken is String &&
     authToken.isNotEmpty) {
   await prefs.setString('authToken', authToken);
+  await TokenManager.saveAccessToken(authToken);
   log("✅ Saved authToken: ${authToken.substring(0, 20)}...");
 } else {
   log("⚠️ No token in response");

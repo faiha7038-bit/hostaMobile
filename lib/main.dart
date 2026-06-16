@@ -8,6 +8,8 @@ import 'package:hosta/firebase_options.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:hosta/services/socket-service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,7 +41,9 @@ void main() async {
     // Initialize Alarm
     await Alarm.init();
     print('✅ Alarm initialized');
-    
+    // 🔥 ADD THIS
+await ApiService().init();
+print('✅ ApiService initialized');
     // Request notification permissions (using prefix)
     firebase.NotificationSettings settings = await firebase.FirebaseMessaging.instance.requestPermission(
       alert: true,
@@ -64,7 +68,13 @@ void main() async {
   } catch (e, stackTrace) {
     print('❌ Error: $e');
     print(stackTrace);
-    
+//     final prefs = await SharedPreferences.getInstance();
+// final userId = prefs.getString('userId');
+
+// if (userId != null && userId.isNotEmpty) {
+//   SocketService().connect(userId);
+//   print('✅ Socket connected for user: $userId');
+// }
     // Error screen
     runApp(MaterialApp(
       home: Scaffold(

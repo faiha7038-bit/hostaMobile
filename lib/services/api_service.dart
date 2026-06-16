@@ -750,4 +750,8 @@ Future<Response> getCategories({
   log("Calling /api/category with params: $queryParams");
   return await dio.get('/api/category', queryParameters: queryParams);
 }
+//logout
+Future<Response> logout() async {
+  return await dio.post('/api/users/logout');
+}
 }

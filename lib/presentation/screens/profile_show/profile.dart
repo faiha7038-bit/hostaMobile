@@ -205,8 +205,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   @override
   void dispose() {
-    socket?.disconnect();
-    socket?.close();
+    // socket?.disconnect();
+    // socket?.close();
     super.dispose();
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/settings/accountsettings.dart';
 import 'package:hosta/presentation/screens/settings/passwordManager.dart';
+import 'package:hosta/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -28,32 +29,39 @@ class _SettingsPageState extends State<SettingsPage> {
     isLoggedIn = token != null;
   });
 }
-  Future<void> _logout(BuildContext context) async {
-  final prefs = await SharedPreferences.getInstance();
+Future<void> _logout(BuildContext context) async {
+  try {
+    // Backend logout
+    await ApiService().logout();
 
-  // Store bloodId before clearing (if needed)
-  final bloodId = prefs.getString('bloodId');
-  
-  // Clear only non-essential data
-  await prefs.remove('userId');
-  await prefs.remove('authToken');
-  // Keep bloodId
-  if (bloodId != null) {
-    await prefs.setString('bloodId', bloodId);
-  }
-  
-  // OR more simply: don't clear bloodId at all
-  // await prefs.clear(); // ❌ DON'T use this
-  
-  if (context.mounted) {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const Signin()),
-      (route) => false,
-    );
+    // Socket disconnect
+   
+
+    // Clear local storage
+    final prefs = await SharedPreferences.getInstance();
+
+    final bloodId = prefs.getString('bloodId');
+
+    await prefs.remove('userId');
+    await prefs.remove('authToken');
+    await prefs.remove('refreshToken');
+
+    if (bloodId != null) {
+      await prefs.setString('bloodId', bloodId);
+    }
+
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const Signin()),
+        (route) => false,
+      );
+    }
+  } catch (e) {
+    debugPrint("Logout error: $e");
   }
 }
 
-// Future<void> _logout(BuildContext context) async {
+// Future<void> _(BuildContext context) async {
   void _confirmLogout(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
