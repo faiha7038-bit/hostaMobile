@@ -70,9 +70,37 @@ bool _isAutoFilling = false;
  @override
 void initState() {
   super.initState();
+  _loadUserData();
   _fetchPatients();
 }
+Future<void> _loadUserData() async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
 
+  if (userId == null || userId.isEmpty) return;
+
+  try {
+    final apiService = ApiService();
+
+    final response = await apiService.getAUser(userId);
+
+    print("USER RESPONSE => ${response.data}");
+
+    if (response.data != null) {
+      final user = response.data['data'] ?? response.data;
+
+      setState(() {
+        patientNameController.text = user['name'] ?? '';
+        phoneController.text =
+            user['mobileNumber']?.toString() ??
+            user['phone']?.toString() ??
+            '';
+      });
+    }
+  } catch (e) {
+    print("LOAD USER ERROR => $e");
+  }
+}
 Future<void> _fetchPatients() async {
   
   final prefs = await SharedPreferences.getInstance();
@@ -128,17 +156,17 @@ void _onPatientSelected(dynamic patient) {
     phoneController.text =
         patient['mobileNumber'] ?? '';
 
-    placeController.text = place;
+    // placeController.text = place;
 
-    ageController.text =
-        (patient['age'] ?? '').toString();
+    // ageController.text =
+    //     (patient['age'] ?? '').toString();
 
-    selectedGender =
-        patient['gender'];
+    // selectedGender =
+    //     patient['gender'];
 
-    dob = patient['dob'] != null
-        ? DateTime.parse(patient['dob']).toLocal()
-        : null;
+    // dob = patient['dob'] != null
+    //     ? DateTime.parse(patient['dob']).toLocal()
+    //     : null;
   });
 }
   Future<void> _selectDate(BuildContext context, bool isPastOnly) async {
@@ -161,16 +189,32 @@ void _onPatientSelected(dynamic patient) {
         child: child!,
       ),
     );
-    if (picked != null) {
-      setState(() {
-        if (isPastOnly)
-          dob = picked;
-        else
-          appointmentDate = picked;
-      });
+  if (picked != null) {
+  setState(() {
+    if (isPastOnly) {
+      dob = picked;
+
+      final age = _calculateAge(picked);
+      ageController.text = age.toString();
+    } else {
+      appointmentDate = picked;
     }
+  });
+}
+  }
+int _calculateAge(DateTime birthDate) {
+  final today = DateTime.now();
+
+  int age = today.year - birthDate.year;
+
+  if (today.month < birthDate.month ||
+      (today.month == birthDate.month &&
+          today.day < birthDate.day)) {
+    age--;
   }
 
+  return age;
+}
   //String formatDate(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
   String formatDob(DateTime date) =>
     DateFormat('dd/MM/yyyy').format(date);
@@ -439,23 +483,23 @@ else if (_patients.isNotEmpty)
 
 onChanged: (value) {
 
-  if (value == -1 || value == null) {
+ if (value == -1 || value == null) {
 
-    setState(() {
-      _selectedPatientId = null;
-      _selectedPatient = null;
+  setState(() {
+    _selectedPatientId = null;
+    _selectedPatient = null;
 
-      patientNameController.clear();
-      phoneController.clear();
-      placeController.clear();
-      ageController.clear();
+    placeController.clear();
+    ageController.clear();
 
-      selectedGender = null;
-      dob = null;
-    });
+    selectedGender = null;
+    dob = null;
+  });
 
-    return;
-  }
+  _loadUserData(); // user name & phone refill
+
+  return;
+}
 
   final patient = _patients.firstWhere(
     (p) => p['id'] == value,
@@ -464,7 +508,7 @@ setState(() {
   _selectedPatientId = value;
   _selectedPatient = patient;
 });
- // _onPatientSelected(patient);
+  _onPatientSelected(patient);
 },
 )
   )

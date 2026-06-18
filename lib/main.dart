@@ -41,9 +41,7 @@ void main() async {
     // Initialize Alarm
     await Alarm.init();
     print('✅ Alarm initialized');
-    // 🔥 ADD THIS
-await ApiService().init();
-print('✅ ApiService initialized');
+    await ApiService().init();
     // Request notification permissions (using prefix)
     firebase.NotificationSettings settings = await firebase.FirebaseMessaging.instance.requestPermission(
       alert: true,

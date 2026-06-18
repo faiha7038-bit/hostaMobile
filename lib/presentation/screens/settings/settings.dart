@@ -14,6 +14,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool isLoggedIn = false;
+  final ApiService apiService=ApiService();
   @override
   void initState() {
     
@@ -29,36 +30,32 @@ class _SettingsPageState extends State<SettingsPage> {
     isLoggedIn = token != null;
   });
 }
-Future<void> _logout(BuildContext context) async {
+Future<void> logout(BuildContext context) async {
+  print("LOGOUT CLICKED");
+
+  final navigator = Navigator.of(context, rootNavigator: true);
+
   try {
-    // Backend logout
-    await ApiService().logout();
-
-    // Socket disconnect
-   
-
-    // Clear local storage
-    final prefs = await SharedPreferences.getInstance();
-
-    final bloodId = prefs.getString('bloodId');
-
-    await prefs.remove('userId');
-    await prefs.remove('authToken');
-    await prefs.remove('refreshToken');
-
-    if (bloodId != null) {
-      await prefs.setString('bloodId', bloodId);
-    }
-
-    if (context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const Signin()),
-        (route) => false,
-      );
-    }
+    await apiService.logout();
   } catch (e) {
-    debugPrint("Logout error: $e");
+    print("LOGOUT API ERROR (ignoring): $e");
   }
+
+  // Clear ALL stored data (optional)
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.clear(); 
+ 
+
+  // If you have other storage like Hive, clear those as well
+  // await Hive.box('donorsBox').clear();
+
+  print("ALL DATA CLEARED");
+
+  // Navigate to Signin and remove all history
+  navigator.pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => Signin()),
+    (route) => false,
+  );
 }
 
 // Future<void> _(BuildContext context) async {
@@ -89,7 +86,7 @@ Future<void> _logout(BuildContext context) async {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                _logout(context);
+                logout(context);
               },
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,

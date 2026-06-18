@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/providers/blood-donateprovider.dart';
 import 'package:hosta/providers/blood_details_provider.dart';
+import 'package:hosta/services/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,7 +36,7 @@ class _DonateState extends ConsumerState<Donate> {
   @override
   void initState() {
     super.initState();
-    _loadUserPhone();
+    _loadUserData();
     if (widget.editData != null) {
         Future(() {
     _fillEditData();
@@ -110,12 +111,53 @@ class _DonateState extends ConsumerState<Donate> {
     }
   }
 
-  Future<void> _loadUserPhone() async {
-    final phoneAsync = await ref.read(userPhoneProvider.future);
-    if (phoneAsync != null && widget.editData == null) {
-      _phoneController.text = phoneAsync;
+Future<void> _loadUserData() async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  if (userId == null || userId.isEmpty) return;
+
+  try {
+    final apiService = ApiService();
+
+    final response = await apiService.getAUser(userId);
+
+    if (response.data != null) {
+      final user = response.data['data'] ?? response.data;
+
+      setState(() {
+        _nameController.text = user['name'] ?? '';
+
+        _phoneController.text =
+            user['mobileNumber']?.toString() ??
+            user['phone']?.toString() ??
+            '';
+
+        // backend address undenkil
+        if (user['address'] != null) {
+          final address = user['address'];
+
+          _placeController.text =
+              address['place']?.toString() ?? '';
+
+          _pincodeController.text =
+              address['pincode']?.toString() ?? '';
+
+          _countryController.text =
+              address['country']?.toString() ?? '';
+
+          _stateController.text =
+              address['state']?.toString() ?? '';
+
+          _districtController.text =
+              address['district']?.toString() ?? '';
+        }
+      });
     }
+  } catch (e) {
+    print("LOAD USER ERROR => $e");
   }
+}
 
   Future<void> _selectDate(BuildContext context) async {
     final dateOfBirth = ref.read(donorFormProvider).dateOfBirth;
@@ -547,101 +589,78 @@ Future<void> _submit() async {
                         ),
                       ),
                     ),
-                    SizedBox(height: screenHeight * 0.015),
+                     SizedBox(height: screenHeight * 0.02),
 
-                    // Country
-                    if (locationAsync.isLoading)
-                      Center(child: CircularProgressIndicator(strokeWidth: screenWidth * 0.008))
-                    else if (locationAsync.hasError)
-                      Center(child: Text("Error loading countries", style: TextStyle(fontSize: screenWidth * 0.04)))
-                    else
-                      GestureDetector(
-                        onTap: () => _openSearchModal(
-                          title: "Select Country",
-                          data: countries,
-                          onSelected: _onCountrySelected,
-                        ),
-                        child: AbsorbPointer(
-                          child: TextField(
-                            controller: _countryController,
-                            decoration: InputDecoration(
-                              labelText: "Country",
-                              labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                              prefixIcon: Icon(Icons.public, size: screenWidth * 0.055),
-                              hintText: "Select Country",
-                              hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(screenWidth * 0.025),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.03,
-                                vertical: screenHeight * 0.015,
-                              ),
-                            ),
-                          ),
+               // Country (searchable)
+                GestureDetector(
+                  onTap: () => _openSearchModal(
+                      title: "Select Country", data: countries, onSelected: _onCountrySelected),
+                  child: AbsorbPointer(
+                    child: TextField(
+                      controller: _countryController,
+                      decoration: InputDecoration(
+                        labelText: "Country",
+                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                        prefixIcon: Icon(Icons.public, size: screenWidth * 0.055),
+                        hintText: "Select Country",
+                        hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.012),
+          
+                // State (only visible after country selection)
+                if (states.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => _openSearchModal(
+                        title: "Select State", data: states, onSelected: _onStateSelected),
+                    child: AbsorbPointer(
+                      child: TextField(
+                        controller: _stateController,
+                        decoration: InputDecoration(
+                          labelText: "State",
+                          labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          prefixIcon: Icon(Icons.map, size: screenWidth * 0.055),
+                          hintText: "Select State",
+                          hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
                         ),
                       ),
-                    SizedBox(height: screenHeight * 0.015),
-
-                    // State
-                    if (states.isNotEmpty)
-                      GestureDetector(
-                        onTap: () => _openSearchModal(
-                          title: "Select State",
-                          data: states,
-                          onSelected: _onStateSelected,
-                        ),
-                        child: AbsorbPointer(
-                          child: TextField(
-                            controller: _stateController,
-                            decoration: InputDecoration(
-                              labelText: "State",
-                              labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                              prefixIcon: Icon(Icons.map, size: screenWidth * 0.055),
-                              hintText: "Select State",
-                              hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(screenWidth * 0.025),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.03,
-                                vertical: screenHeight * 0.015,
-                              ),
-                            ),
-                          ),
+                    ),
+                  ),
+                if (states.isNotEmpty) SizedBox(height: screenHeight * 0.012),
+          
+                // District (only visible after state selection)
+                if (districts.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => _openSearchModal(
+                        title: "Select District", data: districts, onSelected: _onDistrictSelected),
+                    child: AbsorbPointer(
+                      child: TextField(
+                        controller: _districtController,
+                        decoration: InputDecoration(
+                          labelText: "District",
+                          labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          prefixIcon: Icon(Icons.location_city, size: screenWidth * 0.055),
+                          hintText: "Select District",
+                          hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
                         ),
                       ),
-                    SizedBox(height: screenHeight * 0.015),
-
-                    // District
-                    if (districts.isNotEmpty)
-                      GestureDetector(
-                        onTap: () => _openSearchModal(
-                          title: "Select District",
-                          data: districts,
-                          onSelected: _onDistrictSelected,
-                        ),
-                        child: AbsorbPointer(
-                          child: TextField(
-                            controller: _districtController,
-                            decoration: InputDecoration(
-                              labelText: "District",
-                              labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                              prefixIcon: Icon(Icons.location_city, size: screenWidth * 0.055),
-                              hintText: "Select District",
-                              hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(screenWidth * 0.025),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.03,
-                                vertical: screenHeight * 0.015,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    SizedBox(height: screenHeight * 0.015),
+                    ),
+                  ),
+                if (districts.isNotEmpty) SizedBox(height: screenHeight * 0.012),
 
                     // Place
                     TextField(
