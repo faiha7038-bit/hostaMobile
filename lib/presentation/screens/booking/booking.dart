@@ -340,13 +340,13 @@ _scrollController.addListener(() {
                                   ),
                                 ),
                                 SizedBox(height: screenHeight * 0.01),
-                                Text(
-                                  "Try changing your filters",
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.035,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
+                                // Text(
+                                //   "Try changing your filters",
+                                //   style: TextStyle(
+                                //     fontSize: screenWidth * 0.035,
+                                //     color: Colors.grey[400],
+                                //   ),
+                                // ),
                               ],
                             ),
                           )

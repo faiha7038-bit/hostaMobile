@@ -241,30 +241,62 @@ Future<Response> markAllAsRead(String role, String userId) async {
     );
   }
 
+//review 
+// Get all reviews
+Future<Response> getReviews({
+  String? hospitalId,
+  String? doctorId,
+ 
+  int page = 1,
+  int limit = 5,
+}) async {
+  return await dio.get(
+    '/api/review',
+    queryParameters: {
+      if (hospitalId != null) 'hospitalId': hospitalId,
+      if (doctorId != null) 'doctorId': doctorId,
+      
+      'page': page,
+      'limit': limit,
+    },
+  );
+}
 
+// Create review
+Future<Response> createReview(
+  Map<String, dynamic> reviewData,
+) async {
+  return await dio.post('/api/review', data: reviewData);
+}
 
-  Future<Response> getAHospitalsReview(String id) async {
-    return await dio.get('/api/reviews/hospital/$id');
-  }
+// Update review
+Future<Response> updateReview(
+  String reviewId,
+  Map<String, dynamic> reviewData,
+) async {
+  return await dio.put('/api/review/$reviewId', data: reviewData);
+}
 
-  // Create a reviewf
-  Future<Response> createAHospitalReview(
-    Map<String, dynamic> reviewData,
-  ) async {
-    return await dio.post('/api/reviews', data: reviewData);
-  }
+// Delete review
+Future<Response> deleteReview(String reviewId) async {
+  return await dio.delete('/api/review/$reviewId');
+}
+//Rating 
+Future getRating({
+  required String hospitalId,
+  required String doctorId,
+}) async {
+  final response = await dio.get(
+    '/api/review/rating',
+    queryParameters: {
+      'hospitalId': hospitalId,
+      'doctorId': doctorId,
+    },
+  );
 
-  // Update a review
-  Future<Response> updateAHospitalReview(
-    String id,
-    Map<String, dynamic> reviewData,
-  ) async {
-    return await dio.put('/api/reviews/$id', data: reviewData);
-  }
+  return response.data;
+}
 
-  Future<Response> deleteAHospitalReview(String id) async {
-    return await dio.delete('/api/reviews/$id');
-  }
 
   // GET all donors
   Future<Response> getAllDonors({
@@ -483,22 +515,8 @@ for (final c in cookies) {
     print('📡 POST /api/booking');
     print('📡 Data: $bookingData');
 
-    //final prefs = await SharedPreferences.getInstance();
-    // final token = prefs.getString('authToken');
     return await dio.post('/api/booking', data: bookingData);
 
-    // final response = await _dio.post(
-    //   '/api/booking',
-    //   data: bookingData,
-    //   options: Options(
-    //     headers: {
-    //       "Authorization": "Bearer $token",
-    //       "Content-Type": "application/json",
-    //     },
-    //   ),
-    // );
-
-    // return response; // ✅ THIS WAS MISSING
   }
 //Booking
   Future<Response> getAllBookings({
@@ -599,9 +617,7 @@ log("date=$date");
     return await dio.post('/api/users/auth/reset-password', data: data);
   }
 
-  // Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
-  //   return await _dio.post('/api/users/password', data: data);
-  // }
+  
   // ✅ CHANGE PASSWORD (new method)
   Future<Response> changePassword(Map<String, dynamic> data) async {
     return await dio.put('/api/users/auth/change-password', data: data);

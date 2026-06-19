@@ -1,15 +1,15 @@
 import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/doctor_model.dart';
+import 'package:hosta/data/models/review_model.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
 class DoctorDetailScreen extends StatefulWidget {
-  final Doctor doctor; // Doctor object received from previous screen
-  
+  final Doctor doctor;
+
   const DoctorDetailScreen({super.key, required this.doctor});
 
   @override
@@ -20,15 +20,26 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   bool isLoading = false;
   Doctor? doctorDetails;
   String? errorMessage;
-  
+  List<Review> reviews = [];
+  Review? myReview;
+  bool reviewsLoading = false;
   int appointmentCount = 0;
-  double rating = 4.5;
-  int reviewCount = 38;
+  int currentPage = 1;
+  bool hasMore = true;
+  bool loadMoreLoading = false;
+String? currentUserName;
+String? currentUserImage;
+int selectedRating = 0;
+double avgRating = 0.0;
+int totalReviews = 0;
 
-  // List<Map<String, dynamic>> reviews = [
-  //   {"name": "Rahul", "stars": 5, "comment": "Very friendly doctor"},
-  //   {"name": "Anjali", "stars": 4, "comment": "Good experience"},
-  // ];
+Map<int, int> ratingBreakdown = {
+  5: 0,
+  4: 0,
+  3: 0,
+  2: 0,
+  1: 0,
+};
 
   @override
   void initState() {
@@ -36,24 +47,204 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     // Use the doctor passed from previous screen
     doctorDetails = widget.doctor;
     _fetchDoctorDetails();
+    _fetchReviews();
+    _fetchMyReview();
+    _loadUser();
+    _fetchRating();
   }
-  
-Future<void> _fetchDoctorDetails() async {
+Future<void> _loadUser() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  log("USER NAME => ${prefs.getString("userName")}");
+  log("USER IMAGE => ${prefs.getString("userImage")}");
+  setState(() {
+    currentUserName = prefs.getString("userName") ?? "User";
+    currentUserImage = prefs.getString("userImage"); // if stored
+  });
+}
+Future<void> _fetchRating() async {
   try {
-    final response = await ApiService()
-        .getDoctorById(widget.doctor.id.toString());
+    final res = await ApiService().getRating(
+      hospitalId: "",
+      //hospitalId: widget.doctor.hospitalId.toString(),
+      doctorId: widget.doctor.id.toString(),
+    );
+log("RATING RESPONSE => $res");
+log("HOSPITAL ID => ${widget.doctor.hospitalId}");
+log("DOCTOR ID => ${widget.doctor.id}");
+    final data = res['data'];
 
-    log("DOCTOR RESPONSE => ${response.data}");
+    setState(() {
+      avgRating = (data['averageRating'] ?? 0).toDouble();
+      totalReviews = data['totalReviews'] ?? 0;
 
-    if (response.data['success'] == true) {
-      setState(() {
-        doctorDetails = Doctor.fromJson(response.data['data']);
-      });
-    }
+      final breakdown = data['ratingBreakdown'] ?? {};
+
+      ratingBreakdown = {
+        5: breakdown['5']?['count'] ?? 0,
+        4: breakdown['4']?['count'] ?? 0,
+        3: breakdown['3']?['count'] ?? 0,
+        2: breakdown['2']?['count'] ?? 0,
+        1: breakdown['1']?['count'] ?? 0,
+      };
+    });
+
+    log("AVG => $avgRating");
+    log("TOTAL => $totalReviews");
+    log("BREAKDOWN => $ratingBreakdown");
   } catch (e) {
-    log("ERROR => $e");
+    log("RATING ERROR => $e");
   }
 }
+  void _showEditReviewDialog() {
+    final controller = TextEditingController(text: myReview!.comment);
+
+    int stars = myReview!.rating;
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text("Edit Review"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () {
+                          setStateDialog(() {
+                            stars = index + 1;
+                          });
+                        },
+                        child: Icon(
+                          Icons.star,
+                          color: index < stars ? Colors.amber : Colors.grey,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: controller,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await ApiService().updateReview(
+                      myReview!.id.toString(),
+                      {
+                        "rating": stars,
+                        "comment": controller.text.trim(),
+                      },
+                    );
+
+                    Navigator.pop(context);
+
+                    await _fetchMyReview();
+                    await _fetchReviews();
+
+                    setState(() {});
+                  },
+                  child: const Text("Update"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _fetchReviews({bool loadMore = false}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserId = prefs.getString('userId');
+
+      final res = await ApiService().getReviews(
+        doctorId: widget.doctor.id.toString(),
+        page: currentPage,
+        limit: 5,
+      );
+log("fetchres${res.data}");
+      final data = res.data['data'] as List;
+
+      final newData = data
+          .where((e) => e['userId'].toString() != currentUserId)
+          .map<Review>((e) => Review.fromJson(e))
+          .toList();
+
+      setState(() {
+        if (loadMore) {
+          reviews.addAll(newData);
+        } else {
+          reviews = newData;
+        }
+
+        hasMore = res.data['pagination']['hasNextPage'] ?? false;
+        loadMoreLoading = false;
+      });
+    } catch (e) {
+      setState(() => loadMoreLoading = false);
+      log("REVIEWS ERROR => $e");
+    }
+  }
+
+  Future<void> _fetchMyReview() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+
+      if (userId == null || userId.isEmpty) return;
+
+      final res = await ApiService().getReviews(
+        doctorId: widget.doctor.id.toString(),
+      );
+
+      final data = res.data['data'] as List;
+
+      for (final item in data) {
+        if (item['userId'].toString() == userId) {
+          setState(() {
+            myReview = Review.fromJson(item);
+          });
+          break;
+        }
+      }
+    } catch (e) {
+      log("MY REVIEW ERROR => $e");
+    }
+  }
+
+  Future<void> _fetchDoctorDetails() async {
+    try {
+      final response =
+          await ApiService().getDoctorById(widget.doctor.id.toString());
+
+      log("DOCTOR RESPONSE => ${response.data}");
+
+      if (response.data['success'] == true) {
+        setState(() {
+          doctorDetails = Doctor.fromJson(response.data['data']);
+        });
+      }
+    } catch (e) {
+      log("ERROR => $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,10 +254,11 @@ Future<void> _fetchDoctorDetails() async {
           backgroundColor: Colors.green,
           title: const Text("Doctor Details"),
         ),
-        body: const Center(child: CircularProgressIndicator(color: Colors.green)),
+        body:
+            const Center(child: CircularProgressIndicator(color: Colors.green)),
       );
     }
-    
+
     if (errorMessage != null || doctorDetails == null) {
       return Scaffold(
         appBar: AppBar(
@@ -90,7 +282,7 @@ Future<void> _fetchDoctorDetails() async {
         ),
       );
     }
-    
+
     final screenSize = MediaQuery.of(context).size;
     final screenWidth = screenSize.width;
     final screenHeight = screenSize.height;
@@ -105,7 +297,7 @@ Future<void> _fetchDoctorDetails() async {
         title: Text(
           "Doctor Details",
           style: TextStyle(
-            color: Colors.white, 
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: isSmallScreen ? 18 : 22,
           ),
@@ -155,25 +347,26 @@ Future<void> _fetchDoctorDetails() async {
             _feesCard(screenWidth),
 
             SizedBox(height: screenHeight * 0.025),
-Container(
-  padding: const EdgeInsets.all(12),
-  decoration: BoxDecoration(
-    color: Colors.green.shade50,
-    borderRadius: BorderRadius.circular(12),
-  ),
-  child: Row(
-    children: [
-      const Icon(Icons.calendar_month, color: Colors.green),
-      const SizedBox(width: 10),
-      Text(
-        "${doctorDetails!.appointmentCount} Total Appointments",
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ],
-  ),
-),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_month, color: Colors.green),
+                  const SizedBox(width: 10),
+                  Text(
+                    "${doctorDetails!.appointmentCount} Total Appointments",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             /// TIMINGS
             Text(
               "Available Days",
@@ -184,41 +377,34 @@ Container(
             ),
 
             SizedBox(height: screenHeight * 0.012),
-Wrap(
-  spacing: 8,
-  children: doctorDetails!.availableDays.map((day) {
-    return Chip(
-      label: Text(day),
-      backgroundColor: Colors.green.shade50,
-      avatar: const Icon(Icons.check, color: Colors.green, size: 18),
-    );
-  }).toList(),
-),
+            Wrap(
+              spacing: 8,
+              children: doctorDetails!.availableDays.map((day) {
+                return Chip(
+                  label: Text(day),
+                  backgroundColor: Colors.green.shade50,
+                  avatar:
+                      const Icon(Icons.check, color: Colors.green, size: 18),
+                );
+              }).toList(),
+            ),
 
-SizedBox(height: 20),
+            SizedBox(height: 20),
+
             /// Morning Session
             if (doctorDetails!.consulting.morningSession != null)
-              _timingTile(
-                "Morning Session", 
-                doctorDetails!.consulting.morningSession!.range, 
-                screenWidth
-              ),
-            
+              _timingTile("Morning Session",
+                  doctorDetails!.consulting.morningSession!.range, screenWidth),
+
             /// Evening Session
             if (doctorDetails!.consulting.eveningSession != null)
-              _timingTile(
-                "Evening Session", 
-                doctorDetails!.consulting.eveningSession!.range, 
-                screenWidth
-              ),
-            
+              _timingTile("Evening Session",
+                  doctorDetails!.consulting.eveningSession!.range, screenWidth),
+
             /// Outdoor Consulting Timings
             if (doctorDetails!.outDoorConsulting != null)
-              _timingTile(
-                "Outdoor Consulting", 
-                doctorDetails!.outDoorConsulting!.time.range, 
-                screenWidth
-              ),
+              _timingTile("Outdoor Consulting",
+                  doctorDetails!.outDoorConsulting!.time.range, screenWidth),
 
             SizedBox(height: screenHeight * 0.025),
 
@@ -259,104 +445,164 @@ SizedBox(height: 20),
                   SizedBox(height: screenHeight * 0.01),
                   Wrap(
                     spacing: 8,
-                    children: doctorDetails!.knowLanguages.map((lang) => Chip(
-                      label: Text(lang),
-                      backgroundColor: Colors.green[50],
-                    )).toList(),
+                    children: doctorDetails!.knowLanguages
+                        .map((lang) => Chip(
+                              label: Text(lang),
+                              backgroundColor: Colors.green[50],
+                            ))
+                        .toList(),
                   ),
                   SizedBox(height: screenHeight * 0.025),
                 ],
               ),
+              Text("Ratings and Reviews",style: TextStyle(color: Colors.black,fontWeight:FontWeight.bold),),
+               SizedBox(height: screenHeight * 0.025),
+_ratingOverview(),
+   SizedBox(height: screenHeight * 0.025),
+           /// REVIEWS
+            
+            myReview != null ? _buildMyReviewCard() : _buildWriteReviewCard(),
 
-            /// REVIEWS
-            // Text(
-            //   "Patient Reviews",
-            //   style: TextStyle(
-            //     fontSize: isSmallScreen ? 16 : 20,
-            //     fontWeight: FontWeight.bold,
-            //   ),
-            // ),
+            const SizedBox(height: 20),
 
-           // SizedBox(height: screenHeight * 0.012),
+            Text(
+              "Patient Reviews",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
 
-            // ...reviews.map(
-            //   (r) => _reviewTile(r["name"], r["stars"], r["comment"], screenWidth),
-            // ),
+            const SizedBox(height: 10),
 
+            if (reviewsLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (reviews.isEmpty)
+              const Text("No reviews yet")
+            else
+              Column(
+                children: reviews.take(5).map((r) {
+                  return _reviewTile(r, screenWidth);
+                }).toList(),
+              ),
+
+            const SizedBox(height: 10),
+
+            if (reviews.length > 5)
+              TextButton(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) {
+                      return StatefulBuilder(
+                        builder: (context, setStateModal) {
+                          return NotificationListener<ScrollNotification>(
+                            onNotification: (scrollInfo) {
+                              if (scrollInfo.metrics.pixels ==
+                                      scrollInfo.metrics.maxScrollExtent &&
+                                  hasMore &&
+                                  !loadMoreLoading) {
+                                currentPage++;
+                                _fetchReviews(loadMore: true);
+                              }
+                              return false;
+                            },
+                            child: ListView.builder(
+                              itemCount: reviews.length + 1,
+                              itemBuilder: (context, index) {
+                                if (index < reviews.length) {
+                                  return _reviewTile(
+                                      reviews[index], screenWidth);
+                                } else {
+                                  return hasMore
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(16),
+                                          child: Center(
+                                              child:
+                                                  CircularProgressIndicator()),
+                                        )
+                                      : const SizedBox();
+                                }
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+                child:  TextButton(
+                  onPressed:(){} ,
+                  child: Text("See All Reviews",
+                  style: TextStyle(color: Colors.black,
+                  fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
             SizedBox(height: screenHeight * 0.012),
 
-            /// ADD REVIEW BUTTON
-            // SizedBox(
-            //   width: double.infinity,
-            //   child: OutlinedButton(
-            //     onPressed: () => _showReviewDialog(),
-            //     style: OutlinedButton.styleFrom(
-            //       padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
-            //     ),
-            //     child: const Text("Write a Review"),
-            //   ),
-            // ),
-
-            SizedBox(height: screenHeight * 0.03),
+            // SizedBox(height: screenHeight * 0.03),
 
             /// BOOK BUTTON
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                
                 style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadiusGeometry.circular(10)),
-                  backgroundColor: Colors.green
-                ),
-         onPressed: doctorDetails!.bookingOpen
-    ? () async {
-        final prefs = await SharedPreferences.getInstance();
-        final userId = prefs.getString('userId') ?? '';
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadiusGeometry.circular(10)),
+                    backgroundColor: Colors.green),
+                onPressed: doctorDetails!.bookingOpen
+                    ? () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        final userId = prefs.getString('userId') ?? '';
 
-        if (userId.isEmpty) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text("Login Required",style: TextStyle(color: Colors.green),),
-              content: const Text(
-                "Please login to book an appointment.",
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel"),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const Signin(),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    "Login",
-                    style: TextStyle(color: Colors.green),
-                  ),
-                ),
-              ],
-            ),
-          );
-          return;
-        }
+                        if (userId.isEmpty) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text(
+                                "Login Required",
+                                style: TextStyle(color: Colors.green),
+                              ),
+                              content: const Text(
+                                "Please login to book an appointment.",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text("Cancel"),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const Signin(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    "Login",
+                                    style: TextStyle(color: Colors.green),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                          return;
+                        }
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                RegisterBooking(doctor: widget.doctor),
-          ),
-        );
-      }
-    : null,
-                
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                RegisterBooking(doctor: widget.doctor),
+                          ),
+                        );
+                      }
+                    : null,
                 child: Text(
                   doctorDetails!.bookingOpen ? "Book Appointment" : "CLOSED",
                   style: TextStyle(
@@ -365,7 +611,6 @@ SizedBox(height: 20),
                     fontSize: isSmallScreen ? 14 : 16,
                   ),
                 ),
-                
               ),
             ),
           ],
@@ -378,11 +623,11 @@ SizedBox(height: 20),
     final isSmallScreen = screenWidth < 600;
     final avatarSize = isLandscape ? 50.0 : (isSmallScreen ? 60.0 : 80.0);
     final doctor = doctorDetails!;
-    
-    String firstLetter = doctor.displayName.isNotEmpty 
-        ? doctor.displayName[0].toUpperCase() 
+
+    String firstLetter = doctor.displayName.isNotEmpty
+        ? doctor.displayName[0].toUpperCase()
         : doctor.firstName[0].toUpperCase();
-    
+
     return Container(
       padding: EdgeInsets.all(isSmallScreen ? 12.0 : 20.0),
       decoration: BoxDecoration(
@@ -391,49 +636,48 @@ SizedBox(height: 20),
       ),
       child: Row(
         children: [
-        Container(
-  width: avatarSize,
-  height: avatarSize,
-  decoration: const BoxDecoration(
-    shape: BoxShape.circle,
-  ),
-  child: ClipOval(
-    child: doctor.imageUrl != null &&
-            doctor.imageUrl!.isNotEmpty
-        ? Image.network(
-            doctor.imageUrl!,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.green,
-                child: Center(
-                  child: Text(
-                    firstLetter,
-                    style: TextStyle(
-                      fontSize: avatarSize / 2,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+          Container(
+            width: avatarSize,
+            height: avatarSize,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+            ),
+            child: ClipOval(
+              child: doctor.imageUrl != null && doctor.imageUrl!.isNotEmpty
+                  ? Image.network(
+                      doctor.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.green,
+                          child: Center(
+                            child: Text(
+                              firstLetter,
+                              style: TextStyle(
+                                fontSize: avatarSize / 2,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.green,
+                      child: Center(
+                        child: Text(
+                          firstLetter,
+                          style: TextStyle(
+                            fontSize: avatarSize / 2,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          )
-        : Container(
-            color: Colors.green,
-            child: Center(
-              child: Text(
-                firstLetter,
-                style: TextStyle(
-                  fontSize: avatarSize / 2,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
             ),
           ),
-  ),
-),
           SizedBox(width: isSmallScreen ? 12.0 : 20.0),
           Expanded(
             child: Column(
@@ -453,21 +697,22 @@ SizedBox(height: 20),
                     fontSize: isSmallScreen ? 12 : 14,
                   ),
                 ),
-                  const SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
-  "${doctor.experience} Years Experience",
-  style: TextStyle(
-    color: Colors.grey,
-    fontSize: isSmallScreen ? 12 : 14,
-  ),
-),
+                  "${doctor.experience} Years Experience",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: isSmallScreen ? 12 : 14,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(Icons.star, size: isSmallScreen ? 14 : 16, color: Colors.amber),
-                    Text("$rating", style: TextStyle(fontSize: isSmallScreen ? 12 : 14)),
-                    Text(
-                      " ($reviewCount)",
+                    Icon(Icons.star,
+                        size: isSmallScreen ? 14 : 16, color: Colors.amber),
+                   Text("$avgRating",
+                        style: TextStyle(fontSize: isSmallScreen ? 12 : 14)),
+                    Text(" ($totalReviews)",
                       style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
                     ),
                   ],
@@ -492,7 +737,7 @@ SizedBox(height: 20),
   Widget _feesCard(double screenWidth) {
     final isSmallScreen = screenWidth < 600;
     final doctor = doctorDetails!;
-    
+
     return Container(
       padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
       decoration: BoxDecoration(
@@ -501,7 +746,8 @@ SizedBox(height: 20),
       ),
       child: Row(
         children: [
-          Icon(Icons.currency_rupee, color: Colors.green, size: isSmallScreen ? 20 : 24),
+          Icon(Icons.currency_rupee,
+              color: Colors.green, size: isSmallScreen ? 20 : 24),
           const SizedBox(width: 10),
           Text(
             "Consultation Fee",
@@ -531,7 +777,7 @@ SizedBox(height: 20),
     required double screenWidth,
   }) {
     final isSmallScreen = screenWidth < 600;
-    
+
     return Container(
       padding: EdgeInsets.all(isSmallScreen ? 12.0 : 16.0),
       decoration: BoxDecoration(
@@ -570,7 +816,7 @@ SizedBox(height: 20),
 
   Widget _timingTile(String title, String time, double screenWidth) {
     final isSmallScreen = screenWidth < 600;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
@@ -580,7 +826,8 @@ SizedBox(height: 20),
       ),
       child: Row(
         children: [
-          Icon(Icons.access_time, size: isSmallScreen ? 16 : 18, color: Colors.green),
+          Icon(Icons.access_time,
+              size: isSmallScreen ? 16 : 18, color: Colors.green),
           const SizedBox(width: 10),
           Text(
             title,
@@ -600,9 +847,14 @@ SizedBox(height: 20),
     );
   }
 
-  Widget _reviewTile(String name, int stars, String comment, double screenWidth) {
+  Widget _reviewTile(Review review, double screenWidth) {
     final isSmallScreen = screenWidth < 600;
-    
+
+    final name = review.name;
+    final imageUrl = review.imageUrl;
+    final rating = review.rating;
+    final comment = review.comment;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
@@ -613,29 +865,46 @@ SizedBox(height: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          /// NAME + STARS
           Row(
             children: [
-              Text(
-                name,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isSmallScreen ? 14 : 16,
+              CircleAvatar(
+                radius: 18,
+                backgroundImage:
+                    imageUrl != null && imageUrl.toString().isNotEmpty
+                        ? NetworkImage(imageUrl)
+                        : null,
+                child: imageUrl == null
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : "P",
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              const Spacer(),
               Row(
                 children: List.generate(
-                  stars,
+                  5,
                   (index) => Icon(
-                    Icons.star,
-                    size: isSmallScreen ? 12 : 14,
+                    index < rating ? Icons.star : Icons.star_border,
                     color: Colors.amber,
+                    size: 16,
                   ),
                 ),
               ),
             ],
           ),
+
           const SizedBox(height: 6),
+
+          /// COMMENT
           Text(
             comment,
             style: TextStyle(
@@ -648,81 +917,426 @@ SizedBox(height: 20),
     );
   }
 
-  // void _showReviewDialog() {
-  //   final controller = TextEditingController();
-  //   int stars = 5;
+  Widget _buildWriteReviewCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Rate this doctor",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Tell others what you think",
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 12),
+         Row(
+  mainAxisAlignment: MainAxisAlignment.start,
+  children: List.generate(5, (index) {
+    final isSelected = index < selectedRating;
 
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) {
-  //       return StatefulBuilder(
-  //         builder: (context, setStateDialog) {
-  //           return AlertDialog(
-  //             title: const Text("Add Review"),
-  //             content: Column(
-  //               mainAxisSize: MainAxisSize.min,
-  //               children: [
-  //                 Row(
-  //                   mainAxisAlignment: MainAxisAlignment.center,
-  //                   children: List.generate(5, (index) {
-  //                     return GestureDetector(
-  //                       onTap: () {
-  //                         setStateDialog(() {
-  //                           stars = index + 1;
-  //                         });
-  //                       },
-  //                       child: Padding(
-  //                         padding: const EdgeInsets.symmetric(horizontal: 4),
-  //                         child: Icon(
-  //                           Icons.star,
-  //                           size: 28,
-  //                           color: index < stars ? Colors.amber : Colors.grey[300],
-  //                         ),
-  //                       ),
-  //                     );
-  //                   }),
-  //                 ),
-  //                 const SizedBox(height: 10),
-  //                 TextField(
-  //                   controller: controller,
-  //                   decoration: const InputDecoration(
-  //                     hintText: "Write your review",
-  //                     border: OutlineInputBorder(),
-  //                   ),
-  //                   maxLines: 3,
-  //                 ),
-  //               ],
-  //             ),
-  //             actions: [
-  //               TextButton(
-  //                 onPressed: () => Navigator.pop(context),
-  //                 child: const Text("Cancel"),
-  //               ),
-  //               ElevatedButton(
-  //                 onPressed: () {
-  //                   if (controller.text.trim().isEmpty) return;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedRating = index + 1;
+        });
+      },
+      child: Icon(
+        isSelected ? Icons.star : Icons.star_border,
+        color: Colors.amber,
+        size: 28,
+      ),
+    );
+  }),
+),
+          const SizedBox(height: 12),
+          GestureDetector(
+           onTap: () {
+  _showReviewDialog(initialRating: selectedRating);
+},
+            child: Text(
+              "Write a review",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  //                   // setState(() {
-  //                   //   reviews.add({
-  //                   //     "name": "You",
-  //                   //     "stars": stars,
-  //                   //     "comment": controller.text,
-  //                   //   });
-  //                   //   reviewCount++;
-  //                   // });
+  Widget _buildMyReviewCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Your Review",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundImage:
+                    myReview!.imageUrl != null && myReview!.imageUrl!.isNotEmpty
+                        ? NetworkImage(myReview!.imageUrl!)
+                        : null,
+                child: myReview!.imageUrl == null || myReview!.imageUrl!.isEmpty
+                    ? Text(
+                        myReview!.name.isNotEmpty
+                            ? myReview!.name[0].toUpperCase()
+                            : "U",
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      myReview!.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Row(
+                      children: List.generate(
+                        5,
+                        (index) => Icon(
+                          index < myReview!.rating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton(
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: "edit",
+                    child: Text("Edit"),
+                  ),
+                  const PopupMenuItem(
+                    value: "delete",
+                    child: Text("Delete"),
+                  ),
+                ],
+                onSelected: (value) async {
+                  if (value == "edit") {
+                    _showEditReviewDialog();
+                  }
 
-  //                   Navigator.pop(context);
-  //                 },
-  //                 child: const Text("Submit"),
-  //               ),
-  //             ],
-  //           );
-  //         },
-  //       );
-  //     },
-  //   );
-  // }
-  
+                  if (value == "delete") {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text("Delete Review"),
+                        content: const Text(
+                          "Are you sure you want to delete this review?",
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text("Delete"),
+                          ),
+                        ],
+                      ),
+                    );
+
+ if (confirm == true)  {
+  await ApiService().deleteReview(myReview!.id.toString());
+
+  setState(() {
+    myReview = null;
+    reviews = [];
+    currentPage = 1;
+    hasMore = true;
+  });
+
+  await _fetchReviews(); // fresh reload
+}
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(myReview!.comment),
+        ],
+      ),
+    );
+  }
+Widget _ratingOverview() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      children: [
+        
+        /// LEFT SIDE (4.5 + stars + count)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              avgRating.toStringAsFixed(1),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            Row(
+              children: List.generate(5, (index) {
+                return Icon(
+                  index < avgRating.round()
+                      ? Icons.star
+                      : Icons.star_border,
+                  color: Colors.amber,
+                  size: 18,
+                );
+              }),
+            ),
+
+            const SizedBox(height: 5),
+
+            Text(
+              "$totalReviews reviews",
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+
+        const SizedBox(width: 20),
+
+        /// RIGHT SIDE (bars)
+        Expanded(
+          child: Column(
+            children: List.generate(5, (i) {
+              int star = 5 - i;
+              int count = ratingBreakdown[star] ?? 0;
+
+              double percent = totalReviews == 0
+                  ? 0
+                  : count / totalReviews;
+
+              return Row(
+                children: [
+                  Text("$star"),
+                  const SizedBox(width: 6),
+
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: percent,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.shade300,
+                      valueColor:
+                          const AlwaysStoppedAnimation(Colors.blue),
+                    ),
+                  ),
+
+                  const SizedBox(width: 6),
+
+                  Text(count.toString()),
+                ],
+              );
+            }),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+void _showReviewDialog({int initialRating = 0}) {
+  final controller = TextEditingController();
+ int stars = initialRating;
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+
+            /// ⭐ HEADER
+            title: const Text(
+              "Add Review",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+
+                /// 👤 USER INFO ROW
+Row(
+  children: [
+    CircleAvatar(
+      backgroundColor: Colors.green,
+      backgroundImage: (currentUserImage != null && currentUserImage!.isNotEmpty)
+          ? NetworkImage(currentUserImage!)
+          : null,
+      child: (currentUserImage == null || currentUserImage!.isEmpty)
+          ? const Icon(Icons.person, color: Colors.white)
+          : null,
+    ),
+
+    const SizedBox(width: 10),
+
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          currentUserName ?? "User",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const Text(
+          "Posting publicly",
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      ],
+    ),
+  ],
+),
+
+                const SizedBox(height: 16),
+
+                /// ⭐ STARS
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final isSelected = index < stars;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setStateDialog(() {
+                          stars = index + 1;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          isSelected
+                              ? Icons.star
+                              : Icons.star_border,
+                          size: 34,
+                          color: isSelected
+                              ? Colors.amber
+                              : Colors.grey.shade400,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+
+                const SizedBox(height: 12),
+
+                /// ✍️ COMMENT BOX
+                TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: "Describe your experience (optional)",
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.green),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                onPressed: () async {
+                   log("SUBMIT CLICKED");
+                  final prefs = await SharedPreferences.getInstance();
+                  final userId = prefs.getString('userId');
+
+                  final body = {
+                    "userId": int.parse(userId!),
+                    "hospitalId": doctorDetails!.hospitalId,
+                    "doctorId": widget.doctor.id,
+                    "rating": stars,
+                    "comment": controller.text.trim(),
+                  };
+log("CREATE REVIEW BODY => $body");
+  final res = await ApiService().createReview(body);
+log(" create res=${res.data}");
+
+
+
+              Navigator.pop(context);
+
+                  await _fetchMyReview();
+                  await _fetchReviews();
+                  setState(() {});
+                },
+                child: const Text(
+                  "Submit",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
   void _showBookingSheet(Doctor doctor) {
     // Navigate to booking screen or show bottom sheet
     showModalBottomSheet(
