@@ -6,7 +6,8 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:mailer/mailer.dart';
+import 'package:mailer/smtp_server/gmail.dart';
 import 'token_manager.dart';
 
 class ApiService {
@@ -24,6 +25,7 @@ class ApiService {
   Future<String?>? _refreshFuture;
 
   final String baseUrl = "https://zorrowtek.in";
+
 
   // ---------------- INIT ----------------
   Future<void> init() async {
@@ -170,7 +172,18 @@ log("COOKIE COUNT => ${cookies.length}");
     );
   }
 
-
+// Add this method to your ApiService class
+Future<Response> getDoctorDetails(int doctorId) async {
+  log("📡 Fetching doctor details for ID: $doctorId");
+  try {
+    final response = await dio.get('/api/doctor/$doctorId');
+    log("✅ Doctor details response: ${response.data}");
+    return response;
+  } catch (e) {
+    log("❌ Error fetching doctor $doctorId: $e");
+    rethrow;
+  }
+}
 
   // ---------------- NOTIFICATIONS ----------------
   
@@ -454,28 +467,28 @@ for (final c in cookies) {
     return await dio.post('/api/ambulance', data: data);
   }
 
-  // GET Notifications
+//   // GET Notifications
 
 // Future<Response> getAllNotifications(String id) async {
 //   return await dio.get('/api/notifications/user/all/$id');
 // }
-  Future<Response> getAllNotificationRead(String id) async {
-    return await dio.get('/api/notifications/user/read/$id');
-  }
+//   Future<Response> getAllNotificationRead(String id) async {
+//     return await dio.get('/api/notifications/user/read/$id');
+//   }
 
-  Future<Response> getAllNotificationUnRead(String id) async {
-    return await dio.get('/api/notifications/user/no-read/$id');
-  }
+//   Future<Response> getAllNotificationUnRead(String id) async {
+//     return await dio.get('/api/notifications/user/no-read/$id');
+//   }
 
-  // PATCH read all notifications
-  Future<Response> allReadNotifications(String id) async {
-    return await dio.patch('/api/notifications/user/read-all/$id');
-  }
+//   // PATCH read all notifications
+//   Future<Response> allReadNotifications(String id) async {
+//     return await dio.patch('/api/notifications/user/read-all/$id');
+//   }
 
-  // PATCH single notification
-  Future<Response> aReadNotification(String id) async {
-    return await dio.patch('/api/notifications/user/$id');
-  }
+//   // PATCH single notification
+//   Future<Response> aReadNotification(String id) async {
+//     return await dio.patch('/api/notifications/user/$id');
+//   }
 
 
 
@@ -578,11 +591,72 @@ log("date=$date");
   // Future<Response> getFilter(String filter) async {
   //   return await _dio.get('/api/hospital/filter/$filter');
   // }
-
+///////////////////////////////////////
   Future<Response> sendEmail(Map<String, dynamic> data) async {
     return await dio.post('/api/email', data: data);
   }
+////////////////////////////////
+// In api_service.dart - Replace the sendEmail method
+// Future<bool> sendEmail(Map<String, dynamic> data) async {
+//   try {
+//     log("📧 Sending email...");
+    
+//     // Gmail credentials - Use App Password
+//     const String gmailUser = 'hostahealthcare@gmail.com';
+//     const String gmailPassword = 'YOUR_GMAIL_APP_PASSWORD'; // ⚠️ Replace this
+    
+//     final smtpServer = gmail(gmailUser, gmailPassword);
+    
+//     // Build email
+//     // final message = Message()
+//     //   ..from = Address(gmailUser, 'Hosta Healthcare')
+//     //   ..recipients.add(data['to'] ?? 'hostahealthcare@gmail.com')
+//     //   ..subject = data['subject'] ?? 'New Contact Form Message'
+//     //   ..text = data['text'] ?? data['message'] ?? ''
+//     //   ..html = data['html'] ?? data['text'] ?? ''
+//     //   ..replyTo = Address(
+//     //     data['email'] ?? data['from'] ?? 'noreply@hosta.com',
+//     //     data['from'] ?? 'User'
+//     //   );
+    
+//     // log("📧 To: ${message.recipients}");
+//     // log("📧 Subject: ${message.subject}");
+    
+//      // Create email - Simple version without replyTo
+//     final message = Message()
+//       ..from = Address(gmailUser, 'Hosta Healthcare')
+//       ..recipients.add('hostahealthcare@gmail.com')
+//       ..subject = data['subject'] ?? 'New Contact Form Message'
+//       ..text = '''
+// Name: ${data['from'] ?? 'User'}
+// Email: ${data['email'] ?? 'No email'}
 
+// Message:
+// ${data['text'] ?? data['message'] ?? 'No message'}
+//       '''
+//       ..html = data['html'] ?? data['text'] ?? '';
+//   log("📧 Sending to: hostahealthcare@gmail.com");
+//     log("📧 Subject: ${message.subject}");
+    
+//     // Send email
+//     await send(message, smtpServer);
+//     //final sendReport = await send(message, smtpServer);
+    
+//     log("✅ Email sent successfully!");
+//    // log("✅ Report: $sendReport"); 
+//     // Return a mock Response to keep compatibility with your code
+//     return true;
+    
+//   } on MailerException catch (e) {
+//     log("❌ Mailer Error: $e");
+//     //throw Exception("Failed to send email: ${e.toString()}");
+//     throw Exception("Failed to send email. Please check your internet connection.");
+//   } catch (e) {
+//     log("❌ Unknown Error: $e");
+//    // throw Exception("Failed to send email: ${e.toString()}");
+//     throw Exception("Failed to send email. Please try again later.");
+//   }
+// }
   //forgot password
   // SEND RESET PASSWORD OTP
   Future<Response> sendResetPasswordOtp(Map<String, dynamic> data) async {

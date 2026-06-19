@@ -41,19 +41,36 @@ class _NotificationsState extends State<Notifications> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _setup();
     _scrollController.addListener(_onScroll);
+    _setup();
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+    _markAllAsRead();
+    //_autoMarkAllAsRead();
+  });
   }
   
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    if (socket != null) {
-      socket!.disconnect();
-      socket!.dispose();
+  // ✅ New method to auto mark all as read
+Future<void> _autoMarkAllAsRead() async {
+  // Wait a bit for notifications to load
+  await Future.delayed(Duration(milliseconds: 500));
+  
+  if (notifications.isNotEmpty) {
+    final unreadCount = notifications.where((n) => n["read"] != true).length;
+    if (unreadCount > 0) {
+      await _markAllAsRead();
     }
-    super.dispose();
   }
+}
+
+  // @override
+  // void dispose() {
+  //   _scrollController.dispose();
+  //   if (socket != null) {
+  //     socket!.disconnect();
+  //     socket!.dispose();
+  //   }
+  //   super.dispose();
+  // }
 
   void _onScroll() {
     if (_scrollController.position.pixels >= 
@@ -66,6 +83,8 @@ class _NotificationsState extends State<Notifications> {
     await _getUserId();
     
     if (userId != null && userId!.isNotEmpty) {
+         await FCMService.initialize();
+         await FCMService.subscribeToTopic('user_$userId');
       await _initializeNotifications();
       await _fetchNotifications();
       _setupSocketListener();
@@ -73,7 +92,19 @@ class _NotificationsState extends State<Notifications> {
       setState(() => isLoading = false);
     }
   }
-
+  @override
+  void dispose() {
+    // Unsubscribe when leaving
+    if (userId != null) {
+      FCMService.unsubscribeFromTopic('user_$userId');
+    }
+    _scrollController.dispose();
+    if (socket != null) {
+      socket!.disconnect();
+      socket!.dispose();
+    }
+    super.dispose();
+  }
   Future<void> _getUserId() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -159,8 +190,8 @@ class _NotificationsState extends State<Notifications> {
         
         final pagination = response.data['pagination'];
         if (pagination != null) {
-          totalPages = pagination['totalPages'] ?? 1;
-          _totalPages = totalPages;
+          // _totalPages = totalPages;
+          _totalPages = pagination['pages'] ?? 1;
           _hasMorePages = _currentPage < totalPages;
         }
       }
@@ -345,32 +376,128 @@ class _NotificationsState extends State<Notifications> {
     );
   }
 
+  // void _setupSocketListener() {
+  //   try {
+  //     socket = IO.io('https://www.zorrowtek.in', <String, dynamic>{
+  //       'transports': ['websocket'],
+  //       'autoConnect': true,
+  //       'reconnection': true,
+  //     });
+
+  //     socket!.on('connect', (_) {
+  //       print("✅ Socket connected");
+  //       if (userId != null) {
+  //         socket!.emit('joinUserRoom', userId);
+  //       }
+  //     });
+
+  //     socket!.on('pushNotification', (data) async {
+  //       print("📨 New notification: $data");
+  //       await _fetchNotifications();
+  //       _showLocalNotification(data);
+  //     });
+
+  //     socket!.connect();
+  //   } catch (e) {
+  //     print("❌ Socket error: $e");
+  //   }
+  // }
   void _setupSocketListener() {
-    try {
-      socket = IO.io('https://www.zorrowtek.in', <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-        'reconnection': true,
-      });
+  try {
+    socket = IO.io('https://www.zorrowtek.in', <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': true,
+      'reconnection': true,
+      'reconnectionAttempts': 10, // കൂടുതൽ attempts
+      'reconnectionDelay': 1000,
+      'reconnectionDelayMax': 5000,
+      'timeout': 20000,
+    });
 
-      socket!.on('connect', (_) {
-        print("✅ Socket connected");
-        if (userId != null) {
-          socket!.emit('joinUserRoom', userId);
-        }
-      });
+   
 
-      socket!.on('pushNotification', (data) async {
-        print("📨 New notification: $data");
-        await _fetchNotifications();
-        _showLocalNotification(data);
-      });
+    socket!.on('connect', (_) {
+      print("✅ Socket connected");
+      if (userId != null) {
+        socket!.emit('joinUserRoom', userId);
+        // User online ആണെന്ന് അറിയിക്കുക
+        socket!.emit('userOnline', userId);
+      }
+    });
 
-      socket!.connect();
-    } catch (e) {
-      print("❌ Socket error: $e");
-    }
+    socket!.on('connect_error', (error) {
+      print("❌ Connection error: $error");
+    });
+
+    socket!.on('error', (error) {
+      print("❌ Socket error: $error");
+    });
+
+    // ✅ Notification events
+    socket!.on('pushNotification', _handleNewNotification);
+    socket!.on('notificationRead', _handleNotificationRead);
+    socket!.on('notificationDeleted', _handleNotificationDeleted);
+
+    socket!.connect();
+  } catch (e) {
+    print("❌ Socket setup error: $e");
   }
+}
+
+// Notification handlers
+void _handleNewNotification(dynamic data) async {
+  print("📨 New notification: $data");
+  
+  if (mounted) {
+    // Notification list refresh
+    await _fetchNotifications();
+    
+    // Show local notification
+    _showLocalNotification(data);
+    
+    // Show snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(data['message'] ?? 'New notification'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'View',
+          textColor: Colors.white,
+          onPressed: () {
+            // Navigate to notification details
+            _navigateToNotificationDetails({
+              '_id': data['id'].toString(),
+              'message': data['message'],
+              'createdAt': DateTime.now().toIso8601String(),
+            });
+          },
+        ),
+      ),
+    );
+  }
+}
+
+void _handleNotificationRead(dynamic data) {
+  print("📖 Notification read: $data");
+  // Read status update ചെയ്യുക
+  setState(() {
+    final index = notifications.indexWhere((n) => n["id"] == data['id']);
+    if (index != -1) {
+      notifications[index]["read"] = true;
+      _updateFilteredList();
+    }
+  });
+ // _updateBadgeCount();
+}
+
+
+
+void _handleNotificationDeleted(dynamic data) {
+  print("🗑️ Notification deleted: $data");
+  // Notification list update
+  _fetchNotifications();
+}
 
   Future<void> _showLocalNotification(Map<String, dynamic> data) async {
     const NotificationDetails platformChannelSpecifics = NotificationDetails(
@@ -383,12 +510,12 @@ class _NotificationsState extends State<Notifications> {
       iOS: DarwinNotificationDetails(),
     );
     
-    // await flutterLocalNotificationsPlugin.show(
-    //   DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
-    //   data['title'] ?? 'New Notification',
-    //   data['message'] ?? 'You have a new notification',
-    //   platformChannelSpecifics,
-    // );
+    await flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
+      data['title'] ?? 'New Notification',
+      data['message'] ?? 'You have a new notification',
+      platformChannelSpecifics,
+    );
   }
 
   void _updateFilteredList() {
@@ -482,24 +609,24 @@ class _NotificationsState extends State<Notifications> {
                             }),
                           ],
                         ),
-                        if (notifications.isNotEmpty && unreadCount > 0)
-                          TextButton(
-                            onPressed: _markAllAsRead,
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                            child: Text(
-                              "Mark All Read",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                       // if (notifications.isNotEmpty && unreadCount > 0)
+                          // TextButton(
+                          //   onPressed: _markAllAsRead,
+                          //   style: TextButton.styleFrom(
+                          //     backgroundColor: Colors.green,
+                          //     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          //     shape: RoundedRectangleBorder(
+                          //       borderRadius: BorderRadius.circular(20),
+                          //     ),
+                          //   ),
+                          //   child: Text(
+                          //     "Mark All Read",
+                          //     style: TextStyle(
+                          //       color: Colors.white,
+                          //       fontWeight: FontWeight.w600,
+                          //     ),
+                          //   ),
+                          // ),
                       ],
                     ),
                   ),
@@ -588,3 +715,6 @@ class _NotificationsState extends State<Notifications> {
     );
   }
 } 
+
+
+

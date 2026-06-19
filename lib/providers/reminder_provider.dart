@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/alarm.service.dart';
+import 'package:hosta/data/models/reminder_model.dart';
 
 //  STATE CLASSES
 class ReminderState {
@@ -11,6 +12,8 @@ class ReminderState {
   final DateTime? startDate;
   final DateTime? endDate;
   final List<int> selectedDays;
+   final String selectedSoundId;
+  final String selectedSoundPath;
 
   ReminderState({
     required this.medicineController,
@@ -20,6 +23,8 @@ class ReminderState {
     this.startDate,
     this.endDate,
     this.selectedDays = const [],
+     this.selectedSoundId = 'default',
+      this.selectedSoundPath = 'assets/alarm.mp3.wav',
   });
 
   ReminderState copyWith({
@@ -30,6 +35,8 @@ class ReminderState {
     DateTime? startDate,
     DateTime? endDate,
     List<int>? selectedDays,
+    String? selectedSoundId,
+    String? selectedSoundPath,
   }) {
     return ReminderState(
       medicineController: medicineController ?? this.medicineController,
@@ -39,13 +46,36 @@ class ReminderState {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       selectedDays: selectedDays ?? this.selectedDays,
+        selectedSoundId: selectedSoundId ?? this.selectedSoundId,
+      selectedSoundPath: selectedSoundPath ?? this.selectedSoundPath,
+    );
+  }
+  // Convert to MedicineReminder model
+  MedicineReminder toMedicineReminder() {
+    return MedicineReminder(
+      medicineName: medicineController.text.trim(),
+      notes: notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
+      reminderTimes: selectedTimes.map((time) => {
+        'hour': time.hour,
+        'minute': time.minute,
+      }).toList(),
+      selectedDays: selectedDays,
+      startDate: startDate,
+      endDate: endDate,
+      selectedSoundId: selectedSoundId,
+      selectedSoundPath: selectedSoundPath,
     );
   }
 }
 
+
 //  PROVIDERS
 final reminderStateProvider = StateNotifierProvider<ReminderNotifier, ReminderState>((ref) {
   return ReminderNotifier();
+});
+// Add a provider for available alarm sounds
+final alarmSoundsProvider = Provider<List<AlarmSound>>((ref) {
+  return AlarmService.availableSounds;
 });
 
 class ReminderNotifier extends StateNotifier<ReminderState> {
@@ -102,6 +132,12 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
 
   void updateNotes(String value) {
     state.notesController.text = value;
+  }
+  void setSelectedSound(String soundId, String soundPath) {
+    state = state.copyWith(
+      selectedSoundId: soundId,
+      selectedSoundPath: soundPath,
+    );
   }
 
   void clearForm() {

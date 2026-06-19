@@ -211,12 +211,22 @@ class BottomNavState extends ConsumerState<Bottomnav> {
       curve: Curves.easeInOut,
     );
 
-    // if (index == 3) {
-    //   _markNotificationsAsRead();
-    // }
+    if (index == 3) {
+     // _markNotificationsAsRead();
+      _resetBadgeCountOnly();
+    }
   }
 }
-
+void _resetBadgeCountOnly() {
+  if (mounted && notificationCount > 0) {
+    setState(() {
+      notificationCount = 0;
+      _saveNotificationCountToStorage(0);
+      FlutterAppBadger.removeBadge();
+    });
+    print('📱 Badge count reset when navigating to notifications');
+  }
+}
   // void _navigateToTab(int index) {
   //   if (index >= 0 && index < pages.length) {
   //     setState(() {
@@ -639,16 +649,32 @@ Future<void> makePhoneCall(String phoneNumber) async {
   }
 
   void _markNotificationsAsRead() {
-    if (mounted) {
+    if (mounted && notificationCount > 0) {
       setState(() {
         notificationCount = 0;
         _saveNotificationCountToStorage(0);
+        FlutterAppBadger.removeBadge(); 
       });
-    //  _updateAppIconBadge();       
+    //  _updateAppIconBadge(); 
+         
       print('📱 Notifications marked as read');
+       _markAllNotificationsAsReadOnServer();
     }
   }
   
+  Future<void> _markAllNotificationsAsReadOnServer() async {
+  if (userId == null || userId!.isEmpty) return;
+  
+  try {
+    final apiService = ApiService();
+    // Call your API to mark all as read
+    await apiService.markAllAsRead('user', userId!);
+    print('✅ All notifications marked as read on server');
+  } catch (e) {
+    print('❌ Error marking all as read on server: $e');
+  }
+}
+
   // Call this from notification screen when user clicks a notification
 void _decrementBadgeCount() {
   if (mounted && notificationCount > 0) {
@@ -887,6 +913,10 @@ void updateNotificationCount(int count) {
         child: BottomNavigationBar(
           currentIndex: currentTabIndex,
           onTap: (index) {
+             if (index == 2) {
+      makePhoneCall("9567900329");
+      return; // Don't navigate to a page
+    }
             _navigateToTab(index);
           },
           type: BottomNavigationBarType.fixed,
@@ -946,3 +976,4 @@ void updateNotificationCount(int count) {
     );
   }
 }
+
