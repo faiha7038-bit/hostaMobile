@@ -32,7 +32,7 @@ String? currentUserImage;
 int selectedRating = 0;
 double avgRating = 0.0;
 int totalReviews = 0;
-
+bool showAllReviews = false;
 Map<int, int> ratingBreakdown = {
   5: 0,
   4: 0,
@@ -179,9 +179,13 @@ log("DOCTOR ID => ${widget.doctor.id}");
         page: currentPage,
         limit: 5,
       );
+      log("PAGINATION => ${res.data['pagination']}");
 log("fetchres${res.data}");
-      final data = res.data['data'] as List;
+log("CURRENT PAGE => $currentPage");
 
+log("HAS NEXT PAGE => ${res.data['pagination']['hasNextPage']}");
+      final data = res.data['data'] as List;
+log("DATA LENGTH => ${data.length}");
       final newData = data
           .where((e) => e['userId'].toString() != currentUserId)
           .map<Review>((e) => Review.fromJson(e))
@@ -196,10 +200,13 @@ log("fetchres${res.data}");
 
         hasMore = res.data['pagination']['hasNextPage'] ?? false;
         loadMoreLoading = false;
+        log("HAS MORE => ${res.data['pagination']['hasNextPage']}");
+        log("REVIEWS => ${newData.length}");
       });
     } catch (e) {
       setState(() => loadMoreLoading = false);
       log("REVIEWS ERROR => $e");
+      
     }
   }
 
@@ -480,66 +487,34 @@ _ratingOverview(),
             else if (reviews.isEmpty)
               const Text("No reviews yet")
             else
-              Column(
-                children: reviews.take(5).map((r) {
-                  return _reviewTile(r, screenWidth);
-                }).toList(),
-              ),
+             Column(
+  children: (showAllReviews ? reviews : reviews.take(5))
+      .map((r) => _reviewTile(r, screenWidth))
+      .toList(),
+),
 
-            const SizedBox(height: 10),
+            //const SizedBox(height: 10),
+if (totalReviews > 5 && !showAllReviews)
+  TextButton(
+    onPressed: () async {
+      setState(() {
+        showAllReviews = true;
+      });
 
-            if (reviews.length > 5)
-              TextButton(
-                onPressed: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (_) {
-                      return StatefulBuilder(
-                        builder: (context, setStateModal) {
-                          return NotificationListener<ScrollNotification>(
-                            onNotification: (scrollInfo) {
-                              if (scrollInfo.metrics.pixels ==
-                                      scrollInfo.metrics.maxScrollExtent &&
-                                  hasMore &&
-                                  !loadMoreLoading) {
-                                currentPage++;
-                                _fetchReviews(loadMore: true);
-                              }
-                              return false;
-                            },
-                            child: ListView.builder(
-                              itemCount: reviews.length + 1,
-                              itemBuilder: (context, index) {
-                                if (index < reviews.length) {
-                                  return _reviewTile(
-                                      reviews[index], screenWidth);
-                                } else {
-                                  return hasMore
-                                      ? const Padding(
-                                          padding: EdgeInsets.all(16),
-                                          child: Center(
-                                              child:
-                                                  CircularProgressIndicator()),
-                                        )
-                                      : const SizedBox();
-                                }
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-                child:  TextButton(
-                  onPressed:(){} ,
-                  child: Text("See All Reviews",
-                  style: TextStyle(color: Colors.black,
-                  fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
+      currentPage = 2;
+
+      while (hasMore && currentPage <= 20) {
+        await _fetchReviews(loadMore: true);
+        currentPage++;
+      }
+    },
+     child: const Text("See All Reviews",
+      style: const TextStyle(
+        color: Colors.black,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  ),
             SizedBox(height: screenHeight * 0.012),
 
             // SizedBox(height: screenHeight * 0.03),
@@ -1315,7 +1290,7 @@ Row(
 log("CREATE REVIEW BODY => $body");
   final res = await ApiService().createReview(body);
 log(" create res=${res.data}");
-
+     
 
 
               Navigator.pop(context);

@@ -23,7 +23,7 @@ class ApiService {
   bool _initialized = false;
   Future<String?>? _refreshFuture;
 
-  final String baseUrl = "https://zorrowtek.in";
+  final String baseUrl = "http://35.174.10.32";
 
   // ---------------- INIT ----------------
   Future<void> init() async {
@@ -110,13 +110,13 @@ log("TOKEN => $token");
         },
       ),
     );
-
+log("${dio.options.baseUrl}");
     _initialized = true;
     log("✅ ApiService Initialized (Singleton)");
   }
 Future<String?> _getRefreshTokenFromCookies() async {
   final cookies = await cookieJar.loadForRequest(
-    Uri.parse("https://zorrowtek.in"),
+    Uri.parse("http://35.174.10.32"),
     
   );
 
@@ -512,9 +512,10 @@ for (final c in cookies) {
 
 
   Future<Response> createBooking(Map<String, dynamic> bookingData) async {
-    print('📡 POST /api/booking');
-    print('📡 Data: $bookingData');
-
+    log('📡 POST /api/booking');
+   
+ log("BASE URL => ${dio.options.baseUrl}");
+  log("BOOKING DATA => $bookingData");
     return await dio.post('/api/booking', data: bookingData);
 
   }

@@ -846,14 +846,14 @@ void updateNotificationCount(int count) {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery.of(context).size.width; 
     final screenHeight = MediaQuery.of(context).size.height;
    
     
-    print("🎯 Current notification count: $notificationCount");
-    print("👤 User ID: $userId");
-    print("📱 Current tab index: $currentTabIndex");
-    print("🖼️ Profile image URL: ${_getProfileImageUrl()}");
+    // print("🎯 Current notification count: $notificationCount");
+    // print("👤 User ID: $userId");
+    // print("📱 Current tab index: $currentTabIndex");
+    // print("🖼️ Profile image URL: ${_getProfileImageUrl()}");
     
     return Scaffold(
       key: _scaffoldKey,

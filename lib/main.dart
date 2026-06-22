@@ -8,8 +8,6 @@ import 'package:hosta/firebase_options.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hosta/services/api_service.dart';
-import 'package:hosta/services/socket-service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

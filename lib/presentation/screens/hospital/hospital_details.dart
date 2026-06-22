@@ -474,22 +474,8 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
     ),
     ReviewsTab(
       hospitalId: widget.hospitalId,
-      reviews: reviewsAsync.when(
-        data: (reviews) => reviews,
-        loading: () => [],
-        error: (_, __) => [],
-      ),
-      currentUserId: userState.userId,
-      currentUserName: userState.userName,
-      currentUserEmail: userState.userEmail,
-      isReviewLoading: isReviewLoading,
-      onCreateReview: () async {},
-      onUpdateReview: (reviewId) {},
-      onDeleteReview: _deleteReview,
-      onNavigateToLogin: _navigateToLogin,
-      onInitializeUser: () async {
-        await ref.read(userProvider.notifier).initializeUser();
-      },
+    
+    
     ),
   ],
 )

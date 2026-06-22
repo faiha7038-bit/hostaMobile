@@ -108,6 +108,9 @@ Future<void> _fetchPatients() async {
   print("Stored userId: $storedUserId");
   if (storedUserId == null) {
     setState(() => _isLoadingPatients = false);
+    print("PREF USER ID => $storedUserId");
+print("DOCTOR ID => ${widget.doctor.id}");
+print("HOSPITAL ID => ${widget.doctor.hospitalId}");
     return;
   }
 
@@ -224,6 +227,8 @@ String formatBookingDate(DateTime date) =>
 
   Future<void> _handleBooking() async {
     print("NEW HANDLE BOOKING RUNNING");
+    print("WIDGET DOCTOR ID => ${widget.doctor.id}");
+print("WIDGET HOSPITAL ID => ${widget.doctor.hospitalId}");
     if (_isSubmitting) return;
 
     final prefs = await SharedPreferences.getInstance();
