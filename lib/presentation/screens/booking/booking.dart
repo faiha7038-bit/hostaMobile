@@ -340,13 +340,13 @@ _scrollController.addListener(() {
                                   ),
                                 ),
                                 SizedBox(height: screenHeight * 0.01),
-                                Text(
-                                  "Try changing your filters",
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.035,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
+                                // Text(
+                                //   "Try changing your filters",
+                                //   style: TextStyle(
+                                //     fontSize: screenWidth * 0.035,
+                                //     color: Colors.grey[400],
+                                //   ),
+                                // ),
                               ],
                             ),
                           )
@@ -544,27 +544,46 @@ _buildInfoRow(
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  ElevatedButton.icon(
-                    onPressed: () => _cancelBooking(booking),
-                    icon: Icon(Icons.cancel, size: screenWidth * 0.045),
-                    label: Text(
-                      "Cancel Booking",
-                      style: TextStyle(fontSize: screenWidth * 0.035),
-                      
-                    ),
-                    
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth * 0.04,
-                        vertical: screenHeight * 0.01,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                      ),
-                    ),
-                  ),
+              ElevatedButton.icon(
+  onPressed: () async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Cancel Booking"),
+        content: const Text(
+          "Are you sure you want to cancel this booking?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("No",style: TextStyle(color: Colors.grey),),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Yes"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _cancelBooking(booking);
+    }
+  },
+  icon: Icon(Icons.cancel, size: screenWidth * 0.045),
+  label: Text(
+    "Cancel Booking",
+    style: TextStyle(fontSize: screenWidth * 0.035),
+  ),
+  style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.red,
+    foregroundColor: Colors.white,
+  ),
+),
                 ],
               ),
           ],

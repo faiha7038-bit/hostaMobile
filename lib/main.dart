@@ -64,7 +64,13 @@ void main() async {
   } catch (e, stackTrace) {
     print('❌ Error: $e');
     print(stackTrace);
-    
+//     final prefs = await SharedPreferences.getInstance();
+// final userId = prefs.getString('userId');
+
+// if (userId != null && userId.isNotEmpty) {
+//   SocketService().connect(userId);
+//   print('✅ Socket connected for user: $userId');
+// }
     // Error screen
     runApp(MaterialApp(
       home: Scaffold(

@@ -300,7 +300,8 @@ Widget _buildContent() {
               width: double.infinity,
               margin: const EdgeInsets.all(12),
               child: ElevatedButton(
-          onPressed: doctor.bookingOpen
+         onPressed:
+    (doctor.bookingOpen && doctor.isActive)
     ? () async {
         final prefs = await SharedPreferences.getInstance();
         final userId = prefs.getString('userId') ?? '';
@@ -351,11 +352,17 @@ Widget _buildContent() {
     : null,
 
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: doctor.bookingOpen ? Colors.green : Colors.grey,
+                 backgroundColor:
+    (doctor.bookingOpen && doctor.isActive)
+        ? Colors.green
+        : Colors.grey,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: Text(doctor.bookingOpen ? 'BOOK NOW' : 'CLOSED', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: Text(
+  (doctor.bookingOpen && doctor.isActive)
+      ? 'BOOK NOW'
+      : 'CLOSED', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
           ],

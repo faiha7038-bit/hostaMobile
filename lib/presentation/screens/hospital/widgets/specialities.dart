@@ -58,11 +58,17 @@ class _SpecialtiesTabState extends State<SpecialtiesTab> {
     }
     print('🔵 Found ${doctors.length} doctors');
     
-    Map<String, List<dynamic>> grouped = {};
-    for (var doctor in doctors) {
-      String department = doctor['department'] ?? 'Other';
-      grouped.putIfAbsent(department, () => []).add(doctor);
-    }
+   Map<String, List<dynamic>> grouped = {};
+
+for (var doctor in doctors) {
+  String department =
+      (doctor['department'] ?? 'Other').toString().trim();
+
+  // case-insensitive key
+  String key = department.toLowerCase();
+
+  grouped.putIfAbsent(key, () => []).add(doctor);
+}
     print('🔵 Grouped into ${grouped.length} departments');
     return grouped;
   } catch (e, stack) {
@@ -115,8 +121,8 @@ class _SpecialtiesTabState extends State<SpecialtiesTab> {
           padding: EdgeInsets.all(screenWidth * 0.04),
           itemCount: specialtiesList.length,
           itemBuilder: (context, index) {
-            final department = specialtiesList[index];
-            final doctors = specialtiesMap[department]!;
+            final department = specialtiesList[index].toUpperCase();
+            final doctors = specialtiesMap[specialtiesList[index]]!;
             final doctorsCount = doctors.length;
 
             return Card(

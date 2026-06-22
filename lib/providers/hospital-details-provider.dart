@@ -99,7 +99,7 @@ final hospitalReviewsProvider = FutureProvider.family<List<dynamic>, String>((re
   print('🟢 Fetching reviews for hospital ID: $hospitalId');
   final apiService = ApiService();
   try {
-    final response = await apiService.getAHospitalsReview(hospitalId);
+    final response = await apiService.getReviews();
     print('✅ Reviews API response: ${response.data}');
     
     final rawData = response.data;
@@ -155,7 +155,7 @@ class ReviewOperations {
         "hospitalId": hospitalId,
       };
 
-      await ApiService().createAHospitalReview(reviewData);
+      await ApiService().createReview(reviewData);
       
       // Refresh reviews
       ref.invalidate(hospitalReviewsProvider(hospitalId));
@@ -183,7 +183,7 @@ class ReviewOperations {
         "comment": comment,
       };
 
-      await ApiService().updateAHospitalReview(reviewId, reviewData);
+      await ApiService().updateReview(reviewId, reviewData);
       
       // Refresh reviews
       ref.invalidate(hospitalReviewsProvider(hospitalId));
@@ -204,7 +204,7 @@ class ReviewOperations {
     ref.read(reviewLoadingProvider.notifier).state = true;
 
     try {
-      await ApiService().deleteAHospitalReview(reviewId);
+      await ApiService().deleteReview(reviewId);
       
       // Refresh reviews
       ref.invalidate(hospitalReviewsProvider(hospitalId));

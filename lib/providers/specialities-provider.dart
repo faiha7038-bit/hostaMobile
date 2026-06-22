@@ -7,7 +7,7 @@ import '../../../services/api_service.dart';
 final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService();
 });
-
+  
 // Specialties list provider
 // Replace the old specialtiesProvider with this:
 final specialtiesProvider = FutureProvider.family<List<dynamic>, String>((ref, searchQuery) async {

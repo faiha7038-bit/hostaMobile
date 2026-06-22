@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/settings/accountsettings.dart';
 import 'package:hosta/presentation/screens/settings/passwordManager.dart';
+import 'package:hosta/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool isLoggedIn = false;
+  final ApiService apiService=ApiService();
   @override
   void initState() {
     
@@ -28,32 +30,35 @@ class _SettingsPageState extends State<SettingsPage> {
     isLoggedIn = token != null;
   });
 }
-  Future<void> _logout(BuildContext context) async {
-  final prefs = await SharedPreferences.getInstance();
+Future<void> logout(BuildContext context) async {
+  print("LOGOUT CLICKED");
 
-  // Store bloodId before clearing (if needed)
-  final bloodId = prefs.getString('bloodId');
-  
-  // Clear only non-essential data
-  await prefs.remove('userId');
-  await prefs.remove('authToken');
-  // Keep bloodId
-  if (bloodId != null) {
-    await prefs.setString('bloodId', bloodId);
+  final navigator = Navigator.of(context, rootNavigator: true);
+
+  try {
+    await apiService.logout();
+  } catch (e) {
+    print("LOGOUT API ERROR (ignoring): $e");
   }
-  
-  // OR more simply: don't clear bloodId at all
-  // await prefs.clear(); // ❌ DON'T use this
-  
-  if (context.mounted) {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const Signin()),
-      (route) => false,
-    );
-  }
+
+  // Clear ALL stored data (optional)
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.clear(); 
+ 
+
+  // If you have other storage like Hive, clear those as well
+  // await Hive.box('donorsBox').clear();
+
+  print("ALL DATA CLEARED");
+
+  // Navigate to Signin and remove all history
+  navigator.pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => Signin()),
+    (route) => false,
+  );
 }
 
-// Future<void> _logout(BuildContext context) async {
+// Future<void> _(BuildContext context) async {
   void _confirmLogout(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -81,7 +86,7 @@ class _SettingsPageState extends State<SettingsPage> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                _logout(context);
+                logout(context);
               },
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,
