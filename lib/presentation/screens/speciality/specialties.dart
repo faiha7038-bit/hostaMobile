@@ -1,6 +1,10 @@
+import 'dart:async';
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/providers/specialities-provider.dart';
+import 'package:hosta/services/socket-service.dart';
 
 class Specialties extends ConsumerStatefulWidget {
   const Specialties({super.key});
@@ -10,14 +14,36 @@ class Specialties extends ConsumerStatefulWidget {
 }
 
 class _SpecialitesState extends ConsumerState<Specialties> {
+  Timer? _debounceTimer;
     //final Debouncer _debouncer = Debouncer(const Duration(milliseconds: 500));
-  @override
-  void initState() {
-    super.initState();
-    // Trigger specialties fetch
-   // ref.read(specialtiesProvider);
-  }
+ @override
+void initState() {
+  super.initState();
 
+  SocketService().addListener(
+    [
+      'SPECIALITY_REGISTERED',
+      'SPECIALITY_UPDATED',
+      'SPECIALITY_DELETED',
+    ],
+    (_) {
+      log("🔄 Refetch Specialties from socket");
+
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _refreshSpecialties();
+        }
+      });
+    },
+  );
+}
+void _refreshSpecialties() {
+  final searchQuery = ref.read(searchQueryProvider);
+
+  // THIS forces FutureProvider to reload
+  ref.invalidate(specialtiesProvider(searchQuery));
+}
   void _showErrorSnackbar(String message) {
     final screenWidth = MediaQuery.of(context).size.width;
     ScaffoldMessenger.of(context).showSnackBar(

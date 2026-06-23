@@ -357,7 +357,7 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Error loading hospital data: $error"),
+           // Text("Error loading hospital data: $error"),
             ElevatedButton(
               onPressed: () => ref.invalidate(hospitalDetailsProvider(widget.hospitalId)),
               child: Text("Retry"),

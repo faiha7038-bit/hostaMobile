@@ -12,6 +12,7 @@ import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/widgets/donor-section.dart';
 import 'package:hosta/presentation/screens/blood/widgets/location-section.dart';
 import 'package:hosta/providers/blood_details_provider.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
@@ -59,6 +60,7 @@ late Box cacheBox;
 bool isOffline = false;
 Timer? _debounce;
 List<dynamic> allDonors = [];
+ bool _listenerAdded = false;
 final Map<String, List<String>> compatibilityMap = {
   "A+": ["A+", "A-", "O+", "O-"],
   "A-": ["A-", "O-"],
@@ -85,9 +87,29 @@ _initializeConnectivity();
   _bootstrap();
 
   _loadDonationStatus();
-
+//_setupSocketListener();
 
 }
+// void _setupSocketListener() {
+//   if (_listenerAdded) return;
+
+//   _listenerAdded = true;
+
+//   SocketService().addListener(
+//     [
+//       'DONOR_REGISTERED',
+//       'DONOR_UPDATED',
+//       'DONOR_DELETED',
+//     ],
+//     (data) async {
+//       if (!mounted) return;
+
+//       log("🩸 DONOR EVENT => $data");
+
+//       await _fetchDonors();
+//     },
+//   );
+// }
 
 Future<void> _initializeConnectivity() async {
 
@@ -127,11 +149,14 @@ Future<bool> _checkInternet() async {
     return result.isNotEmpty &&
         result[0].rawAddress.isNotEmpty;
 
-  } on SocketException catch (_) {
-
-    return false;
+  }catch(e){
+     return false;
   }
-}
+//    on SocketException catch (_) {
+
+//     return false;
+//   }
+ }
 Future<void> _loadDonationStatus() async {
   final prefs = await SharedPreferences.getInstance();
   setState(() {

@@ -154,7 +154,7 @@ _scrollController.addListener(() {
     
     final userId = bookingState.userId;
     final isLoading = bookingState.isLoading;
-    final isSocketConnected = bookingState.isSocketConnected;
+    //final isSocketConnected = bookingState.isSocketConnected;
     final selectedFilter = bookingState.selectedFilter;
     final selectedDate = bookingState.selectedDate;
     final searchController = bookingState.searchController;
@@ -215,7 +215,7 @@ _scrollController.addListener(() {
         centerTitle: true,
         actions: [
           // Socket connection indicator
-          if (!isSocketConnected)
+         // if (!isSocketConnected)
             Padding(
               padding: EdgeInsets.only(right: screenWidth * 0.02),
               child: Icon(Icons.wifi_off, color: Colors.white, size: screenWidth * 0.05),
