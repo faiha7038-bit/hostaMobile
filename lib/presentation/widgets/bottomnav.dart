@@ -274,7 +274,7 @@ class BottomNavState extends ConsumerState<Bottomnav> {
       if (userId != null && userId!.isNotEmpty) {
         await _loadUserData();
         await _loadNotificationCountFromStorage();
-        _setupSocketListener();
+      //  _setupSocketListener();
       } else {
         setState(() => isLoadingUser = false);
       }
@@ -396,77 +396,77 @@ Future<void> makePhoneCall(String phoneNumber) async {
     print("Call Failed");
   }
 }
-  void _setupSocketListener() {
-    try {
-      const String serverUrl = 'https://www.zorrowtek.in';
+//   void _setupSocketListener() {
+//     try {
+//       const String serverUrl = 'https://www.zorrowtek.in';
       
-      socket = IO.io(serverUrl, <String, dynamic>{
-        'transports': ['websocket', 'polling'],
-        'autoConnect': true,
-        'reconnection': true,
-        'reconnectionAttempts': 5,
-        'reconnectionDelay': 1000,
-      });
-//9567900329
-      socket!.on('connect', (_) {
-        print("✅ Connected to server via Socket.IO");
+//       socket = IO.io(serverUrl, <String, dynamic>{
+//         'transports': ['websocket', 'polling'],
+//         'autoConnect': true,
+//         'reconnection': true,
+//         'reconnectionAttempts': 5,
+//         'reconnectionDelay': 1000,
+//       });
+// //9567900329
+//       socket!.on('connect', (_) {
+//         print("✅ Connected to server via Socket.IO");
         
-        _sendFCMTokenToSocket();
+//         _sendFCMTokenToSocket();
         
-        if (userId != null && userId!.isNotEmpty) {
-          socket!.emit('joinUserRoom', {'userId': userId});
-          print("🚪 Joined user room: $userId");
-        }
-      });
+//         if (userId != null && userId!.isNotEmpty) {
+//           socket!.emit('joinUserRoom', {'userId': userId});
+//           print("🚪 Joined user room: $userId");
+//         }
+//       });
 
-      socket!.on('disconnect', (_) {
-        print("🔌 Disconnected from server");
-      });
+//       socket!.on('disconnect', (_) {
+//         print("🔌 Disconnected from server");
+//       });
 
-      socket!.on('error', (error) {
-        print('⚠️ Socket error: $error');
-      });
+//       socket!.on('error', (error) {
+//         print('⚠️ Socket error: $error');
+//       });
 
-      socket!.on('pushNotificationPhone', (data) {
-        print('📡 Socket notification received: $data');
+//       socket!.on('pushNotificationPhone', (data) {
+//         print('📡 Socket notification received: $data');
         
-        final notificationUserId = data['userId']?.toString();
-        final message = data['message']?.toString() ?? 'New notification';
-        final title = data['title']?.toString() ?? 'New Notification';
+//         final notificationUserId = data['userId']?.toString();
+//         final message = data['message']?.toString() ?? 'New notification';
+//         final title = data['title']?.toString() ?? 'New Notification';
         
-        if (notificationUserId == userId) {
-          print('📱 Processing socket notification for current user');
+//         if (notificationUserId == userId) {
+//           print('📱 Processing socket notification for current user');
           
-          final remoteMessage = RemoteMessage(
-            notification: RemoteNotification(
-              title: title,
-              body: message,
-            ),
-            data: data is Map<String, dynamic> ? data : {'fromSocket': 'true'},
-          );
+//           final remoteMessage = RemoteMessage(
+//             notification: RemoteNotification(
+//               title: title,
+//               body: message,
+//             ),
+//             data: data is Map<String, dynamic> ? data : {'fromSocket': 'true'},
+//           );
           
-          _handleIncomingNotification(remoteMessage, isFromFCM: false);
-        }
-      });
+//           _handleIncomingNotification(remoteMessage, isFromFCM: false);
+//         }
+//       });
 
-      socket!.on('profile', (data) {
-        print('📡 Profile update socket event received: $data');
+//       socket!.on('profile', (data) {
+//         print('📡 Profile update socket event received: $data');
         
-        final profileUserId = data['userId']?.toString();
+//         final profileUserId = data['userId']?.toString();
         
-        if (profileUserId == userId) {
-          print('🔄 Processing profile update for current user');
-          _refreshUserData();
-        }
-      });
+//         if (profileUserId == userId) {
+//           print('🔄 Processing profile update for current user');
+//           _refreshUserData();
+//         }
+//       });
 
-      socket!.connect();
-      print('🔌 Socket.IO connection initiated');
+//       //socket!.connect();
+//       print('🔌 Socket.IO connection initiated');
 
-    } catch (e) {
-      print('❌ Error setting up socket: $e');
-    }
-  }
+//     } catch (e) {
+//       print('❌ Error setting up socket: $e');
+//     }
+//   }
 
   Future<void> _refreshUserData() async {
     if (userId == null || userId!.isEmpty) {

@@ -22,8 +22,8 @@ class ApiService {
 
   bool _initialized = false;
   Future<String?>? _refreshFuture;
-
-  final String baseUrl = "http://35.174.10.32";
+     
+  final String baseUrl = "https://zorrowtek.in";
 
   // ---------------- INIT ----------------
   Future<void> init() async {
@@ -116,7 +116,7 @@ log("${dio.options.baseUrl}");
   }
 Future<String?> _getRefreshTokenFromCookies() async {
   final cookies = await cookieJar.loadForRequest(
-    Uri.parse("http://35.174.10.32"),
+    Uri.parse("https://zorrowtek.in"),
     
   );
 
@@ -585,7 +585,7 @@ log("date=$date");
     return await dio.get('/api/doctor', queryParameters: queryParams);
   }
 
-  // In api_service.dart
+  
 
   Future<Response> getDoctorById(String doctorId) async {
     print("🔵 GET Doctor by ID API Call");

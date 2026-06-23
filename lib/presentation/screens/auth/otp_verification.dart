@@ -1,14 +1,17 @@
 import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
+import 'package:hosta/providers/socket_router_provider.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class OtpVerification extends StatefulWidget {
+class OtpVerification extends ConsumerStatefulWidget {
   final String phone;
   final String? backendOtp;
   final VoidCallback onResendOtp;
@@ -23,10 +26,10 @@ class OtpVerification extends StatefulWidget {
   });
 
   @override
-  State<OtpVerification> createState() => _OtpVerificationState();
+  ConsumerState<OtpVerification> createState() => _OtpVerificationState();
 }
 
-class _OtpVerificationState extends State<OtpVerification> {
+class _OtpVerificationState extends ConsumerState<OtpVerification> {
   final TextEditingController otpController = TextEditingController();
 
   int resendAfter = 30;
@@ -163,18 +166,17 @@ if (authToken != null &&
   log("✅ Saved authToken: ${authToken.substring(0, 20)}...");
 } else {
   log("⚠️ No token in response");
+  log("🔥 BEFORE SOCKET CONNECT");
+   //SocketService().connect(authToken);
+ final socket = SocketService();
+final router = ref.read(socketRouterProvider);
+socket.setRouter(router);
+  socket.connect(authToken);
+  
+log("🔥 AFTER SOCKET CONNECT");
+  log("🔌 Socket connect called");
 }
-// Save refresh token
-// if (refreshToken != null &&
-//     refreshToken is String &&
-//     refreshToken.isNotEmpty) {
 
-//   await prefs.setString('refreshToken', refreshToken);
-
-//   log("✅ Saved refreshToken");
-// } else {
-//   log("⚠️ No refresh token in response");
-// }
 final refreshToken = response.data["refreshToken"];   // Get from backend
 if (refreshToken != null && refreshToken.isNotEmpty) {
   await prefs.setString('refreshToken', refreshToken);

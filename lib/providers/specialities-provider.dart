@@ -10,7 +10,13 @@ final apiServiceProvider = Provider<ApiService>((ref) {
   
 // Specialties list provider
 // Replace the old specialtiesProvider with this:
+final specialityRefreshProvider = StateProvider<int>((ref) => 0);
 final specialtiesProvider = FutureProvider.family<List<dynamic>, String>((ref, searchQuery) async {
+   
+  final refresh = ref.watch(specialityRefreshProvider); // 👈 IMPORTANT
+
+  print("♻️ REFRESH TRIGGER: $refresh");
+   
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getAllSpecility(searchQuery: searchQuery);
 

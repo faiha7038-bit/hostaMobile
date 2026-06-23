@@ -1,75 +1,55 @@
 import 'dart:developer';
-
+import 'package:hosta/services/socket_controller.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class SocketService {
   static final SocketService _instance = SocketService._internal();
-
   factory SocketService() => _instance;
 
   SocketService._internal();
 
-  IO.Socket? socket;
-
-  void connect(String userId) {
-    if (socket?.connected == true) return;
-
+  late IO.Socket socket;
+SocketEventRouter? router;
+  final Map<String, List<Function(dynamic)>> _listeners = {};
+void setRouter(SocketEventRouter r) {
+  router = r;
+}
+  void connect(String token) {
     socket = IO.io(
-      'https://www.zorrowtek.in',
-      <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': false,
-        'reconnection': true,
-        'reconnectionAttempts': 5,
-        'reconnectionDelay': 1000,
-      },
+      "https://zorrowtek.in",
+      IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .enableReconnection()
+          .setAuth({"token": token})
+          .build(),
     );
 
-    socket!.connect();
-
-    socket!.onConnect((_) {
-      log('✅ Socket Connected');
-
-      // Backend expects: join-room
-      socket!.emit('join-room', userId);
-
-      log('🏠 Joined room: $userId');
+    socket.onConnect((_) {
+      log("✅ Socket Connected");
     });
 
-    socket!.onDisconnect((_) {
-      log('❌ Socket Disconnected');
-    });
+   socket.onAny((event, data) {
+  log("📩 EVENT => $event");
 
-    socket!.onConnectError((error) {
-      log('🚨 Connect Error: $error');
-    });
+ router?.handle(event, data);
 
-    socket!.onError((error) {
-      log('🚨 Socket Error: $error');
-    });
+  if (_listeners.containsKey(event)) {
+    for (final callback in _listeners[event]!) {
+      callback(data);
+    }
+  }
+});
 
-    // Debug all incoming events
-    socket!.onAny((event, data) {
-      log('🔥 EVENT => $event');
-      log('🔥 DATA => $data');
-    });
-
-    // Listen for backend notifications/events
-    socket!.on('system_event', (data) {
-      log('📢 SYSTEM EVENT => $data');
-
-      // Example:
-      // notificationProvider.refresh();
-      // eventProvider.fetchEvents();
-    });
+    socket.connect();
   }
 
-  void disconnect() {
-    socket?.clearListeners();
-    socket?.disconnect();
-    socket?.dispose();
-    socket = null;
-
-    log('🛑 Socket Closed');
+  void addListener(
+    List<String> events,
+    Function(dynamic) callback,
+  ) {
+    for (final event in events) {
+      _listeners.putIfAbsent(event, () => []);
+      _listeners[event]!.add(callback);
+    }
   }
 }

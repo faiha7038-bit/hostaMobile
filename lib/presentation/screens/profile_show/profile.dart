@@ -12,7 +12,7 @@ import 'package:hosta/presentation/screens/privacy/privacy.dart';
 import 'package:hosta/presentation/screens/about/about.dart';
 import 'package:hosta/presentation/screens/settings/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+//import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../../../services/api_service.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -26,13 +26,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Map<String, dynamic> userData = {};
   bool isLoading = true;
   String? userId;
-  IO.Socket? socket;
+  //IO.Socket? socket;
 
   @override
   void initState() {
     super.initState();
     _loadUserId();
-    _setupSocketListener();
+   // _setupSocketListener();
   }
 
   Future<void> _loadUserId() async {
@@ -82,39 +82,39 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
-  void _setupSocketListener() {
-    try {
-      const String serverUrl = 'https://www.zorrowtek.in';
+  // void _setupSocketListener() {
+  //   try {
+  //     const String serverUrl = 'https://www.zorrowtek.in';
 
-      socket = IO.io(serverUrl, <String, dynamic>{
-        'transports': ['websocket', 'polling'],
-        'autoConnect': true,
-        'reconnection': true,
-        'reconnectionAttempts': 5,
-        'reconnectionDelay': 1000,
-      });
+  //     socket = IO.io(serverUrl, <String, dynamic>{
+  //       'transports': ['websocket', 'polling'],
+  //       'autoConnect': true,
+  //       'reconnection': true,
+  //       'reconnectionAttempts': 5,
+  //       'reconnectionDelay': 1000,
+  //     });
 
-      socket!.on('connect', (_) {
-        print("✅ Profile page connected to server");
-        if (userId != null && userId!.isNotEmpty) {
-          socket!.emit('joinUserRoom', {'userId': userId});
-        }
-      });
+  //     socket!.on('connect', (_) {
+  //       print("✅ Profile page connected to server");
+  //       if (userId != null && userId!.isNotEmpty) {
+  //         socket!.emit('joinUserRoom', {'userId': userId});
+  //       }
+  //     });
 
-      socket!.on('profile', (data) {
-        print('📡 Profile update received: $data');
-        final profileUserId = data['userId']?.toString();
+  //     socket!.on('profile', (data) {
+  //       print('📡 Profile update received: $data');
+  //       final profileUserId = data['userId']?.toString();
 
-        if (profileUserId == userId) {
-          _refreshUserData();
-        }
-      });
+  //       if (profileUserId == userId) {
+  //         _refreshUserData();
+  //       }
+  //     });
 
-      socket!.connect();
-    } catch (e) {
-      print('❌ Error setting up socket: $e');
-    }
-  }
+  //     socket!.connect();
+  //   } catch (e) {
+  //     print('❌ Error setting up socket: $e');
+  //   }
+  // }
 
   Future<void> _refreshUserData() async {
     if (userId == null || userId!.isEmpty) return;

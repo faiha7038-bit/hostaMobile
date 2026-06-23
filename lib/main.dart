@@ -8,6 +8,7 @@ import 'package:hosta/firebase_options.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:hosta/services/socket-service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,19 +59,13 @@ void main() async {
     final firebaseMsg = FirebaseMsg();
     await firebaseMsg.initFCM();
     print('✅ FCM initialized');
-     
+       SocketService().connect("");
     runApp(const ProviderScope(child: MyApp()));
     
   } catch (e, stackTrace) {
     print('❌ Error: $e');
     print(stackTrace);
-//     final prefs = await SharedPreferences.getInstance();
-// final userId = prefs.getString('userId');
 
-// if (userId != null && userId.isNotEmpty) {
-//   SocketService().connect(userId);
-//   print('✅ Socket connected for user: $userId');
-// }
     // Error screen
     runApp(MaterialApp(
       home: Scaffold(

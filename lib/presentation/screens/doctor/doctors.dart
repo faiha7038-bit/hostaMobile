@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../screens/doctor/doctor_detail.dart';
 import '../../../data/models/doctor_model.dart';
@@ -32,11 +33,27 @@ bool hasNextPage = true;
 bool isPaginationLoading = false;
   @override
  @override
+
 void initState() {
   super.initState();
 
   _fetchDoctors();
+SocketService().addListener(
+  [
+    'DOCTOR_REGISTERED',
+    'DOCTOR_UPDATED',
+    'DOCTOR_DELETED',
+  ],
+  (_) {
+    log("🔄 Refetch Doctors");
 
+    doctors.clear();
+    currentPage = 1;
+    hasNextPage = true;
+
+    _fetchDoctors();
+  },
+);
   _scrollController.addListener(() {
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
@@ -46,11 +63,13 @@ void initState() {
     }
   });
 }
+
     @override
 
 void dispose() {
   _debounceTimer?.cancel();
   _scrollController.dispose();
+  
   super.dispose();
 }
   void _onSearchChanged(String value) {
@@ -249,6 +268,11 @@ Widget _buildContent() {
     } else {
       consultationInfo = "Consultation Available";
     }
+    log(
+  "Doctor => ${doctor.name}, "
+  "isActive=${doctor.isActive}, "
+  "bookingOpen=${doctor.bookingOpen}"
+);
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => DoctorDetailScreen(doctor: doctor))),
       child: Container(

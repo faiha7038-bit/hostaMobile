@@ -354,7 +354,7 @@ class _NotificationsState extends State<Notifications> {
       });
 
       socket!.on('connect', (_) {
-        print("✅ Socket connected");
+       // print("✅ Socket connected");
         if (userId != null) {
           socket!.emit('joinUserRoom', userId);
         }
