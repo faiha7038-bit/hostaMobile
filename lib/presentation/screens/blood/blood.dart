@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -94,21 +95,18 @@ void _setupSocketListener() {
   if (_listenerAdded) return;
 
   _listenerAdded = true;
-
-  SocketService().addListener(
-    [
-      'DONOR_REGISTERED',
-      'DONOR_UPDATED',
-      'DONOR_DELETED',
-    ],
-    (data) async {
-      if (!mounted) return;
-
-      log("🩸 DONOR EVENT => $data");
-
-      await _fetchDonors();
-    },
-  );
+SocketService().addListener(
+  [
+    'DONOR_REGISTERED',
+    'DONOR_UPDATED',
+    'DONOR_DELETED',
+  ],
+  (data) async {
+    log("🩸 DONOR EVENT => $data");
+    await _fetchDonors();
+  },
+);
+ 
 }
 
 Future<void> _initializeConnectivity() async {
@@ -269,16 +267,29 @@ log("responseofdonors:$response.");
 
       _extractLocationData(donorList);
     }
-  } catch (e) {
-    print("ERROR => $e");
+  } 
+catch (e) {
+  if (e is DioException &&
+      e.response?.statusCode == 404) {
 
-    final cachedData = cacheBox.get('all_donors');
+    await cacheBox.delete('all_donors');
 
-    if (cachedData != null) {
-      allDonors = List<dynamic>.from(jsonDecode(cachedData));
-      _applyFiltersOffline();
-    }
-  } finally {
+    setState(() {
+      donors = [];
+      allDonors = [];
+    });
+
+    return;
+  }
+
+  final cachedData = cacheBox.get('all_donors');
+
+  if (cachedData != null) {
+    allDonors = List<dynamic>.from(jsonDecode(cachedData));
+    _applyFiltersOffline();
+  }
+}
+   finally {
     if (mounted) {
       setState(() {
         isLoading = false;
