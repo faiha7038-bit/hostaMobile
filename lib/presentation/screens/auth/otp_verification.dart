@@ -118,15 +118,14 @@ log("🔵 _verifyOtp() CALLED with OTP: $otp");
   try {
     String? token = await FirebaseMsg().token;
 
-    // final response = await widget.apiService.otpUser({
-    //   "phone": cleanPhone,
-    //   "otp": otp,
-    //   "FcmToken": token,
-    // });
-final response = await widget.apiService.otpUser({
-  "phone": cleanPhone,
-  "otp": otp,
-});
+    final response = await widget.apiService.otpUser({
+      "phone": cleanPhone,
+      "otp": otp,
+      "fcmToken": token,
+    });
+
+log("🔥 SENDING FCM => $token");
+log("🔥 FCM TOKEN CHECK => ${token}");
     log("Response status: ${response.statusCode}");
     log("Response data: ${response.data}");
 

@@ -132,22 +132,24 @@ void dispose() {
        _refreshAmbulanceId();
        _loadUser();
           // SOCKET EVENTS
-    SocketService().addListener(
-      [
-        'AMBULANCE_REGISTERED',
-        'AMBULANCE_UPDATED',
-        'AMBULANCE_DELETED',
-      ],
-      (_) async {
-        log("🚑 Ambulance Changed - Refetching");
+   SocketService().addListener(
+  [
+    'AMBULANCE_REGISTERED',
+    'AMBULANCE_UPDATED',
+    'AMBULANCE_DELETED',
+  ],
+  (_) async {
+    if (!mounted) return;
 
-        ref.invalidate(ambulanceListProvider);
-        ref.invalidate(allAmbulancesProvider);
+    log("🚑 Ambulance Changed - Refetching");
 
-        await _fetchAmbulances(showLoader: false);
-        await _refreshAmbulanceId();
-      },
-    );
+    ref.invalidate(ambulanceListProvider);
+    ref.invalidate(allAmbulancesProvider);
+
+    await _fetchAmbulances(showLoader: false);
+    await _refreshAmbulanceId();
+  },
+);
      _connectivitySubscription =
     Connectivity().onConnectivityChanged.listen((results) {
 

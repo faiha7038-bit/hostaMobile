@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:alarm/alarm.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' as firebase;
 import 'package:flutter/material.dart';
@@ -36,7 +38,7 @@ void main() async {
     await Hive.openBox('blood_cache');
     await Hive.openBox('ambulance_cache');
     print('✅ Hive initialized');
-    
+    final messaging = firebase.FirebaseMessaging.instance;
     // Initialize Alarm
     await Alarm.init();
     print('✅ Alarm initialized');
@@ -52,9 +54,10 @@ void main() async {
     // Wait for iOS APNS token
    Future.delayed(const Duration(seconds: 2));
     
-    String? apnsToken = await firebase.FirebaseMessaging.instance.getAPNSToken();
-    print("✅ APNS TOKEN: $apnsToken");
-    
+   String? apnsToken = await messaging.getAPNSToken();
+print("🍏 APNS TOKEN: $apnsToken");
+    String? fcmToken = await messaging.getToken();
+log("🔥 FCM TOKEN: $fcmToken");
     // Initialize FCM
     final firebaseMsg = FirebaseMsg();
     await firebaseMsg.initFCM();

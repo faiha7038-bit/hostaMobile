@@ -43,11 +43,7 @@ class _PasswordManagerPageState extends State<PasswordManagerPage> {
     super.dispose();
   }
 
-  // Get userId from SharedPreferences
-  // Future<String?> _getUserId() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   return prefs.getString('userId');
-  // }
+
   Future<int?> _getUserId() async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getInt('userId');
@@ -158,7 +154,7 @@ Future<void> _updatePassword() async {
   }
 }
 
-  // FORGOT PASSWORD FLOW - Phone OTP Verification
+ 
 
 bool _validateEmail(String email) {
   if (email.trim().isEmpty) {
@@ -344,29 +340,7 @@ void startResendTimer(void Function(void Function()) setState) async {
   timerStarted = true;
   startResendTimer(setState);
 }
-            // if (resendAfter > 0) {
-            //   Future.delayed(const Duration(seconds: 1), () {
-            //     if (mounted && resendAfter > 0) {
-            //       setState(() => resendAfter--);
-            //     }
-            //   });
-            // // }
-
-            // if (otpController.text.length == 6 && !isVerifying && !isOtpFilled) {
-            //   isOtpFilled = true;
-            //   Future.delayed(const Duration(milliseconds: 800), () {
-            //     if (mounted && !isVerifying) {
-            //       setState(() => isVerifying = true);
-            //       _verifyForgotOtp(email, otpController.text, dialogContext, (error) {
-            //         setState(() {
-            //           otpError = error;
-            //           isVerifying = false;
-            //           isOtpFilled = false;
-            //         });
-            //       });
-            //     }
-            //   });
-            // }
+          
 
             return Dialog(
               shape: RoundedRectangleBorder(
@@ -504,19 +478,7 @@ fieldHeight: screenWidth * 0.12,
                       height: screenHeight * 0.0625,
                       child: ElevatedButton(
                         onPressed: isVerifying ? null : () {
-                          // if (otpController.text.length == 6) {
-                          //   setState(() => isVerifying = true);
-                          //   _verifyForgotOtp(email, otpController.text, dialogContext, (error) {
-                          //     setState(() {
-                          //       otpError = error;
-                          //       isVerifying = false;
-                          //     });
-                          //   });
-                          // } else {
-                          //   setState(() {
-                          //     otpError = "Please enter a 6-digit verification code";
-                          //   });
-                          // }
+                        
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
@@ -597,47 +559,7 @@ fieldHeight: screenWidth * 0.12,
       ),
     ),
   ),
-//                             : GestureDetector(
-//                               onTap: isVerifying
-//     ? null
-//     : () async {
 
-//         isDialogActive = false;
-
-//         Navigator.pop(dialogContext);
-
-//         await _sendForgotOtp();
-//       },
-// //                                 onTap: isVerifying ? null : () async {
-// //                                 // Navigator.pop(dialogContext);
-// //                                 isDialogActive = false;
-// // Navigator.pop(dialogContext);
-
-// // // _showSuccessSnackBar(
-// // //   "Password reset successfully! Please login again.",
-// // // );
-
-// // // CLEAR SESSION
-// // final prefs = await SharedPreferences.getInstance();
-// // await prefs.clear();
-
-// // // Navigate to login
-// // Navigator.pushNamedAndRemoveUntil(
-// //   context,
-// //   '/login',
-// //   (route) => false,
-// // );
-// //                                   await _sendForgotOtp();
-// //                                 },
-//                                 child: Text(
-//                                   "Resend OTP",
-//                                   style: TextStyle(
-//                                     color: Colors.green,
-//                                     fontWeight: FontWeight.w600,
-//                                     fontSize: screenWidth * 0.035,
-//                                   ),
-//                                 ),
-//                               ),
                       ],
                     ),
                   ],
@@ -686,7 +608,7 @@ log("NEW PASS => ${_newPasswordController.text}");
 
     } else {
       onError(
-        response.data["message"] ??
+       // response.data["message"] ??
         "Invalid OTP. Please try again.",
       );
     }
@@ -694,7 +616,7 @@ log("NEW PASS => ${_newPasswordController.text}");
   } on DioException catch (dioError) {
 
     String errorMessage =
-        dioError.response?.data["message"] ??
+       // dioError.response?.data["message"] ??
         "Something went wrong";
 
     onError(errorMessage);
@@ -850,15 +772,16 @@ try {
     }
   } else {
     _showErrorSnackBar(
-      response.data["message"] ?? "Failed to reset password",
+   "Failed to reset password"
+     // response.data["message"] ?? "Failed to reset password",
     );
   }
 } on DioException catch (e) {
   setState(() => isResetting = false);
 
-  _showErrorSnackBar(
-    e.response?.data["message"] ?? "Something went wrong",
-  );
+  // _showErrorSnackBar(
+  //   e.response?.data["message"] ?? "Something went wrong",
+  // );
 }
                 
                 // if (mounted) {
