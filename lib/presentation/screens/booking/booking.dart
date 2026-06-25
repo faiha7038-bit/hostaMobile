@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/providers/booking_provider.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../common/top_snackbar.dart';
@@ -16,6 +17,7 @@ class BookingScreen extends ConsumerStatefulWidget {
 class _BookingScreenState extends ConsumerState<BookingScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isFetchingMore = false;
+  bool _listenerAdded = false;
   @override
   void initState() {
     super.initState();
@@ -26,6 +28,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(bookingStateProvider.notifier).initializeData();
     });
+     _setupSocketListener();
 _scrollController.addListener(() {
   if (_scrollController.position.pixels >=
       _scrollController.position.maxScrollExtent - 200) {
@@ -67,7 +70,30 @@ _scrollController.addListener(() {
     }
   }
   
+void _setupSocketListener() {
+  if (_listenerAdded) return;
 
+  _listenerAdded = true;
+
+  SocketService().addListener(
+    [
+      'BOOKING_REGISTERED',
+      'BOOKING_UPDATED',
+      'BOOKING_CANCELLED',
+      'BOOKING_ACCEPTED',
+      'BOOKING_COMPLETED',
+    ],
+    (data) async {
+      if (!mounted) return;
+
+      log("📅 BOOKING EVENT => $data");
+
+      await ref
+          .read(bookingStateProvider.notifier)
+          .refreshBookings();
+    },
+  );
+}
   Future<void> _selectDate() async {
     final now = DateTime.now();
     final selectedDate = ref.read(bookingStateProvider).selectedDate;
@@ -216,10 +242,10 @@ _scrollController.addListener(() {
         actions: [
           // Socket connection indicator
          // if (!isSocketConnected)
-            Padding(
-              padding: EdgeInsets.only(right: screenWidth * 0.02),
-              child: Icon(Icons.wifi_off, color: Colors.white, size: screenWidth * 0.05),
-            ),
+            // Padding(
+            //   padding: EdgeInsets.only(right: screenWidth * 0.02),
+            //   child: Icon(Icons.wifi_off, color: Colors.white, size: screenWidth * 0.05),
+            // ),
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white, size: screenWidth * 0.06),
             onPressed: () {

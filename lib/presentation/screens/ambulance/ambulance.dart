@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/ambulance/register.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/ambulance-provider.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -130,6 +131,23 @@ void dispose() {
       _fetchAmbulances();
        _refreshAmbulanceId();
        _loadUser();
+          // SOCKET EVENTS
+    SocketService().addListener(
+      [
+        'AMBULANCE_REGISTERED',
+        'AMBULANCE_UPDATED',
+        'AMBULANCE_DELETED',
+      ],
+      (_) async {
+        log("🚑 Ambulance Changed - Refetching");
+
+        ref.invalidate(ambulanceListProvider);
+        ref.invalidate(allAmbulancesProvider);
+
+        await _fetchAmbulances(showLoader: false);
+        await _refreshAmbulanceId();
+      },
+    );
      _connectivitySubscription =
     Connectivity().onConnectivityChanged.listen((results) {
 

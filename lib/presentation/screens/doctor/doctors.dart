@@ -40,9 +40,12 @@ void initState() {
   _fetchDoctors();
 SocketService().addListener(
   [
-    'DOCTOR_REGISTERED',
-    'DOCTOR_UPDATED',
-    'DOCTOR_DELETED',
+  " DOCTOR_REGISTERED",
+      "DOCTOR_UPDATED",
+      "DOCTOR_DELETED",
+     " DOCTOR_PASSWORD_RESET",
+      "DOCTOR_PASSWORD_CHANGED"
+
   ],
   (_) {
     log("🔄 Refetch Doctors");

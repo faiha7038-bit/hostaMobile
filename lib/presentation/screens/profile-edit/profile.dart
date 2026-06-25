@@ -1,6 +1,8 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/providers/profile-provider.dart';
+import 'package:hosta/services/socket-service.dart';
 
 class Profile extends ConsumerStatefulWidget {
   const Profile({super.key});
@@ -11,10 +13,27 @@ class Profile extends ConsumerStatefulWidget {
 
 class _ProfileState extends ConsumerState<Profile> {
  @override
+
+
+@override
 void initState() {
   super.initState();
 
   ref.read(userDataProvider.notifier).loadUserIdAndProfile();
+SocketService().addListener(
+  [
+    "USER_REGISTERED",
+    "USER_UPDATED",
+    "USER_DELETED",
+  ],
+  (data) {
+    log("📩 User Event => $data");
+
+     if (mounted) {
+        ref.read(userDataProvider.notifier).loadProfile();
+      }
+  },
+);
 }
 void _showProfileOptions(
   BuildContext context,

@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
-import 'package:hosta/services/socket-service.dart';
 import '../../../services/api_service.dart';
 
 // Provider for ApiService
@@ -48,24 +47,7 @@ bool _listenerAdded = false;
   }
 
 
-// void _setupSocketListener() {
-//   if (_listenerAdded) return;
 
-//   _listenerAdded = true;
-
-//   SocketService().addListener(
-//     [
-//       'AMBULANCE_REGISTERED',
-//       'AMBULANCE_UPDATED',
-//       'AMBULANCE_DELETED',
-//     ],
-//     (data) async {
-//       log("🚑 AMBULANCE EVENT => $data");
-
-//       await fetchAmbulances();
-//     },
-//   );
-// }
   Future<bool> _hasInternet() async {
     final result =
         await Connectivity()
