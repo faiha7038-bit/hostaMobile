@@ -878,34 +878,26 @@ log("date=$date");
     }
   }
 
- //-----------------------patients-------------------
-  Future<Response> getPatients({
-    required int hospitalId,
-    required int userId,
-  }) async {
-    return await dio.get(
-      '/api/patients',
-      queryParameters: {'hospitalId': hospitalId, 'userId': userId},
-    );
-  }
-  
-Future<Response> getPatientsWithoutHospital({
+ //------------------------patients------------------
+  // Future<Response> getPatients({
+  //   required int hospitalId,
+  //   required int userId,
+  // }) async {
+  //   return await dio.get(
+  //     '/api/patients',
+  //     queryParameters: {'hospitalId': hospitalId, 'userId': userId},
+  //   );
+  // }
+Future<Response> getPatients({
   required int userId,
+  int? hospitalId,
 }) async {
   return await dio.get(
     '/api/patients',
-    queryParameters: {'userId': userId},
-  );
-}
-
-// Alternative: Try with different parameter names
-Future<Response> getPatientsWithDifferentParams({
-  required int userId,
-  required int hospitalId,
-}) async {
-  return await dio.get(
-    '/api/patients',
-    queryParameters: {'user_id': userId, 'hospital_id': hospitalId},
+    queryParameters: {
+      'userId': userId,
+      if (hospitalId != null) 'hospitalId': hospitalId,
+    },
   );
 }
 Future<Response> getCategories({

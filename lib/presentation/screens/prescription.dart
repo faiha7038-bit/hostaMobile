@@ -1782,6 +1782,7 @@ import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -1824,6 +1825,7 @@ class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
     super.initState();
     scrollController.addListener(_onScroll);
     fetchPrescriptions();
+    _setupSocketListeners();
   }
 
   @override
@@ -1833,7 +1835,39 @@ class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
     _debounceTimer?.cancel();
     super.dispose();
   }
+void _setupSocketListeners() {
+  final socket = SocketService().socket;
 
+  socket.on("PRESCRIPTION_CREATED", (data) async {
+    log("💊 PRESCRIPTION_CREATED => $data");
+
+    await fetchPrescriptions();
+
+    if (mounted) {
+      setState(() {});
+    }
+  });
+
+  socket.on("PRESCRIPTION_UPDATED", (data) async {
+    log("💊 PRESCRIPTION_UPDATED => $data");
+
+    await fetchPrescriptions();
+
+    if (mounted) {
+      setState(() {});
+    }
+  });
+
+  socket.on("PRESCRIPTION_DELETED", (data) async {
+    log("🗑️ PRESCRIPTION_DELETED => $data");
+
+    await fetchPrescriptions();
+
+    if (mounted) {
+      setState(() {});
+    }
+  });
+}
   void _clearDateFilter() {
     setState(() {
       selectedDate = null;

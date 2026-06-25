@@ -52,7 +52,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
         return;
       }
 
-      // If hospitalId is null, use default
       if (hospitalId == null) {
         print("⚠️ HospitalId is null! Using default hospitalId: 1");
         hospitalId = 1;
@@ -66,7 +65,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
         userId: int.parse(userId!),
       );
 
-      print("📊 API Response Status Code: ${response.statusCode}");
       print("📊 API Response Data: ${response.data}");
 
       if (response.data == null) {
@@ -82,7 +80,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
         print("✅ API call successful");
         
         final data = response.data['data'];
-        print("📊 Data type: ${data.runtimeType}");
         
         if (data != null) {
           List<Map<String, dynamic>> allPatients = [];
@@ -91,7 +88,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
             print("📋 Data is a List with ${data.length} items");
             
             if (data.isNotEmpty) {
-              // Convert all patients
               for (var item in data) {
                 if (item is Map) {
                   Map<String, dynamic> convertedMap = {};
@@ -104,7 +100,7 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
               
               print("✅ Converted ${allPatients.length} patients");
               
-              // 🔥 IMPORTANT: Filter patients by userId
+              // Filter patients by userId
               filteredPatientsList = allPatients.where((patient) {
                 final patientUserId = patient['userId'];
                 if (patientUserId == null) return false;
@@ -113,11 +109,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
               
               print("👤 Total patients in hospital: ${allPatients.length}");
               print("👤 Patients for user $userId: ${filteredPatientsList.length}");
-              
-              // Print filtered patients
-              for (int i = 0; i < filteredPatientsList.length; i++) {
-                print("   ${i + 1}. ${filteredPatientsList[i]['name']} (User ID: ${filteredPatientsList[i]['userId']})");
-              }
               
               if (filteredPatientsList.isNotEmpty) {
                 patientsList = filteredPatientsList;
@@ -129,14 +120,14 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
               } else {
                 setState(() {
                   isLoading = false;
-                  errorMessage = "No patients found for user ID: $userId. Please book a doctor appointment first.";
+                  errorMessage = "No patients found for user ID: $userId";
                 });
               }
             } else {
               print("⚠️ Data is an empty list");
               setState(() {
                 isLoading = false;
-                errorMessage = "No patients found. Please book a doctor appointment first.";
+                errorMessage = "No patients found";
               });
             }
           } else if (data is Map) {
@@ -147,12 +138,10 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
               convertedMap[key.toString()] = value;
             });
             
-            // Check if this patient belongs to the user
             final patientUserId = convertedMap['userId'];
             if (patientUserId != null && patientUserId.toString() == userId) {
               patientsList = [convertedMap];
               currentPatient = convertedMap;
-              print("👤 Patient: ${currentPatient['name']} belongs to user $userId");
             } else {
               setState(() {
                 isLoading = false;
@@ -181,7 +170,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
         }
       } else {
         print("❌ API returned success: false");
-        print("❌ Error: ${response.data['error']}");
         setState(() {
           isLoading = false;
           errorMessage = response.data['error'] ?? "Failed to load patient details";
@@ -189,7 +177,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
       }
     } catch (e) {
       print("❌ Error loading patient data: $e");
-      print("❌ Stack trace: ${StackTrace.current}");
       setState(() {
         isLoading = false;
         errorMessage = "Error: $e";
@@ -236,7 +223,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
             }
           }
           
-          // Filter by userId
           filteredPatientsList = allPatients.where((patient) {
             final patientUserId = patient['userId'];
             if (patientUserId == null) return false;
@@ -357,6 +343,13 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     }
   }
 
+  void _changePatient(int index) {
+    setState(() {
+      selectedPatientIndex = index;
+      currentPatient = patientsList[index];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -381,43 +374,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (patientsList.length > 1)
-            PopupMenuButton<int>(
-              icon: Icon(Icons.swap_horiz, color: Colors.white, size: screenWidth * 0.06),
-              onSelected: (int index) {
-                setState(() {
-                  selectedPatientIndex = index;
-                  currentPatient = patientsList[index];
-                });
-              },
-              itemBuilder: (context) {
-                return patientsList.asMap().entries.map((entry) {
-                  int idx = entry.key;
-                  Map<String, dynamic> patient = entry.value;
-                  return PopupMenuItem<int>(
-                    value: idx,
-                    child: Row(
-                      children: [
-                        Icon(Icons.person, color: const Color(0xFF28A745)),
-                        SizedBox(width: screenWidth * 0.02),
-                        Expanded(
-                          child: Text(
-                            patient['name'] ?? 'Patient ${idx + 1}',
-                            style: TextStyle(
-                              fontWeight: selectedPatientIndex == idx 
-                                  ? FontWeight.bold 
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                        if (selectedPatientIndex == idx)
-                          Icon(Icons.check, color: const Color(0xFF28A745)),
-                      ],
-                    ),
-                  );
-                }).toList();
-              },
-            ),
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white, size: screenWidth * 0.06),
             onPressed: _refreshPatientData,
@@ -434,6 +390,14 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       children: [
+                        // Patient Dropdown Selector
+                        if (patientsList.length > 1)
+                          _buildPatientDropdown(screenWidth, screenHeight),
+                        
+                        if (patientsList.length > 1)
+                          SizedBox(height: screenHeight * 0.015),
+                        
+                        // Patient Header - Without Green Background and Person Icon
                         _buildPatientHeader(screenWidth, screenHeight),
                         
                         if (_hasValue('patientId') || _hasValue('id'))
@@ -461,6 +425,162 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                     ),
                   ),
                 ),
+    );
+  }
+
+  // Patient Dropdown Widget
+  Widget _buildPatientDropdown(double screenWidth, double screenHeight) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.04,
+        vertical: screenHeight * 0.01,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<int>(
+            value: selectedPatientIndex,
+            isExpanded: true,
+            icon: Padding(
+              padding: EdgeInsets.only(right: screenWidth * 0.03),
+              child: Icon(
+                Icons.arrow_drop_down,
+                color: const Color(0xFF28A745),
+                size: screenWidth * 0.07,
+              ),
+            ),
+            iconSize: screenWidth * 0.07,
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04,
+              vertical: screenHeight * 0.01,
+            ),
+            dropdownColor: Colors.white,
+            style: TextStyle(
+              fontSize: screenWidth * 0.04,
+              color: Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+            items: patientsList.asMap().entries.map((entry) {
+              int index = entry.key;
+              Map<String, dynamic> patient = entry.value;
+              String patientName = patient['name'] ?? 'Patient ${index + 1}';
+              String patientId = patient['patientId'] ?? '';
+              
+              return DropdownMenuItem<int>(
+                value: index,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.02),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF28A745).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        color: const Color(0xFF28A745),
+                        size: screenWidth * 0.04,
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.03),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            patientName,
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.04,
+                              fontWeight: FontWeight.w600,
+                              color: selectedPatientIndex == index 
+                                  ? const Color(0xFF28A745) 
+                                  : Colors.black87,
+                            ),
+                          ),
+                          if (patientId.isNotEmpty)
+                            Text(
+                              patientId,
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.03,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (selectedPatientIndex == index)
+                      Icon(
+                        Icons.check_circle,
+                        color: const Color(0xFF28A745),
+                        size: screenWidth * 0.05,
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: (int? newIndex) {
+              if (newIndex != null) {
+                _changePatient(newIndex);
+              }
+            },
+            selectedItemBuilder: (context) {
+              return patientsList.asMap().entries.map((entry) {
+                int index = entry.key;
+                Map<String, dynamic> patient = entry.value;
+                String patientName = patient['name'] ?? 'Patient ${index + 1}';
+                
+                return Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(screenWidth * 0.015),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF28A745).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        color: const Color(0xFF28A745),
+                        size: screenWidth * 0.035,
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.025),
+                    Expanded(
+                      child: Text(
+                        patientName,
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.04,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF28A745),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '${selectedPatientIndex! + 1}/${patientsList.length}',
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.03,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                );
+              }).toList();
+            },
+          ),
+        ),
+      ),
     );
   }
 
@@ -553,159 +673,137 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     );
   }
 
+  // Updated Patient Header - Without Green Background and Person Icon
   Widget _buildPatientHeader(double screenWidth, double screenHeight) {
-    return Container(
-      width: screenWidth,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF28A745),
-            const Color(0xFF34C759),
-          ],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(screenWidth * 0.06),
-        child: Column(
-          children: [
-            Container(
-              width: screenWidth * 0.25,
-              height: screenWidth * 0.25,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: screenWidth * 0.01,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Patient Name
+          Text(
+            _getValue('name').isEmpty ? 'Patient Name' : _getValue('name'),
+            style: TextStyle(
+              color: Colors.black87,
+              fontSize: screenWidth * 0.06,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: screenHeight * 0.005),
+          
+          // Patient ID and other info chips
+          Wrap(
+            alignment: WrapAlignment.start,
+            spacing: screenWidth * 0.025,
+            runSpacing: screenHeight * 0.005,
+            children: [
+              if (_hasValue('patientId'))
+                _buildInfoChipLight(
+                  icon: Icons.badge_outlined,
+                  label: _getValue('patientId'),
+                  screenWidth: screenWidth,
                 ),
-                color: Colors.white,
-              ),
-              child: ClipOval(
-                child: Container(
-                  color: Colors.grey[200],
-                  child: Icon(
-                    Icons.person,
-                    size: screenWidth * 0.12,
-                    color: const Color(0xFF28A745),
-                  ),
+              if (_hasValue('age'))
+                _buildInfoChipLight(
+                  icon: Icons.calendar_today_outlined,
+                  label: '${_getValue('age')} yrs',
+                  screenWidth: screenWidth,
                 ),
-              ),
-            ),
-            SizedBox(height: screenHeight * 0.015),
-            
-            Text(
-              _getValue('name').isEmpty ? 'Patient Name' : _getValue('name'),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: screenWidth * 0.06,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: screenHeight * 0.005),
-            
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: screenWidth * 0.03,
-              runSpacing: screenHeight * 0.01,
-              children: [
-                if (_hasValue('patientId'))
-                  _buildInfoChip(
-                    icon: Icons.badge,
-                    label: _getValue('patientId'),
-                    screenWidth: screenWidth,
-                  ),
-                if (_hasValue('age'))
-                  _buildInfoChip(
-                    icon: Icons.calendar_today,
-                    label: '${_getValue('age')} yrs',
-                    screenWidth: screenWidth,
-                  ),
-                if (_hasValue('gender'))
-                  _buildInfoChip(
-                    icon: Icons.wc,
-                    label: _getValue('gender'),
-                    screenWidth: screenWidth,
-                  ),
-              ],
-            ),
-            SizedBox(height: screenHeight * 0.015),
-            
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.06,
-                vertical: screenHeight * 0.008,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(screenWidth * 0.05),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    currentPatient['isActive'] == true 
-                        ? Icons.verified 
-                        : Icons.block,
-                    color: currentPatient['isActive'] == true 
-                        ? const Color(0xFF28A745) 
-                        : Colors.red,
-                    size: screenWidth * 0.04,
-                  ),
-                  SizedBox(width: screenWidth * 0.02),
-                  Text(
-                    currentPatient['isActive'] == true 
-                        ? 'Active Patient' 
-                        : 'Inactive',
-                    style: TextStyle(
-                      color: currentPatient['isActive'] == true 
-                          ? const Color(0xFF28A745) 
-                          : Colors.red,
-                      fontSize: screenWidth * 0.035,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+              if (_hasValue('gender'))
+                _buildInfoChipLight(
+                  icon: Icons.wc_outlined,
+                  label: _getValue('gender'),
+                  screenWidth: screenWidth,
+                ),
+              // Status Chip
+              _buildStatusChip(screenWidth),
+            ],
+          ),
+          SizedBox(height: screenHeight * 0.005),
+          
+          // Divider
+          Divider(
+            height: screenHeight * 0.02,
+            thickness: 1,
+            color: Colors.grey[200],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoChip({
+  // Light Info Chip (Without Green Background)
+  Widget _buildInfoChipLight({
     required IconData icon,
     required String label,
     required double screenWidth,
   }) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
+        horizontal: screenWidth * 0.03,
         vertical: screenWidth * 0.015,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.grey[100],
         borderRadius: BorderRadius.circular(screenWidth * 0.05),
+        border: Border.all(
+          color: Colors.grey[300]!,
+          width: 0.5,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
-            color: Colors.white,
+            color: Colors.grey[600],
             size: screenWidth * 0.035,
           ),
-          SizedBox(width: screenWidth * 0.015),
+          SizedBox(width: screenWidth * 0.01),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white,
-              fontSize: screenWidth * 0.032,
+              color: Colors.grey[700],
+              fontSize: screenWidth * 0.03,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Status Chip
+  Widget _buildStatusChip(double screenWidth) {
+    final isActive = currentPatient['isActive'] == true;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.03,
+        vertical: screenWidth * 0.015,
+      ),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.green[50] : Colors.red[50],
+        borderRadius: BorderRadius.circular(screenWidth * 0.05),
+        border: Border.all(
+          color: isActive ? Colors.green[300]! : Colors.red[300]!,
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isActive ? Icons.verified : Icons.block,
+            color: isActive ? Colors.green[700] : Colors.red[700],
+            size: screenWidth * 0.035,
+          ),
+          SizedBox(width: screenWidth * 0.01),
+          Text(
+            isActive ? 'Active' : 'Inactive',
+            style: TextStyle(
+              color: isActive ? Colors.green[700] : Colors.red[700],
+              fontSize: screenWidth * 0.03,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -717,9 +815,10 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
       child: Card(
-        elevation: screenWidth * 0.005,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(screenWidth * 0.0375),
+          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+          side: BorderSide(color: Colors.grey[200]!, width: 1),
         ),
         child: Padding(
           padding: EdgeInsets.all(screenWidth * 0.04),
@@ -833,9 +932,10 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
           _buildSectionHeader('Personal Information', Icons.person_outline, screenWidth),
           SizedBox(height: screenHeight * 0.012),
           Card(
-            elevation: screenWidth * 0.005,
+            elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(screenWidth * 0.0375),
+              borderRadius: BorderRadius.circular(screenWidth * 0.025),
+              side: BorderSide(color: Colors.grey[200]!, width: 1),
             ),
             child: Padding(
               padding: EdgeInsets.all(screenWidth * 0.04),
@@ -937,9 +1037,10 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
           _buildSectionHeader('Location Information', Icons.location_on, screenWidth),
           SizedBox(height: screenHeight * 0.012),
           Card(
-            elevation: screenWidth * 0.005,
+            elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(screenWidth * 0.0375),
+              borderRadius: BorderRadius.circular(screenWidth * 0.025),
+              side: BorderSide(color: Colors.grey[200]!, width: 1),
             ),
             child: Padding(
               padding: EdgeInsets.all(screenWidth * 0.04),
@@ -991,9 +1092,10 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
           _buildSectionHeader('Status Information', Icons.info_outline, screenWidth),
           SizedBox(height: screenHeight * 0.012),
           Card(
-            elevation: screenWidth * 0.005,
+            elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(screenWidth * 0.0375),
+              borderRadius: BorderRadius.circular(screenWidth * 0.025),
+              side: BorderSide(color: Colors.grey[200]!, width: 1),
             ),
             child: Padding(
               padding: EdgeInsets.all(screenWidth * 0.04),

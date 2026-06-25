@@ -4,6 +4,7 @@ import 'package:hosta/data/models/doctor_model.dart';
 import 'package:hosta/data/models/review_model.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/booking/register_booking.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
@@ -18,6 +19,7 @@ class DoctorDetailScreen extends StatefulWidget {
 
 class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   bool isLoading = false;
+  bool _listenerAdded = false;
   Doctor? doctorDetails;
   String? errorMessage;
   List<Review> reviews = [];
@@ -51,7 +53,39 @@ Map<int, int> ratingBreakdown = {
     _fetchMyReview();
     _loadUser();
     _fetchRating();
+      _setupSocketListener(); 
   }
+  void _setupSocketListener() {
+  if (_listenerAdded) return;
+
+  _listenerAdded = true;
+
+  SocketService().addListener(
+    [
+      'RATING_REGISTERED',
+      'RATING_UPDATED',
+      'REVIEW_REGISTERED',
+      'REVIEW_UPDATED',
+    ],
+    (data) async {
+      if (!mounted) return;
+
+      log("⭐ REVIEW/RATING EVENT => $data");
+
+      await _fetchRating();
+      await _fetchMyReview();
+
+      currentPage = 1;
+      hasMore = true;
+
+      await _fetchReviews();
+
+      if (mounted) {
+        setState(() {});
+      }
+    },
+  );
+}
 Future<void> _loadUser() async {
   final prefs = await SharedPreferences.getInstance();
 
@@ -924,11 +958,45 @@ if (totalReviews > 5 && !showAllReviews)
     final isSelected = index < selectedRating;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedRating = index + 1;
-        });
-      },
+    onTap: () async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  if (userId == null || userId.isEmpty) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Login Required"),
+        content: const Text(
+          "Please login to rate this doctor.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const Signin(),
+                ),
+              );
+            },
+            child: const Text("Login"),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+
+  setState(() {
+    selectedRating = index + 1;
+  });
+},
       child: Icon(
         isSelected ? Icons.star : Icons.star_border,
         color: Colors.amber,
@@ -939,7 +1007,48 @@ if (totalReviews > 5 && !showAllReviews)
 ),
           const SizedBox(height: 12),
           GestureDetector(
-           onTap: () {
+onTap: () async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  if (userId == null || userId.isEmpty) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text(
+          "Login Required",
+          style: TextStyle(color: Colors.green),
+        ),
+        content: const Text(
+          "Please login to write a review.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const Signin(),
+                ),
+              );
+            },
+            child: const Text(
+              "Login",
+              style: TextStyle(color: Colors.green),
+            ),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+
   _showReviewDialog(initialRating: selectedRating);
 },
             child: Text(

@@ -2,6 +2,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/review_model.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ========== REVIEWS TAB - MAIN COMPONENT ==========
@@ -60,8 +61,51 @@ void initState() {
   _fetchRating();
   fetchReviews();
   fetchMyReview();
+  _setupSocketListeners();
 }
+void _setupSocketListeners() {
+  final socket = SocketService().socket;
 
+  // REVIEW REGISTERED
+  socket.on("REVIEW_REGISTERED", (data) async {
+    log("🔥 REVIEW_REGISTERED => $data");
+
+    await _fetchRating();
+    await fetchReviews();
+    await fetchMyReview();
+
+    if (mounted) setState(() {});
+  });
+
+  // REVIEW UPDATED
+  socket.on("REVIEW_UPDATED", (data) async {
+    log("🔥 REVIEW_UPDATED => $data");
+
+    await _fetchRating();
+    await fetchReviews();
+    await fetchMyReview();
+
+    if (mounted) setState(() {});
+  });
+
+  // RATING REGISTERED
+  socket.on("RATING_REGISTERED", (data) async {
+    log("⭐ RATING_REGISTERED => $data");
+
+    await _fetchRating();
+
+    if (mounted) setState(() {});
+  });
+
+  // RATING UPDATED
+  socket.on("RATING_UPDATED", (data) async {
+    log("⭐ RATING_UPDATED => $data");
+
+    await _fetchRating();
+
+    if (mounted) setState(() {});
+  });
+}
 Future<void> _fetchRating() async {
   try {
     final res = await ApiService().getRating(
