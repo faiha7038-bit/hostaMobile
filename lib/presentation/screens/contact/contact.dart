@@ -2372,18 +2372,77 @@ Future<void> _submitFeedback() async {
       ),
     };
 
-    await _apiService.sendEmail(emailData);
+    //await _apiService.sendEmail(emailData);
+      final response = await _apiService.sendEmail(emailData);
+ // Check if response is successful
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      // Check if the response body indicates success
+      final responseData = response.data;
+      
+      // If response is a Map and contains success field
+      if (responseData is Map && responseData['success'] == true) {
+        setState(() {
+          statusMessage = "✅ ${responseData['message'] ?? 'Thank you for contacting us! We\'ll get back to you soon.'}";
+          isSuccess = true;
+          nameController.clear();
+          emailController.clear();
+          messageController.clear();
+        });
+        _showSuccessSnackBar();
+      } else {
+        // Response was successful but didn't have success flag
+        setState(() {
+          statusMessage = "✅ Thank you for contacting us! We'll get back to you soon.";
+          isSuccess = true;
+          nameController.clear();
+          emailController.clear();
+          messageController.clear();
+        });
+        _showSuccessSnackBar();
+      }
+      } else {
+      // Handle non-200 status codes
+      setState(() {
+        statusMessage = "❌ Failed to send message. Please try again.";
+        isSuccess = false;
+      });
+    }
+ } on DioException catch (e) {
+    // Handle Dio-specific errors
+    log("❌ Dio error: ${e.message}");
+    log("❌ Error type: ${e.type}");
+    log("❌ Response data: ${e.response?.data}");
     
+    String errorMessage = "⚠️ Unable to send message. ";
+     final responseData = e.response?.data;
+    if (responseData is Map && responseData.containsKey('message')) {
+      errorMessage = "⚠️ ${responseData['message']}";
+    } else {
+      if (e.type == DioExceptionType.connectionTimeout) {
+        errorMessage += "Connection timeout. Please check your internet.";
+      } else if (e.type == DioExceptionType.receiveTimeout) {
+        errorMessage += "Server not responding. Please try again.";
+      } else if (e.response?.statusCode == 404) {
+        errorMessage += "Email service not found. Please contact support.";
+      } else if (e.response?.statusCode == 500) {
+        errorMessage += "Server error. Please try again later.";
+      } else if (e.response?.statusCode == 400) {
+        errorMessage += "Invalid request. Please check your input.";
+      } else {
+        errorMessage += "Please try again later.";
+      }
+    }
     setState(() {
       statusMessage = "✅ Thank you for contacting us! We'll get back to you soon.";
       isSuccess = true;
-      nameController.clear();
-      emailController.clear();
-      messageController.clear();
+      // nameController.clear();
+      // emailController.clear();
+      // messageController.clear();
     });
-    _showSuccessSnackBar();
+   // _showSuccessSnackBar();
     
   } catch (e) {
+     log("❌ Unknown error: $e");
     setState(() {
       statusMessage = "⚠️ ${e.toString().replaceAll('Exception: ', '')}";
       isSuccess = false;
@@ -2829,9 +2888,9 @@ Future<void> _submitFeedback() async {
           const SizedBox(height: 24),
           
           _buildModernInputField(
-            label: "Full Name",
+            label: "Title",
             controller: nameController,
-            hint: "Enter your full name",
+            hint: "Enter title",
             icon: Icons.person_outline,
             focusNode: _nameFocus,
             isSmallScreen: isSmallScreen,

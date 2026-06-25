@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_app_badger_plus/flutter_app_badger_plus.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
@@ -31,7 +33,7 @@ class BottomNavState extends ConsumerState<Bottomnav> {
   String? userId;
   IO.Socket? socket;
   OverlayEntry? _overlayEntry;
-  
+  Timer? _refreshTimer;
   // PageController for swipe functionality
   late PageController _pageController;
   
@@ -212,21 +214,23 @@ class BottomNavState extends ConsumerState<Bottomnav> {
     );
 
     if (index == 3) {
-     // _markNotificationsAsRead();
-      _resetBadgeCountOnly();
+      _markNotificationsAsRead();
+      //_resetBadgeCountOnly();
+       } else if (index == 0) {
+      _loadNotificationCountFromAPI();
     }
   }
 }
-void _resetBadgeCountOnly() {
-  if (mounted && notificationCount > 0) {
-    setState(() {
-      notificationCount = 0;
-      _saveNotificationCountToStorage(0);
-      FlutterAppBadger.removeBadge();
-    });
-    print('📱 Badge count reset when navigating to notifications');
-  }
-}
+// void _resetBadgeCountOnly() {
+//   if (mounted && notificationCount > 0) {
+//     setState(() {
+//       notificationCount = 0;
+//       _saveNotificationCountToStorage(0);
+//       FlutterAppBadger.removeBadge();
+//     });
+//     print('📱 Badge count reset when navigating to notifications');
+//   }
+// }
   // void _navigateToTab(int index) {
   //   if (index >= 0 && index < pages.length) {
   //     setState(() {
@@ -308,7 +312,8 @@ void _resetBadgeCountOnly() {
       
       print('📊 Loaded notification count from storage: $savedCount');
       await _loadNotificationCountFromAPI();
-    } catch (e) {
+    } catch (e) 
+    {
       print("❌ Error loading notification count from storage: $e");
       await _loadNotificationCountFromAPI();
     }
@@ -351,7 +356,10 @@ void _resetBadgeCountOnly() {
     }
   }
 
+
   Future<void> _loadNotificationCountFromAPI() async {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer(const Duration(milliseconds: 500), () async {
     if (userId == null || userId!.isEmpty) {
       return;
     }
@@ -377,7 +385,7 @@ void _resetBadgeCountOnly() {
       return !isRead;
       }).length;
              print('📊 Unread notification count: $unreadCount');
-      if (mounted) {
+      if (mounted && notificationCount != unreadCount) {
         setState(() {
           notificationCount = unreadCount;
         });
@@ -388,15 +396,16 @@ void _resetBadgeCountOnly() {
      // print('📊 Loaded notification count from API: $unreadCount');
     } catch (e) {
       print("❌ Error loading notifications from API: $e");
-      if (mounted) {
-        setState(() {
-          notificationCount = 0;
-        });
-        _updateAppIconBadge();
-      }
+      // if (mounted) {
+      //   setState(() {
+      //     notificationCount = 0;
+      //   });
+      //   _updateAppIconBadge();
+      // }
     }
   }
-
+    );
+  }
 Future<void> makePhoneCall(String phoneNumber) async {
   bool? res = await FlutterPhoneDirectCaller.callNumber(phoneNumber);
 
@@ -667,9 +676,21 @@ Future<void> makePhoneCall(String phoneNumber) async {
   
   try {
     final apiService = ApiService();
+    final response = await apiService.markAllAsRead('user', userId!);
     // Call your API to mark all as read
-    await apiService.markAllAsRead('user', userId!);
-    print('✅ All notifications marked as read on server');
+   // await apiService.markAllAsRead('user', userId!);
+     if (response.data['success'] == true) {
+      print('✅ All notifications marked as read on server');
+      
+      if (mounted) {
+        setState(() {
+          notificationCount = 0;
+        });
+        await _saveNotificationCountToStorage(0);
+        FlutterAppBadger.removeBadge();
+      }
+    }
+    //print('✅ All notifications marked as read on server');
   } catch (e) {
     print('❌ Error marking all as read on server: $e');
   }
@@ -713,6 +734,7 @@ void updateNotificationCount(int count) {
   void dispose() {
     _removeOverlay();
     _pageController.dispose();
+    _refreshTimer?.cancel();
     socket?.disconnect();
     socket?.close();
     print('🔄 BottomNav disposed');

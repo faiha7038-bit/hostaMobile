@@ -24,7 +24,9 @@ class ApiService {
   bool _initialized = false;
   Future<String?>? _refreshFuture;
 
-  final String baseUrl = "https://zorrowtek.in";
+  final String baseUrl =
+  // "http://35.174.10.32";
+  "https://zorrowtek.in";
 
 
   // ---------------- INIT ----------------
@@ -118,7 +120,10 @@ log("TOKEN => $token");
   }
 Future<String?> _getRefreshTokenFromCookies() async {
   final cookies = await cookieJar.loadForRequest(
-    Uri.parse("https://zorrowtek.in"),
+    Uri.parse(
+    // "http://35.174.10.32"
+      "https://zorrowtek.in"
+      ),
     
   );
 
@@ -172,7 +177,6 @@ log("COOKIE COUNT => ${cookies.length}");
     );
   }
 
-// Add this method to your ApiService class
 Future<Response> getDoctorDetails(int doctorId) async {
   log("📡 Fetching doctor details for ID: $doctorId");
   try {
@@ -185,6 +189,94 @@ Future<Response> getDoctorDetails(int doctorId) async {
   }
 }
 
+// ---------------- LAB REPORT ----------------
+
+ Future<String?> _getToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      log('Error getting token: $e');
+      return null;
+    }
+  }
+  Future<String?> getToken() async {
+    return await _getToken();
+  }
+ Future<dynamic> getLabReports({
+    String? patientId,
+    String? date,
+    int page = 1,
+    int limit = 100,
+  }) async {
+    try {
+      final queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+       if (patientId != null && patientId.isNotEmpty) {
+        queryParams['patientId'] = patientId;
+      }
+      if (date != null && date.isNotEmpty) {
+        queryParams['date'] = date;
+      }
+      
+      log('📡 API Call: getLabReports with params: $queryParams');
+      
+      final response = await dio.get(
+        '/api/lab-results', // Adjust endpoint as needed
+        queryParameters: queryParams,
+         );
+      
+      log('📊 API Response Status: ${response.statusCode}');
+      return response;
+    } on DioException catch (e) {
+      log('❌ Error fetching lab reports: ${e.message}');
+      log('❌ Response data: ${e.response?.data}');
+      rethrow;
+    }
+  }
+
+//    Future<dynamic> deleteLabReport(String reportId) async {
+//     try {
+//       final response = await dio.delete(
+//         '/api/lab-reports/$reportId',
+//       );
+//       return response;
+//     } on DioException catch (e) {
+//       log('❌ Error deleting lab report: ${e.message}');
+//       rethrow;
+//     }
+//   }
+// }
+// Future<Response> getLabReports({
+//   String? patientId,
+//   String? hospitalId,
+//   String? doctorId,
+//   String? status,
+//   String? date, // Format: YYYY-MM-DD
+//   int page = 1,
+//   int limit = 10,
+// }) async {
+//   final queryParams = <String, dynamic>{};
+  
+//   if (patientId != null) queryParams['patientId'] = patientId;
+//   if (hospitalId != null) queryParams['hospitalId'] = hospitalId;
+//   if (doctorId != null) queryParams['doctorId'] = doctorId;
+//   if (status != null) queryParams['status'] = status;
+//   if (date != null) queryParams['date'] = date;
+  
+//   queryParams['page'] = page;
+//   queryParams['limit'] = limit;
+  
+//   log("📡 Fetching lab reports with params: $queryParams");
+//   return await dio.get('/api/lab-results', queryParameters: queryParams);
+// }
+
+// // Also add method to get a single lab report by ID
+// Future<Response> getLabReportById(String id) async {
+//   return await dio.get('/api/lab-results/$id');
+// }
   // ---------------- NOTIFICATIONS ----------------
   
 Future<Response> getNotifications({int page = 1, int limit = 10}) async {
@@ -338,7 +430,10 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
   );
 
 final cookies = await cookieJar.loadForRequest(
-  Uri.parse("https://zorrowtek.in"),
+  Uri.parse(
+    //"http://35.174.10.32"
+    "https://zorrowtek.in"
+    ),
 );
 
 for (final c in cookies) {
@@ -591,72 +686,30 @@ log("date=$date");
   // Future<Response> getFilter(String filter) async {
   //   return await _dio.get('/api/hospital/filter/$filter');
   // }
-///////////////////////////////////////
-  Future<Response> sendEmail(Map<String, dynamic> data) async {
-    return await dio.post('/api/email', data: data);
-  }
-////////////////////////////////
-// In api_service.dart - Replace the sendEmail method
-// Future<bool> sendEmail(Map<String, dynamic> data) async {
-//   try {
-//     log("📧 Sending email...");
-    
-//     // Gmail credentials - Use App Password
-//     const String gmailUser = 'hostahealthcare@gmail.com';
-//     const String gmailPassword = 'YOUR_GMAIL_APP_PASSWORD'; // ⚠️ Replace this
-    
-//     final smtpServer = gmail(gmailUser, gmailPassword);
-    
-//     // Build email
-//     // final message = Message()
-//     //   ..from = Address(gmailUser, 'Hosta Healthcare')
-//     //   ..recipients.add(data['to'] ?? 'hostahealthcare@gmail.com')
-//     //   ..subject = data['subject'] ?? 'New Contact Form Message'
-//     //   ..text = data['text'] ?? data['message'] ?? ''
-//     //   ..html = data['html'] ?? data['text'] ?? ''
-//     //   ..replyTo = Address(
-//     //     data['email'] ?? data['from'] ?? 'noreply@hosta.com',
-//     //     data['from'] ?? 'User'
-//     //   );
-    
-//     // log("📧 To: ${message.recipients}");
-//     // log("📧 Subject: ${message.subject}");
-    
-//      // Create email - Simple version without replyTo
-//     final message = Message()
-//       ..from = Address(gmailUser, 'Hosta Healthcare')
-//       ..recipients.add('hostahealthcare@gmail.com')
-//       ..subject = data['subject'] ?? 'New Contact Form Message'
-//       ..text = '''
-// Name: ${data['from'] ?? 'User'}
-// Email: ${data['email'] ?? 'No email'}
+//=================== email============================================
+  // Future<Response> sendEmail(Map<String, dynamic> data) async {
+  //   return await dio.post('/api/email', data: data);
+  // }
+//-------------------------------------------------
+ Future<Response> sendEmail(Map<String, dynamic> emailData) async {
+    try {
+      final response = await dio.post(
+        '/api/email-enquiry', // Your endpoint
+        data: emailData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response;
+    } on DioException catch (e) {
+      // Log the error
+      log('Dio error: ${e.message}');
+      log('Response data: ${e.response?.data}');
+      rethrow;}}
 
-// Message:
-// ${data['text'] ?? data['message'] ?? 'No message'}
-//       '''
-//       ..html = data['html'] ?? data['text'] ?? '';
-//   log("📧 Sending to: hostahealthcare@gmail.com");
-//     log("📧 Subject: ${message.subject}");
-    
-//     // Send email
-//     await send(message, smtpServer);
-//     //final sendReport = await send(message, smtpServer);
-    
-//     log("✅ Email sent successfully!");
-//    // log("✅ Report: $sendReport"); 
-//     // Return a mock Response to keep compatibility with your code
-//     return true;
-    
-//   } on MailerException catch (e) {
-//     log("❌ Mailer Error: $e");
-//     //throw Exception("Failed to send email: ${e.toString()}");
-//     throw Exception("Failed to send email. Please check your internet connection.");
-//   } catch (e) {
-//     log("❌ Unknown Error: $e");
-//    // throw Exception("Failed to send email: ${e.toString()}");
-//     throw Exception("Failed to send email. Please try again later.");
-//   }
-// }
+
   //forgot password
   // SEND RESET PASSWORD OTP
   Future<Response> sendResetPasswordOtp(Map<String, dynamic> data) async {

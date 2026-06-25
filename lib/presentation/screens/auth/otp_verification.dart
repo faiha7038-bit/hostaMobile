@@ -1,3 +1,537 @@
+// import 'dart:developer';
+// import 'package:dio/dio.dart';
+// import 'package:flutter/material.dart';
+// import 'package:hosta/common/top_snackbar.dart';
+// import 'package:hosta/firebase_msg.dart';
+// import 'package:hosta/presentation/widgets/bottomnav.dart';
+// import 'package:hosta/services/api_service.dart';
+// import 'package:pin_code_fields/pin_code_fields.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+
+// class OtpVerification extends StatefulWidget {
+//   final String phone;
+//   final String? backendOtp;
+//   final VoidCallback onResendOtp;
+//   final ApiService apiService;
+
+//   const OtpVerification({
+//     super.key,
+//     required this.phone,
+//     this.backendOtp,
+//     required this.onResendOtp,
+//     required this.apiService,
+//   });
+
+//   @override
+//   State<OtpVerification> createState() => _OtpVerificationState();
+// }
+
+// class _OtpVerificationState extends State<OtpVerification> {
+//   final TextEditingController otpController = TextEditingController();
+
+//   int resendAfter = 30;
+//   bool isVerifying = false;
+//   bool isOtpFilled = false;
+//   String? otpError;
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     // FIXED: Timer moved from build() to initState()
+//     _startResendTimer();
+
+//     log("=== OTP SCREEN INITIALIZED ===");
+//     log("Phone number received: ${widget.phone}");
+//     log("Backend OTP received: ${widget.backendOtp}");
+
+//     if (widget.backendOtp != null &&
+//         widget.backendOtp!.isNotEmpty) {
+//       Future.delayed(const Duration(milliseconds: 500), () {
+//         if (mounted && otpController.text.isEmpty) {
+//           log("Auto-filling OTP: ${widget.backendOtp}");
+
+//           otpController.text = widget.backendOtp!;
+// log("Backend OTP received: ${widget.backendOtp}");
+//           // Future.delayed(const Duration(milliseconds: 800), () {
+//           //   if (mounted && !isVerifying) {
+//           //     _verifyOtp();
+//           //   }
+//           // });
+//         }
+//       });
+//     }
+//   }
+
+//   void _startResendTimer() {
+//     if (resendAfter > 0) {
+//       Future.delayed(const Duration(seconds: 1), () {
+//         if (mounted && resendAfter > 0) {
+//           setState(() => resendAfter--);
+//           _startResendTimer();
+//         }
+//       });
+//     }
+//   }
+
+// Future<void> _verifyOtp() async {
+//   if (isVerifying) return;
+
+//   String otp = otpController.text.trim();
+//   String phone = widget.phone;
+// log("🔵 _verifyOtp() CALLED with OTP: $otp");  
+//   log("=== STARTING OTP VERIFICATION ===");
+//   log("Original phone: $phone");
+
+//   String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+//   if (cleanPhone.length == 12 && cleanPhone.startsWith('91')) {
+//     cleanPhone = cleanPhone.substring(2);
+//   } else if (cleanPhone.length > 10) {
+//     cleanPhone = cleanPhone.substring(cleanPhone.length - 10);
+//   }
+
+//   log("Cleaned phone: $cleanPhone");
+//   log("Entered OTP: $otp");
+
+//   if (otp.length != 6) {
+//     setState(() {
+//       otpError = "Please enter a valid 6-digit OTP";
+//       isVerifying = false;
+//     });
+//     return;
+//   }
+//   if (cleanPhone.length != 10) {
+//     setState(() {
+//       otpError = "Invalid phone number";
+//       isVerifying = false;
+//     });
+//     return;
+//   }
+
+//   setState(() {
+//     isVerifying = true;
+//     otpError = null;
+//   });
+
+//   try {
+//     String? token = await FirebaseMsg().token;
+
+//     // final response = await widget.apiService.otpUser({
+//     //   "phone": cleanPhone,
+//     //   "otp": otp,
+//     //   "FcmToken": token,
+//     // });
+// final response = await widget.apiService.otpUser({
+//   "phone": cleanPhone,
+//   "otp": otp,
+// });
+//     log("Response status: ${response.statusCode}");
+//     log("Response data: ${response.data}");
+
+//     if (response.statusCode == 200 || response.statusCode == 201) {
+//       if (response.data["success"] == true && response.data["userDetails"] != null) {
+//         final userDetails = response.data["userDetails"];
+//         final userId = userDetails["id"]?.toString();          // "115"
+//         final userPhone = userDetails["phone"]?.toString();
+//         final donorId = userDetails["donorId"]?.toString();
+//         final authToken = response.data["token"];            
+        
+  
+
+// final prefs = await SharedPreferences.getInstance(); 
+
+// // Save userId
+// if (userId != null && userId.isNotEmpty) {
+//   await prefs.setString('userId', userId);
+// }
+
+// // Save phone
+// if (userPhone != null && userPhone.isNotEmpty) {
+//   await prefs.setString('userPhone', userPhone);
+// }
+
+// // Save donorId
+// if (donorId != null && donorId.isNotEmpty) {
+//   await prefs.setString('bloodId', donorId);
+// }
+
+// // Save token (ONLY ONCE)
+// if (authToken != null &&
+//     authToken is String &&
+//     authToken.isNotEmpty) {
+//   await prefs.setString('authToken', authToken);
+//   log("✅ Saved authToken: ${authToken.substring(0, 20)}...");
+// } else {
+//   log("⚠️ No token in response");
+// }
+// // Save refresh token
+// // if (refreshToken != null &&
+// //     refreshToken is String &&
+// //     refreshToken.isNotEmpty) {
+
+// //   await prefs.setString('refreshToken', refreshToken);
+
+// //   log("✅ Saved refreshToken");
+// // } else {
+// //   log("⚠️ No refresh token in response");
+// // }
+// final refreshToken = response.data["refreshToken"];   // Get from backend
+// if (refreshToken != null && refreshToken.isNotEmpty) {
+//   await prefs.setString('refreshToken', refreshToken);
+// }log("FULL RESPONSE DATA: ${response.data}");
+// final savedToken = prefs.getString('authToken');
+// log("🔐 Verified saved token: ${savedToken != null ? 'Exists' : 'NULL'}");
+
+
+//         if (mounted) {
+//           showTopSnackBar(context, "Login successful!");
+          
+//           // Navigate to main screen (your bottom navigation)
+//           Navigator.pushAndRemoveUntil(
+//             context,
+//             MaterialPageRoute(builder: (_) => const Bottomnav()),
+//             (route) => false,
+            
+//           );
+//           final prefs = await SharedPreferences.getInstance();
+// final ambulanceId = prefs.getString('ambulanceId') ?? '';
+//         }
+//       } else {
+//         setState(() {
+//           otpError = response.data["message"] ?? "Invalid OTP. Please try again.";
+//           isVerifying = false;
+//         });
+//       }
+//     } else {
+//       setState(() {
+//         otpError = response.data["message"] ?? "Verification failed";
+//         isVerifying = false;
+//       });
+//     }
+//     } on DioException catch (e) {
+//   log("❌ STATUS CODE: ${e.response?.statusCode}");
+//   log("❌ RESPONSE DATA: ${e.response?.data}");
+
+//   setState(() {
+//     otpError =
+//         e.response?.data["message"] ??
+//         "Verification failed";
+
+//     isVerifying = false;
+//   });
+// }
+//   // } catch (e) {
+//   //   log("Error: $e");
+//   //   setState(() {
+//   //     otpError = "Something went wrong. Please try again.";
+//   //     isVerifying = false;
+//   //   });
+//   // }
+// }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Dialog(
+//       shape: RoundedRectangleBorder(
+//         borderRadius: BorderRadius.circular(24),
+//       ),
+//       child: Container(
+//         width: 400,
+//         padding: const EdgeInsets.all(20),
+//         child: Column(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             // Icon
+//             Container(
+//               width: 50,
+//               height: 50,
+//               decoration: BoxDecoration(
+//                 color: Colors.green.withOpacity(0.1),
+//                 shape: BoxShape.circle,
+//               ),
+//               child: const Icon(
+//                 Icons.smartphone_rounded,
+//                 color: Colors.green,
+//                 size: 25,
+//               ),
+//             ),
+
+//             const SizedBox(height: 12),
+
+//             // Title
+//             const Text(
+//               "Enter Verification Code",
+//               style: TextStyle(
+//                 fontSize: 18,
+//                 fontWeight: FontWeight.bold,
+//               ),
+//             ),
+
+//             const SizedBox(height: 6),
+
+//             // Subtitle
+//             Text(
+//               "Code sent to ${widget.phone}",
+//               style: const TextStyle(
+//                 color: Colors.grey,
+//                 fontSize: 12,
+//               ),
+//             ),
+
+//             const SizedBox(height: 20),
+
+//             // OTP FIELD
+//             SizedBox(
+//               height: 60,
+//               child: Container(
+//                 decoration: BoxDecoration(
+//                   border: Border.all(
+//                     color: otpError != null
+//                         ? Colors.red
+//                         : Colors.grey[300]!,
+//                     width: 1.5,
+//                   ),
+//                   borderRadius:
+//                       BorderRadius.circular(10),
+//                 ),
+//                 child: Padding(
+//                   padding:
+//                       const EdgeInsets.symmetric(
+//                     horizontal: 4,
+//                     vertical: 4,
+//                   ),
+//                   child: LayoutBuilder(
+//                     builder:
+//                         (context, constraints) {
+//                       return PinCodeTextField(
+//                         appContext: context,
+//                         length: 6,
+//                         controller: otpController,
+//                         keyboardType:
+//                             TextInputType.number,
+//                         autoDismissKeyboard: true,
+//                         enablePinAutofill: true,
+//                         autoFocus: true,
+//                         textStyle: const TextStyle(
+//                           fontSize: 20,
+//                           fontWeight:
+//                               FontWeight.bold,
+//                         ),
+//                         mainAxisAlignment:
+//                             MainAxisAlignment
+//                                 .spaceEvenly,
+
+//                         pinTheme: PinTheme(
+//                           shape:
+//                               PinCodeFieldShape.box,
+//                           borderRadius:
+//                               BorderRadius.circular(
+//                                   8),
+//                           fieldHeight: 40,
+//                           fieldWidth:
+//                               (constraints.maxWidth -
+//                                       20) /
+//                                   6,
+
+//                           activeFillColor:
+//                               Colors.white,
+//                           selectedFillColor:
+//                               Colors.white,
+//                           inactiveFillColor:
+//                               Colors.grey[50],
+
+//                           activeColor:
+//                               otpError != null
+//                                   ? Colors.red
+//                                   : Colors.green,
+
+//                           selectedColor:
+//                               otpError != null
+//                                   ? Colors.red
+//                                   : Colors.blue,
+
+//                           inactiveColor:
+//                               otpError != null
+//                                   ? Colors.red
+//                                   : Colors
+//                                       .grey[300]!,
+
+//                           borderWidth: 1,
+//                         ),
+
+//                         // FIXED: Removed onCompleted
+//                         // to avoid duplicate API calls
+
+//                         onChanged: (value) {
+//                           if (otpError != null) {
+//                             setState(() {
+//                               otpError = null;
+//                             });
+//                           }
+
+//                           // FIXED: Reset flag
+//                           if (value.length < 6 &&
+//                               isOtpFilled) {
+//                             setState(() {
+//                               isOtpFilled = false;
+//                             });
+//                           }
+
+//                           if (value.length == 6 &&
+//                               !isVerifying &&
+//                               !isOtpFilled) {
+//                             setState(() {
+//                               isOtpFilled = true;
+//                             });
+
+//                             Future.delayed(
+//                               const Duration(
+//                                   milliseconds: 500),
+//                               () {
+//                                 if (mounted &&
+//                                     !isVerifying) {
+//                                   _verifyOtp();
+//                                 }
+//                               },
+//                             );
+//                           }
+//                         },
+//                       );
+//                     },
+//                   ),
+//                 ),
+//               ),
+//             ),
+
+//             // ERROR
+//             if (otpError != null)
+//               Padding(
+//                 padding:
+//                     const EdgeInsets.only(top: 8),
+//                 child: Row(
+//                   children: [
+//                     const Icon(
+//                       Icons.error_outline,
+//                       color: Colors.red,
+//                       size: 12,
+//                     ),
+
+//                     const SizedBox(width: 4),
+
+//                     Expanded(
+//                       child: Text(
+//                         otpError!,
+//                         style: const TextStyle(
+//                           color: Colors.red,
+//                           fontSize: 11,
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+
+//             const SizedBox(height: 20),
+
+//             // VERIFY BUTTON
+//             SizedBox(
+//               width: double.infinity,
+//               height: 44,
+//               child: ElevatedButton(
+//                 onPressed: isVerifying
+//                     ? null
+//                     : _verifyOtp,
+//                 style:
+//                     ElevatedButton.styleFrom(
+//                   backgroundColor:
+//                       Colors.green,
+//                   foregroundColor:
+//                       Colors.white,
+//                   shape:
+//                       RoundedRectangleBorder(
+//                     borderRadius:
+//                         BorderRadius.circular(
+//                             10),
+//                   ),
+//                 ),
+//                 child: isVerifying
+//                     ? const SizedBox(
+//                         width: 20,
+//                         height: 20,
+//                         child:
+//                             CircularProgressIndicator(
+//                           strokeWidth: 2,
+//                         ),
+//                       )
+//                     : const Text(
+//                         "Verify & Login",
+//                         style: TextStyle(
+//                           fontSize: 14,
+//                           fontWeight:
+//                               FontWeight.w600,
+//                         ),
+//                       ),
+//               ),
+//             ),
+
+//             const SizedBox(height: 12),
+
+//             // RESEND
+//             Row(
+//               mainAxisAlignment:
+//                   MainAxisAlignment.center,
+//               children: [
+//                 Text(
+//                   "Didn't receive code? ",
+//                   style: TextStyle(
+//                     color: Colors.grey[600],
+//                     fontSize: 12,
+//                   ),
+//                 ),
+
+//                 if (resendAfter > 0)
+//                   Text(
+//                     "Resend in ${resendAfter}s",
+//                     style: const TextStyle(
+//                       color: Colors.grey,
+//                       fontWeight:
+//                           FontWeight.w500,
+//                       fontSize: 12,
+//                     ),
+//                   )
+//                 else
+//                   GestureDetector(
+//                     onTap: isVerifying
+//                         ? null
+//                         : () {
+//                             Navigator.pop(context);
+//                             widget.onResendOtp();
+//                           },
+//                     child: const Text(
+//                       "Resend OTP",
+//                       style: TextStyle(
+//                         color: Colors.green,
+//                         fontWeight:
+//                             FontWeight.w600,
+//                         fontSize: 12,
+//                       ),
+//                     ),
+//                   ),
+//               ],
+//             ),
+
+//             const SizedBox(height: 4),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+
+
+
 import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -37,27 +571,17 @@ class _OtpVerificationState extends State<OtpVerification> {
   @override
   void initState() {
     super.initState();
-
-    // FIXED: Timer moved from build() to initState()
     _startResendTimer();
 
     log("=== OTP SCREEN INITIALIZED ===");
     log("Phone number received: ${widget.phone}");
     log("Backend OTP received: ${widget.backendOtp}");
 
-    if (widget.backendOtp != null &&
-        widget.backendOtp!.isNotEmpty) {
+    if (widget.backendOtp != null && widget.backendOtp!.isNotEmpty) {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted && otpController.text.isEmpty) {
           log("Auto-filling OTP: ${widget.backendOtp}");
-
           otpController.text = widget.backendOtp!;
-log("Backend OTP received: ${widget.backendOtp}");
-          // Future.delayed(const Duration(milliseconds: 800), () {
-          //   if (mounted && !isVerifying) {
-          //     _verifyOtp();
-          //   }
-          // });
         }
       });
     }
@@ -74,160 +598,195 @@ log("Backend OTP received: ${widget.backendOtp}");
     }
   }
 
-Future<void> _verifyOtp() async {
-  if (isVerifying) return;
+  Future<void> _verifyOtp() async {
+    if (isVerifying) return;
 
-  String otp = otpController.text.trim();
-  String phone = widget.phone;
-log("🔵 _verifyOtp() CALLED with OTP: $otp");  
-  log("=== STARTING OTP VERIFICATION ===");
-  log("Original phone: $phone");
+    String otp = otpController.text.trim();
+    String phone = widget.phone;
+    log("🔵 _verifyOtp() CALLED with OTP: $otp");
+    log("=== STARTING OTP VERIFICATION ===");
+    log("Original phone: $phone");
 
-  String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-  if (cleanPhone.length == 12 && cleanPhone.startsWith('91')) {
-    cleanPhone = cleanPhone.substring(2);
-  } else if (cleanPhone.length > 10) {
-    cleanPhone = cleanPhone.substring(cleanPhone.length - 10);
-  }
+    String cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanPhone.length == 12 && cleanPhone.startsWith('91')) {
+      cleanPhone = cleanPhone.substring(2);
+    } else if (cleanPhone.length > 10) {
+      cleanPhone = cleanPhone.substring(cleanPhone.length - 10);
+    }
 
-  log("Cleaned phone: $cleanPhone");
-  log("Entered OTP: $otp");
+    log("Cleaned phone: $cleanPhone");
+    log("Entered OTP: $otp");
 
-  if (otp.length != 6) {
+    if (otp.length != 6) {
+      setState(() {
+        otpError = "Please enter a valid 6-digit OTP";
+        isVerifying = false;
+      });
+      return;
+    }
+    if (cleanPhone.length != 10) {
+      setState(() {
+        otpError = "Invalid phone number";
+        isVerifying = false;
+      });
+      return;
+    }
+
     setState(() {
-      otpError = "Please enter a valid 6-digit OTP";
-      isVerifying = false;
+      isVerifying = true;
+      otpError = null;
     });
-    return;
-  }
-  if (cleanPhone.length != 10) {
-    setState(() {
-      otpError = "Invalid phone number";
-      isVerifying = false;
-    });
-    return;
-  }
 
-  setState(() {
-    isVerifying = true;
-    otpError = null;
-  });
+    try {
+      String? token = await FirebaseMsg().token;
 
-  try {
-    String? token = await FirebaseMsg().token;
+      final response = await widget.apiService.otpUser({
+        "phone": cleanPhone,
+        "otp": otp,
+        "FcmToken": token,
+      });
 
-    // final response = await widget.apiService.otpUser({
-    //   "phone": cleanPhone,
-    //   "otp": otp,
-    //   "FcmToken": token,
-    // });
-final response = await widget.apiService.otpUser({
-  "phone": cleanPhone,
-  "otp": otp,
-});
-    log("Response status: ${response.statusCode}");
-    log("Response data: ${response.data}");
+      log("Response status: ${response.statusCode}");
+      log("Response data: ${response.data}");
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      if (response.data["success"] == true && response.data["userDetails"] != null) {
-        final userDetails = response.data["userDetails"];
-        final userId = userDetails["id"]?.toString();          // "115"
-        final userPhone = userDetails["phone"]?.toString();
-        final donorId = userDetails["donorId"]?.toString();
-        final authToken = response.data["token"];            
-        
-  
-
-final prefs = await SharedPreferences.getInstance(); 
-
-// Save userId
-if (userId != null && userId.isNotEmpty) {
-  await prefs.setString('userId', userId);
-}
-
-// Save phone
-if (userPhone != null && userPhone.isNotEmpty) {
-  await prefs.setString('userPhone', userPhone);
-}
-
-// Save donorId
-if (donorId != null && donorId.isNotEmpty) {
-  await prefs.setString('bloodId', donorId);
-}
-
-// Save token (ONLY ONCE)
-if (authToken != null &&
-    authToken is String &&
-    authToken.isNotEmpty) {
-  await prefs.setString('authToken', authToken);
-  log("✅ Saved authToken: ${authToken.substring(0, 20)}...");
-} else {
-  log("⚠️ No token in response");
-}
-// Save refresh token
-// if (refreshToken != null &&
-//     refreshToken is String &&
-//     refreshToken.isNotEmpty) {
-
-//   await prefs.setString('refreshToken', refreshToken);
-
-//   log("✅ Saved refreshToken");
-// } else {
-//   log("⚠️ No refresh token in response");
-// }
-final refreshToken = response.data["refreshToken"];   // Get from backend
-if (refreshToken != null && refreshToken.isNotEmpty) {
-  await prefs.setString('refreshToken', refreshToken);
-}log("FULL RESPONSE DATA: ${response.data}");
-final savedToken = prefs.getString('authToken');
-log("🔐 Verified saved token: ${savedToken != null ? 'Exists' : 'NULL'}");
-
-
-        if (mounted) {
-          showTopSnackBar(context, "Login successful!");
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data["success"] == true && response.data["userDetails"] != null) {
+          final userDetails = response.data["userDetails"];
           
-          // Navigate to main screen (your bottom navigation)
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const Bottomnav()),
-            (route) => false,
-            
-          );
+          // 👇 LOG FULL USER DETAILS
+          // log("📊 Full userDetails: $userDetails");
+          // log("📊 userDetails keys: ${userDetails.keys}");
+           log("🔍 All userDetails keys: ${userDetails.keys}");
+  log("🔍 id: ${userDetails["id"]}");
+  log("🔍 patientId: ${userDetails["patientId"]}");
+  log("🔍 userId: ${userDetails["userId"]}");
+  log("🔍 _id: ${userDetails["_id"]}");
+  
+          // 👇 TRY TO GET CORRECT USER ID
+          // Priority: patientId > id > userId > _id
+          String userId = userDetails["patientId"]?.toString() ?? 
+                          userDetails["id"]?.toString() ??
+                          userDetails["userId"]?.toString() ??
+                          userDetails["_id"]?.toString() ??
+                          '';
+            log("✅ Selected userId: $userId");
+          // 👇 If userId is empty, try to get from nested data
+          if (userId.isEmpty) {
+            // Check if patientId is inside a nested object
+            if (userDetails["patient"] != null && userDetails["patient"] is Map) {
+              userId = userDetails["patient"]["id"]?.toString() ?? '';
+            }
+            if (userId.isEmpty && userDetails["user"] != null && userDetails["user"] is Map) {
+              userId = userDetails["user"]["id"]?.toString() ?? '';
+            }
+          }
+          
+          log("🔍 id from response: ${userDetails["id"]}");
+          log("🔍 patientId from response: ${userDetails["patientId"]}");
+          log("🔍 userId from response: ${userDetails["userId"]}");
+          log("✅ FINAL SELECTED userId: $userId");
+          
+          final userPhone = userDetails["phone"]?.toString();
+          final donorId = userDetails["donorId"]?.toString();
+          final authToken = response.data["token"];
+          
+          String userType = userDetails["userType"]?.toString() ?? 'patient';
+          String userName = userDetails["name"]?.toString() ?? 'User';
+          String userEmail = userDetails["email"]?.toString() ?? '';
+
+          log("👤 User Type: $userType");
+          log("👤 User Name: $userName");
+
           final prefs = await SharedPreferences.getInstance();
-final ambulanceId = prefs.getString('ambulanceId') ?? '';
+
+          // ✅ SAVE USER ID
+          if (userId.isNotEmpty) {
+            await prefs.setString('userId', userId);
+            log("✅ Saved userId: $userId");
+          } else {
+            log("⚠️ WARNING: userId is empty! Using phone as fallback");
+            await prefs.setString('userId', cleanPhone);
+          }
+
+          // Save phone
+          if (userPhone != null && userPhone.isNotEmpty) {
+            await prefs.setString('userPhone', userPhone);
+          }
+          await prefs.setString('phone', cleanPhone);
+
+          // Save donorId
+          if (donorId != null && donorId.isNotEmpty) {
+            await prefs.setString('bloodId', donorId);
+          }
+
+          // Save user details
+          await prefs.setString('userType', userType);
+          await prefs.setString('userName', userName);
+          await prefs.setString('userEmail', userEmail);
+          await prefs.setBool('isLoggedIn', true);
+
+          // Save token
+          if (authToken != null && authToken is String && authToken.isNotEmpty) {
+            await prefs.setString('authToken', authToken);
+            log("✅ Saved authToken");
+          } else {
+            log("⚠️ No token in response");
+          }
+
+          // Save refresh token
+          final refreshToken = response.data["refreshToken"];
+          if (refreshToken != null && refreshToken.isNotEmpty) {
+            await prefs.setString('refreshToken', refreshToken);
+          }
+
+          // 👇 VERIFY ALL DATA IS SAVED
+          log("=== ✅ VERIFYING SAVED DATA ===");
+          log("Saved userId: ${prefs.getString('userId')}");
+          log("Saved userType: ${prefs.getString('userType')}");
+          log("Saved userName: ${prefs.getString('userName')}");
+          log("Saved userEmail: ${prefs.getString('userEmail')}");
+          log("Saved phone: ${prefs.getString('phone')}");
+          log("IsLoggedIn: ${prefs.getBool('isLoggedIn')}");
+          log("Saved authToken: ${prefs.getString('authToken') != null ? '✅ Exists' : '❌ NULL'}");
+
+          if (mounted) {
+            showTopSnackBar(context, "Login successful!");
+
+            // Navigate to main screen
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const Bottomnav()),
+              (route) => false,
+            );
+          }
+        } else {
+          setState(() {
+            otpError = response.data["message"] ?? "Invalid OTP. Please try again.";
+            isVerifying = false;
+          });
         }
       } else {
         setState(() {
-          otpError = response.data["message"] ?? "Invalid OTP. Please try again.";
+          otpError = response.data["message"] ?? "Verification failed";
           isVerifying = false;
         });
       }
-    } else {
+    } on DioException catch (e) {
+      log("❌ STATUS CODE: ${e.response?.statusCode}");
+      log("❌ RESPONSE DATA: ${e.response?.data}");
+
       setState(() {
-        otpError = response.data["message"] ?? "Verification failed";
+        otpError = e.response?.data["message"] ?? "Verification failed";
+        isVerifying = false;
+      });
+    } catch (e) {
+      log("❌ Error: $e");
+      setState(() {
+        otpError = "Something went wrong. Please try again.";
         isVerifying = false;
       });
     }
-    } on DioException catch (e) {
-  log("❌ STATUS CODE: ${e.response?.statusCode}");
-  log("❌ RESPONSE DATA: ${e.response?.data}");
-
-  setState(() {
-    otpError =
-        e.response?.data["message"] ??
-        "Verification failed";
-
-    isVerifying = false;
-  });
-}
-  // } catch (e) {
-  //   log("Error: $e");
-  //   setState(() {
-  //     otpError = "Something went wrong. Please try again.";
-  //     isVerifying = false;
-  //   });
-  // }
-}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -286,82 +845,44 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
               child: Container(
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color: otpError != null
-                        ? Colors.red
-                        : Colors.grey[300]!,
+                    color: otpError != null ? Colors.red : Colors.grey[300]!,
                     width: 1.5,
                   ),
-                  borderRadius:
-                      BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 4,
                     vertical: 4,
                   ),
                   child: LayoutBuilder(
-                    builder:
-                        (context, constraints) {
+                    builder: (context, constraints) {
                       return PinCodeTextField(
                         appContext: context,
                         length: 6,
                         controller: otpController,
-                        keyboardType:
-                            TextInputType.number,
+                        keyboardType: TextInputType.number,
                         autoDismissKeyboard: true,
                         enablePinAutofill: true,
                         autoFocus: true,
                         textStyle: const TextStyle(
                           fontSize: 20,
-                          fontWeight:
-                              FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                         ),
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .spaceEvenly,
-
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         pinTheme: PinTheme(
-                          shape:
-                              PinCodeFieldShape.box,
-                          borderRadius:
-                              BorderRadius.circular(
-                                  8),
+                          shape: PinCodeFieldShape.box,
+                          borderRadius: BorderRadius.circular(8),
                           fieldHeight: 40,
-                          fieldWidth:
-                              (constraints.maxWidth -
-                                      20) /
-                                  6,
-
-                          activeFillColor:
-                              Colors.white,
-                          selectedFillColor:
-                              Colors.white,
-                          inactiveFillColor:
-                              Colors.grey[50],
-
-                          activeColor:
-                              otpError != null
-                                  ? Colors.red
-                                  : Colors.green,
-
-                          selectedColor:
-                              otpError != null
-                                  ? Colors.red
-                                  : Colors.blue,
-
-                          inactiveColor:
-                              otpError != null
-                                  ? Colors.red
-                                  : Colors
-                                      .grey[300]!,
-
+                          fieldWidth: (constraints.maxWidth - 20) / 6,
+                          activeFillColor: Colors.white,
+                          selectedFillColor: Colors.white,
+                          inactiveFillColor: Colors.grey[50],
+                          activeColor: otpError != null ? Colors.red : Colors.green,
+                          selectedColor: otpError != null ? Colors.red : Colors.blue,
+                          inactiveColor: otpError != null ? Colors.red : Colors.grey[300]!,
                           borderWidth: 1,
                         ),
-
-                        // FIXED: Removed onCompleted
-                        // to avoid duplicate API calls
-
                         onChanged: (value) {
                           if (otpError != null) {
                             setState(() {
@@ -369,27 +890,21 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
                             });
                           }
 
-                          // FIXED: Reset flag
-                          if (value.length < 6 &&
-                              isOtpFilled) {
+                          if (value.length < 6 && isOtpFilled) {
                             setState(() {
                               isOtpFilled = false;
                             });
                           }
 
-                          if (value.length == 6 &&
-                              !isVerifying &&
-                              !isOtpFilled) {
+                          if (value.length == 6 && !isVerifying && !isOtpFilled) {
                             setState(() {
                               isOtpFilled = true;
                             });
 
                             Future.delayed(
-                              const Duration(
-                                  milliseconds: 500),
+                              const Duration(milliseconds: 500),
                               () {
-                                if (mounted &&
-                                    !isVerifying) {
+                                if (mounted && !isVerifying) {
                                   _verifyOtp();
                                 }
                               },
@@ -406,8 +921,7 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
             // ERROR
             if (otpError != null)
               Padding(
-                padding:
-                    const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: 8),
                 child: Row(
                   children: [
                     const Icon(
@@ -415,9 +929,7 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
                       color: Colors.red,
                       size: 12,
                     ),
-
                     const SizedBox(width: 4),
-
                     Expanded(
                       child: Text(
                         otpError!,
@@ -438,28 +950,19 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
               width: double.infinity,
               height: 44,
               child: ElevatedButton(
-                onPressed: isVerifying
-                    ? null
-                    : _verifyOtp,
-                style:
-                    ElevatedButton.styleFrom(
-                  backgroundColor:
-                      Colors.green,
-                  foregroundColor:
-                      Colors.white,
-                  shape:
-                      RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(
-                            10),
+                onPressed: isVerifying ? null : _verifyOtp,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 child: isVerifying
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child:
-                            CircularProgressIndicator(
+                        child: CircularProgressIndicator(
                           strokeWidth: 2,
                         ),
                       )
@@ -467,8 +970,7 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
                         "Verify & Login",
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight:
-                              FontWeight.w600,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
               ),
@@ -478,8 +980,7 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
 
             // RESEND
             Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   "Didn't receive code? ",
@@ -488,14 +989,12 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
                     fontSize: 12,
                   ),
                 ),
-
                 if (resendAfter > 0)
                   Text(
                     "Resend in ${resendAfter}s",
                     style: const TextStyle(
                       color: Colors.grey,
-                      fontWeight:
-                          FontWeight.w500,
+                      fontWeight: FontWeight.w500,
                       fontSize: 12,
                     ),
                   )
@@ -511,8 +1010,7 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
                       "Resend OTP",
                       style: TextStyle(
                         color: Colors.green,
-                        fontWeight:
-                            FontWeight.w600,
+                        fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
                     ),
