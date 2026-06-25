@@ -364,21 +364,58 @@ Future<void> _submit() async {
   // ----------------------------
   // ✅ PAYLOAD
   // ----------------------------
-  final payload = {
-    "name": name,
-    "phone": phone,
-    "dateOfBirth": formState.dateOfBirth,
-    "bloodGroup": formState.bloodGroup,
-    "address": {
-      "country":
-          formState.selectedCountry?['name'] ?? _countryController.text,
-      "state": formState.selectedState?['name'] ?? _stateController.text,
-      "district": districtValue,
-      "place": place,
-      "pincode": int.tryParse(pincode),
-    },
-    "userId": userId,
-  };
+  final parsedPin = int.tryParse(pincode);
+if (parsedPin == null) {
+  showTopSnackBar(context, "Invalid pincode", isError: true);
+  return;
+}
+
+final country = _countryController.text.trim();
+final state = _stateController.text.trim();
+final district = _districtController.text.trim();
+
+if (country.isEmpty) {
+  showTopSnackBar(context, "Country is required", isError: true);
+  return;
+}
+
+final address = {
+  "place": place,
+  "country": country,
+  "pincode": parsedPin,
+};
+
+if (state.isNotEmpty) {
+  address["state"] = state;
+}
+
+if (district.isNotEmpty) {
+  address["district"] = district;
+}
+
+final payload = {
+  "name": name,
+  "phone": phone,
+  "dateOfBirth": formState.dateOfBirth,
+  "bloodGroup": formState.bloodGroup,
+  "address": address,
+  "userId": userId,
+};
+  // final payload = {
+  //   "name": name,
+  //   "phone": phone,
+  //   "dateOfBirth": formState.dateOfBirth,
+  //   "bloodGroup": formState.bloodGroup,
+  //   "address": {
+  //     "country":
+  //         formState.selectedCountry?['name'] ?? _countryController.text,
+  //     "state": formState.selectedState?['name'] ?? _stateController.text,
+  //     "district": districtValue,
+  //     "place": place,
+  //     "pincode": int.tryParse(pincode),
+  //   },
+  //   "userId": userId,
+  // };
 
   log("📦 Payload: $payload");
 
