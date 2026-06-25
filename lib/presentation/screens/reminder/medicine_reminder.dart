@@ -4,6 +4,7 @@ import 'package:hosta/alarm.service.dart';
 import 'package:hosta/providers/reminder_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+
 class ReminderScreen extends ConsumerStatefulWidget {
   const ReminderScreen({super.key});
 
@@ -12,6 +13,8 @@ class ReminderScreen extends ConsumerStatefulWidget {
 }
 
 class _ReminderScreenState extends ConsumerState<ReminderScreen> {
+  late Future<void> _permissionFuture;
+
   Future<void> requestPermissions() async {
     if (await Permission.notification.isDenied) {
       await Permission.notification.request();
@@ -24,10 +27,11 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
     @override
   void initState() {
     super.initState();
-    requestPermissions();
+   _permissionFuture = requestPermissions();
   }
 
   void _goBack() => Navigator.of(context).pop();
+
 
   Future<void> pickTime() async {
     final picked = await showTimePicker(
@@ -113,6 +117,14 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
     }
 
     try {
+//  final reminder = state.toMedicineReminder();
+//  final soundPath = state.selectedSoundPath;
+  final selectedSoundId = state.selectedSoundId;
+      final alarmSounds = ref.read(alarmSoundsProvider);
+      final selectedSound = alarmSounds.firstWhere(
+        (sound) => sound.id == selectedSoundId,
+        orElse: () => alarmSounds.first,
+      );
       for (int i = 0; i < selectedTimes.length; i++) {
         final alarmId =
             (DateTime.now().millisecondsSinceEpoch ~/ 1000) % 2147483647 + i;
@@ -122,10 +134,12 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
           medicineName: medicineName,
           hour: selectedTimes[i].hour,
           minute: selectedTimes[i].minute,
+           soundPath: selectedSound.path,
         );
       }
 
       print("✅ ALARM SET SUCCESS");
+       //print("Reminder saved: ${reminder.toJson()}");
 
       if (!mounted) return;
 
@@ -152,12 +166,63 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
       }
     }
   }
+    void _showSoundSelectionDialog() {
+    final alarmSounds = ref.read(alarmSoundsProvider);
+    final currentSoundId = ref.read(reminderStateProvider).selectedSoundId;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Alarm Sound'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: alarmSounds.length,
+            itemBuilder: (context, index) {
+              final sound = alarmSounds[index];
+              final isSelected = sound.id == currentSoundId;
+              
+              return ListTile(
+                leading: Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: isSelected ? Colors.green : Colors.grey,
+                ),
+                title: Text(sound.name),
+                trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+                onTap: () {
+                  ref.read(reminderStateProvider.notifier).setSelectedSound(sound.id,sound.path);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Selected: ${sound.name}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(reminderStateProvider);
     final weekDays = ref.watch(weekDaysProvider);
-    
+      final alarmSounds = ref.watch(alarmSoundsProvider);
+    final currentSound = alarmSounds.firstWhere(
+      (sound) => sound.id == state.selectedSoundId,
+      orElse: () => alarmSounds.first,
+    );
     // Get screen dimensions
     final screenSize = MediaQuery.of(context).size;
     final screenHeight = screenSize.height;
@@ -180,7 +245,7 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
       return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text('Registering medications'),
+        title: const Text('Medicine Reminder'),
         backgroundColor: Colors.green,
         elevation: 0,
         foregroundColor: Colors.white,
@@ -291,8 +356,64 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
                   );
                 }).toList(),
               ),
+               _card(
+                padding: cardPadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Alarm Sound',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: fontSizeBody,
+                      ),
+                    ),
+                      SizedBox(height: spacingSmall),
+                    GestureDetector(
+                      onTap: _showSoundSelectionDialog,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.03,
+                          vertical: screenHeight * 0.015,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.music_note,
+                                  color: Colors.green,
+                                  size: fontSizeBody * 1.2,
+                                ),
+                                  SizedBox(width: screenWidth * 0.02),
+                                Text(
+                                  currentSound.name,
+                                  style: TextStyle(
+                                    fontSize: fontSizeBody,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.grey,
+                              size: fontSizeBody * 1.5,
+                            ),
+                          ],
+                        ),
+                         ),
+                    ),
+                  ],
+                ),
+              ),
               SizedBox(height: spacingMedium),
-
               // ── Days of week ──
               _card(
                 padding: cardPadding,

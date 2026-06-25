@@ -6,7 +6,8 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:mailer/mailer.dart';
+import 'package:mailer/smtp_server/gmail.dart';
 import 'token_manager.dart';
 
 class ApiService {
@@ -23,7 +24,10 @@ class ApiService {
   bool _initialized = false;
   Future<String?>? _refreshFuture;
      
-  final String baseUrl = "https://zorrowtek.in";
+  final String baseUrl =
+  // "http://35.174.10.32";
+  "https://zorrowtek.in";
+
 
   // ---------------- INIT ----------------
   Future<void> init() async {
@@ -116,7 +120,10 @@ log("${dio.options.baseUrl}");
   }
 Future<String?> _getRefreshTokenFromCookies() async {
   final cookies = await cookieJar.loadForRequest(
-    Uri.parse("https://zorrowtek.in"),
+    Uri.parse(
+    // "http://35.174.10.32"
+      "https://zorrowtek.in"
+      ),
     
   );
 
@@ -170,9 +177,115 @@ log("COOKIE COUNT => ${cookies.length}");
     );
   }
 
+Future<Response> getDoctorDetails(int doctorId) async {
+  log("📡 Fetching doctor details for ID: $doctorId");
+  try {
+    final response = await dio.get('/api/doctor/$doctorId');
+    log("✅ Doctor details response: ${response.data}");
+    return response;
+  } catch (e) {
+    log("❌ Error fetching doctor $doctorId: $e");
+    rethrow;
+  }
+}
+//----------------------------PatientDetails----------------
+// Future<Response> getPatientDetails(String patientId) async {
+//   try {
+//     final response = await dio.get('/api/patients/$patientId');
+//     return response;
+//   } catch (e) {
+//     throw Exception('Failed to load patient details: $e');
+//   }
+// }
+// ---------------- LAB REPORT ----------------
 
+ Future<String?> _getToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      log('Error getting token: $e');
+      return null;
+    }
+  }
+  Future<String?> getToken() async {
+    return await _getToken();
+  }
+ Future<dynamic> getLabReports({
+    String? patientId,
+    String? date,
+    int page = 1,
+    int limit = 100,
+  }) async {
+    try {
+      final queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+       if (patientId != null && patientId.isNotEmpty) {
+        queryParams['patientId'] = patientId;
+      }
+      if (date != null && date.isNotEmpty) {
+        queryParams['date'] = date;
+      }
+      
+      log('📡 API Call: getLabReports with params: $queryParams');
+      
+      final response = await dio.get(
+        '/api/lab-results', // Adjust endpoint as needed
+        queryParameters: queryParams,
+         );
+      
+      log('📊 API Response Status: ${response.statusCode}');
+      return response;
+    } on DioException catch (e) {
+      log('❌ Error fetching lab reports: ${e.message}');
+      log('❌ Response data: ${e.response?.data}');
+      rethrow;
+    }
+  }
 
-  // ---------------- NOTIFICATIONS ----------------
+//    Future<dynamic> deleteLabReport(String reportId) async {
+//     try {
+//       final response = await dio.delete(
+//         '/api/lab-reports/$reportId',
+//       );
+//       return response;
+//     } on DioException catch (e) {
+//       log('❌ Error deleting lab report: ${e.message}');
+//       rethrow;
+//     }
+//   }
+// }
+// Future<Response> getLabReports({
+//   String? patientId,
+//   String? hospitalId,
+//   String? doctorId,
+//   String? status,
+//   String? date, // Format: YYYY-MM-DD
+//   int page = 1,
+//   int limit = 10,
+// }) async {
+//   final queryParams = <String, dynamic>{};
+  
+//   if (patientId != null) queryParams['patientId'] = patientId;
+//   if (hospitalId != null) queryParams['hospitalId'] = hospitalId;
+//   if (doctorId != null) queryParams['doctorId'] = doctorId;
+//   if (status != null) queryParams['status'] = status;
+//   if (date != null) queryParams['date'] = date;
+  
+//   queryParams['page'] = page;
+//   queryParams['limit'] = limit;
+  
+//   log("📡 Fetching lab reports with params: $queryParams");
+//   return await dio.get('/api/lab-results', queryParameters: queryParams);
+// }
+
+// // Also add method to get a single lab report by ID
+// Future<Response> getLabReportById(String id) async {
+//   return await dio.get('/api/lab-results/$id');
+// }
+  // ----------------------------------------- NOTIFICATIONS --------------------------------------------------------------
   
 Future<Response> getNotifications({int page = 1, int limit = 10}) async {
   return await dio.get('/api/notification?page=$page&limit=$limit');
@@ -184,6 +297,7 @@ Future<Response> getNotificationsByRole(String role, String id, {int page = 1, i
   Future<Response> markNotificationAsRead(String role, String userId, String notificationId) async {
     return await dio.patch('/api/notification/read/$role/$userId/$notificationId');
   }
+// mark notification as unread  
 
 //  Mark all as read
 Future<Response> markAllAsRead(String role, String userId) async {
@@ -194,6 +308,7 @@ Future<Response> markAllAsRead(String role, String userId) async {
   Future<Response> deleteNotification(String notificationId) async {
     return await dio.delete('/api/notification/$notificationId');
   }
+  //----------------------------------------------------------------------------------------------------------
   //Medicine Reminder CREATE
   Future<Response> createMedicineReminder(Map<String, dynamic> data) async {
     return await dio.post('/api/medicinereminders', data: data);
@@ -357,7 +472,10 @@ Future<Response> loginUser(Map<String, dynamic> data) async {
   );
 
 final cookies = await cookieJar.loadForRequest(
-  Uri.parse("https://zorrowtek.in"),
+  Uri.parse(
+    //"http://35.174.10.32"
+    "https://zorrowtek.in"
+    ),
 );
 
 for (final c in cookies) {
@@ -486,28 +604,28 @@ for (final c in cookies) {
     return await dio.post('/api/ambulance', data: data);
   }
 
-  // GET Notifications
+//   // GET Notifications
 
 // Future<Response> getAllNotifications(String id) async {
 //   return await dio.get('/api/notifications/user/all/$id');
 // }
-  Future<Response> getAllNotificationRead(String id) async {
-    return await dio.get('/api/notifications/user/read/$id');
-  }
+//   Future<Response> getAllNotificationRead(String id) async {
+//     return await dio.get('/api/notifications/user/read/$id');
+//   }
 
-  Future<Response> getAllNotificationUnRead(String id) async {
-    return await dio.get('/api/notifications/user/no-read/$id');
-  }
+//   Future<Response> getAllNotificationUnRead(String id) async {
+//     return await dio.get('/api/notifications/user/no-read/$id');
+//   }
 
-  // PATCH read all notifications
-  Future<Response> allReadNotifications(String id) async {
-    return await dio.patch('/api/notifications/user/read-all/$id');
-  }
+//   // PATCH read all notifications
+//   Future<Response> allReadNotifications(String id) async {
+//     return await dio.patch('/api/notifications/user/read-all/$id');
+//   }
 
-  // PATCH single notification
-  Future<Response> aReadNotification(String id) async {
-    return await dio.patch('/api/notifications/user/$id');
-  }
+//   // PATCH single notification
+//   Future<Response> aReadNotification(String id) async {
+//     return await dio.patch('/api/notifications/user/$id');
+//   }
 
 
 
@@ -597,10 +715,29 @@ log("date=$date");
   // Future<Response> getFilter(String filter) async {
   //   return await _dio.get('/api/hospital/filter/$filter');
   // }
+//=================== email============================================
+  // Future<Response> sendEmail(Map<String, dynamic> data) async {
+  //   return await dio.post('/api/email', data: data);
+  // }
+//-------------------------------------------------
+ Future<Response> sendEmail(Map<String, dynamic> emailData) async {
+    try {
+      final response = await dio.post(
+        '/api/email-enquiry', // Your endpoint
+        data: emailData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response;
+    } on DioException catch (e) {
+      // Log the error
+      log('Dio error: ${e.message}');
+      log('Response data: ${e.response?.data}');
+      rethrow;}}
 
-  Future<Response> sendEmail(Map<String, dynamic> data) async {
-    return await dio.post('/api/email', data: data);
-  }
 
   //forgot password
   // SEND RESET PASSWORD OTP
@@ -740,6 +877,17 @@ log("date=$date");
       rethrow;
     }
   }
+
+ //------------------------patients------------------
+  // Future<Response> getPatients({
+  //   required int hospitalId,
+  //   required int userId,
+  // }) async {
+  //   return await dio.get(
+  //     '/api/patients',
+  //     queryParameters: {'hospitalId': hospitalId, 'userId': userId},
+  //   );
+  // }
 Future<Response> getPatients({
   required int userId,
   int? hospitalId,
@@ -752,8 +900,6 @@ Future<Response> getPatients({
     },
   );
 }
- 
- 
 Future<Response> getCategories({
   String? searchQuery,
   int page = 1,

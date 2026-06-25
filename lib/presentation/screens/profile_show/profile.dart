@@ -6,6 +6,7 @@ import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/blood_details.dart';
 import 'package:hosta/presentation/screens/contact/contact.dart';
 import 'package:hosta/presentation/screens/lab/lab.dart';
+import 'package:hosta/presentation/screens/patient.dart';
 import 'package:hosta/presentation/screens/prescription.dart';
 import 'package:hosta/presentation/screens/profile-edit/profile.dart';
 import 'package:hosta/presentation/screens/privacy/privacy.dart';
@@ -669,6 +670,62 @@ if (result == true) {
                                       },
                                     ),
                                     const Divider(height: 0),
+                                       
+                                     _buildProfileOption(
+                                      icon: Icons.person_add,
+                                      title: 'Patient details',
+                                      subtitle: 'Patient information',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: () async {
+                                        final prefs =
+                                            await SharedPreferences.getInstance();
+                                        String userId =
+                                            prefs.getString('userId') ?? '';
+
+                                        if (userId.isEmpty) {
+                                           showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
+                                              content: Text(
+                                                "Please login first",
+                                                style: TextStyle(fontSize: screenWidth * 0.04),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            Signin(),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => const PatientDetailsScreen(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                      const Divider(height: 0),
                                     //   _buildProfileOption(
                                     //   icon: Icons.history_outlined,
                                     //   title: 'My History',
