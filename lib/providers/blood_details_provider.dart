@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/services/api_service.dart';
@@ -65,14 +67,20 @@ Future<void> fetchDonor(String userId) async {
   /// DELETE DONOR
 Future<void> deleteDonor() async {
   final donorId = state?['id']?.toString();
+   log("DONOR ID => $donorId");
   if (donorId == null) return;
 
   try {
     final res = await apiService.deleteDonor(donorId);
-
+   log("DELETE STATUS => ${res.statusCode}");
+    log("DELETE RESPONSE => ${res.data}");
     if (res.statusCode == 200 && res.data['success'] == true) {
-      print("DELETE SUCCESS");
+      log("DELETE SUCCESS");
+log("STATE BEFORE => $state");
 
+state = null;
+
+log("STATE AFTER => $state");
       // ✅ REMOVE LOCAL bloodId
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('bloodId');
@@ -81,11 +89,12 @@ Future<void> deleteDonor() async {
       state = null;
 
     } else {
-      print("DELETE FAILED => ${res.data}");
+      log("DELETE FAILED => ${res.data}");
     }
   } catch (e) {
-    print("DELETE ERROR => $e");
+    log("DELETE ERROR => $e");
   }
+  
 }
 
   /// UPDATE DONOR (returns bool)

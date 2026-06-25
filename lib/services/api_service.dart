@@ -740,18 +740,20 @@ log("date=$date");
       rethrow;
     }
   }
-
+Future<Response> getPatients({
+  required int userId,
+  int? hospitalId,
+}) async {
+  return await dio.get(
+    '/api/patients',
+    queryParameters: {
+      'userId': userId,
+      if (hospitalId != null) 'hospitalId': hospitalId,
+    },
+  );
+}
  
-  Future<Response> getPatients({
-    required int hospitalId,
-    required int userId,
-  }) async {
-    return await dio.get(
-      '/api/patients',
-      queryParameters: {'hospitalId': hospitalId, 'userId': userId},
-    );
-  }
-
+ 
 Future<Response> getCategories({
   String? searchQuery,
   int page = 1,
