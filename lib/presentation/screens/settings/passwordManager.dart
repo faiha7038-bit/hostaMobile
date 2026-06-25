@@ -124,10 +124,11 @@ Future<void> _updatePassword() async {
   setState(() => _isLoading = true);
 
   try {
-    final passwordData = {
-      "currentPassword": _currentPasswordController.text.trim(),
-      "newPassword": _newPasswordController.text.trim(),
-    };
+   final passwordData = {
+  "currentPassword": _currentPasswordController.text.trim(),
+  "newPassword": _newPasswordController.text.trim(),
+  "confirmPassword": _confirmPasswordController.text.trim(),
+};
 
     final response = await _apiService.changePassword(passwordData);
 
@@ -821,13 +822,7 @@ String? otpError;
                   return;
                 }
 
-                // setState(() => isResetting = true);
                 
-                // // Call your reset password API here
-                // await Future.delayed(const Duration(seconds: 1));
-                
-                // setState(() => isResetting = false);
-                // Navigator.pop(dialogContext); // Close reset dialog
                 setState(() => isResetting = true);
 
 try {
@@ -835,11 +830,9 @@ try {
   "email": email,
   "otp": _verifiedOtp,
   "newPassword": newPasswordController.text.trim(),
+   "confirmPassword": confirmPasswordController.text.trim(),
 });
-  // final response = await _apiService.resetForgotPassword({
-  //   "email": email,
-  //   "newPassword": newPasswordController.text.trim(),
-  // });
+ 
 
   setState(() => isResetting = false);
 

@@ -1,5 +1,4 @@
 import 'dart:developer';
-import 'package:hosta/services/socket_controller.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class SocketService {
@@ -9,11 +8,11 @@ class SocketService {
   SocketService._internal();
 
   late IO.Socket socket;
-SocketEventRouter? router;
+// SocketEventRouter? router;
   final Map<String, List<Function(dynamic)>> _listeners = {};
-void setRouter(SocketEventRouter r) {
-  router = r;
-}
+// void setRouter(SocketEventRouter r) {
+//   router = r;
+// }
   void connect(String token) {
     socket = IO.io(
       "https://zorrowtek.in",
@@ -31,7 +30,7 @@ void setRouter(SocketEventRouter r) {
    socket.onAny((event, data) {
   log("📩 EVENT => $event");
 
- router?.handle(event, data);
+//  router?.handle(event, data);
 
   if (_listeners.containsKey(event)) {
     for (final callback in _listeners[event]!) {

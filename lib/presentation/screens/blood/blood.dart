@@ -87,29 +87,29 @@ _initializeConnectivity();
   _bootstrap();
 
   _loadDonationStatus();
-//_setupSocketListener();
+_setupSocketListener();
 
 }
-// void _setupSocketListener() {
-//   if (_listenerAdded) return;
+void _setupSocketListener() {
+  if (_listenerAdded) return;
 
-//   _listenerAdded = true;
+  _listenerAdded = true;
 
-//   SocketService().addListener(
-//     [
-//       'DONOR_REGISTERED',
-//       'DONOR_UPDATED',
-//       'DONOR_DELETED',
-//     ],
-//     (data) async {
-//       if (!mounted) return;
+  SocketService().addListener(
+    [
+      'DONOR_REGISTERED',
+      'DONOR_UPDATED',
+      'DONOR_DELETED',
+    ],
+    (data) async {
+      if (!mounted) return;
 
-//       log("🩸 DONOR EVENT => $data");
+      log("🩸 DONOR EVENT => $data");
 
-//       await _fetchDonors();
-//     },
-//   );
-// }
+      await _fetchDonors();
+    },
+  );
+}
 
 Future<void> _initializeConnectivity() async {
 

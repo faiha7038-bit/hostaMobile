@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
-import 'package:hosta/providers/socket_router_provider.dart';
 import 'package:hosta/services/api_service.dart';
 import 'package:hosta/services/socket-service.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
@@ -163,18 +162,15 @@ if (authToken != null &&
     authToken is String &&
     authToken.isNotEmpty) {
   await prefs.setString('authToken', authToken);
-  log("✅ Saved authToken: ${authToken.substring(0, 20)}...");
+
+  log("✅ Saved authToken");
+
+  final socket = SocketService();
+  socket.connect(authToken);
+
+  log("🔥 SOCKET CONNECTED");
 } else {
   log("⚠️ No token in response");
-  log("🔥 BEFORE SOCKET CONNECT");
-   //SocketService().connect(authToken);
- final socket = SocketService();
-final router = ref.read(socketRouterProvider);
-socket.setRouter(router);
-  socket.connect(authToken);
-  
-log("🔥 AFTER SOCKET CONNECT");
-  log("🔌 Socket connect called");
 }
 
 final refreshToken = response.data["refreshToken"];   // Get from backend

@@ -3,7 +3,6 @@ import 'dart:core';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hosta/services/socket-service.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
@@ -181,23 +180,7 @@ void updateBookingStatus(String bookingId, String newStatus) {
 Future<void> initializeData() async {
   await loadUserIdAndFetchBookings();
 
-  // if (_listenerAdded) return;
 
-  // _listenerAdded = true;
-
-  // SocketService().addListener(
-  //   [
-  //     'BOOKING_REGISTERED',
-  //     'BOOKING_UPDATED',
-  //     'BOOKING_CANCELLED',
-  //     'BOOKING_ACCEPTED',
-  //     'BOOKING_COMPLETED',
-  //   ],
-  //   (data) {
-  //     log("🔄 Booking Event Received");
-  //     fetchBookings();
-  //   },
-  // );
 }
 
 
@@ -393,10 +376,9 @@ await _apiService.updateBooking(
   }
 }
 
-  void refreshBookings() {
-    fetchBookings();
-   
-    }
+  Future<void> refreshBookings() async {
+  await fetchBookings();
+}
   }
 
  

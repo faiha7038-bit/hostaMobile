@@ -41,23 +41,23 @@ void initState() {
   super.initState();
 
   _fetchHospitals();
-// SocketService().addListener(
-//   [
-//     'HOSPITAL_REGISTERED',
-//     'HOSPITAL_UPDATED',
-//     'HOSPITAL_BLACKLISTED',
-//   ],
-//   (_) {
-//     log("🔄 Refetch Hospitals");
-//     setState(() {
-//       hospitals.clear();
-//       currentPage = 1;
-//       hasNextPage = true;
-//     });
+SocketService().addListener(
+  [
+    'HOSPITAL_REGISTERED',
+    'HOSPITAL_UPDATED',
+    'HOSPITAL_BLACKLISTED',
+  ],
+  (_) {
+    log("🔄 Refetch Hospitals");
+    setState(() {
+      hospitals.clear();
+      currentPage = 1;
+      hasNextPage = true;
+    });
 
-//     _fetchHospitals();
-//   },
-// );
+    _fetchHospitals();
+  },
+);
   _scrollController.addListener(() {
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
