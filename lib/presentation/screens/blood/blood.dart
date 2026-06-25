@@ -5,23 +5,27 @@ import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import 'package:hosta/presentation/screens/blood/donate.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/widgets/donor-section.dart';
 import 'package:hosta/presentation/screens/blood/widgets/location-section.dart';
+import 'package:hosta/providers/blood_details_provider.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
-class Blood extends StatefulWidget {
+class Blood extends ConsumerStatefulWidget {
   const Blood({super.key});
 
   @override
-  State<Blood> createState() => _BloodState();
+  ConsumerState<Blood> createState() => _BloodState();
 }
 
-class _BloodState extends State<Blood> {
+class _BloodState extends ConsumerState<Blood> {
+  bool _checkingDonor = true;
   List<dynamic> donors = [];
   bool isLoading = false;
   String searchQuery = '';
@@ -56,6 +60,7 @@ late Box cacheBox;
 bool isOffline = false;
 Timer? _debounce;
 List<dynamic> allDonors = [];
+ bool _listenerAdded = false;
 final Map<String, List<String>> compatibilityMap = {
   "A+": ["A+", "A-", "O+", "O-"],
   "A-": ["A-", "O-"],
@@ -82,9 +87,30 @@ _initializeConnectivity();
   _bootstrap();
 
   _loadDonationStatus();
-
+//_setupSocketListener();
 
 }
+// void _setupSocketListener() {
+//   if (_listenerAdded) return;
+
+//   _listenerAdded = true;
+
+//   SocketService().addListener(
+//     [
+//       'DONOR_REGISTERED',
+//       'DONOR_UPDATED',
+//       'DONOR_DELETED',
+//     ],
+//     (data) async {
+//       if (!mounted) return;
+
+//       log("🩸 DONOR EVENT => $data");
+
+//       await _fetchDonors();
+//     },
+//   );
+// }
+
 Future<void> _initializeConnectivity() async {
 
   // ✅ Initial internet check
@@ -123,11 +149,14 @@ Future<bool> _checkInternet() async {
     return result.isNotEmpty &&
         result[0].rawAddress.isNotEmpty;
 
-  } on SocketException catch (_) {
-
-    return false;
+  }catch(e){
+     return false;
   }
-}
+//    on SocketException catch (_) {
+
+//     return false;
+//   }
+ }
 Future<void> _loadDonationStatus() async {
   final prefs = await SharedPreferences.getInstance();
   setState(() {
@@ -137,6 +166,22 @@ Future<void> _loadDonationStatus() async {
 }
 Future<void> _bootstrap() async {
   await _loadUserData();
+
+  if (userId != null) {
+    await ref.read(bloodProvider.notifier)
+        .fetchDonor(userId!);
+
+    final donor = ref.read(bloodProvider);
+
+    if (donor != null) {
+      bloodId = donor['id'].toString();
+    }
+  }
+
+  setState(() {
+    _checkingDonor = false;
+  });
+
   await _fetchDonors();
 }
   // void initState() {
@@ -417,11 +462,21 @@ Future<void> _makePhoneCall(String phone) async {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const Signin()),
-      ).then((_) {
-         //_init();
-        _loadUserData();
+      )
+     .then((_) async {
+  await _loadUserData();
 
-      });
+  if (userId != null) {
+    await ref.read(bloodProvider.notifier)
+        .fetchDonor(userId!);
+
+    final donor = ref.read(bloodProvider);
+
+    setState(() {
+      bloodId = donor?['id']?.toString();
+    });
+  }
+});
     } else if (bloodId == null) {
  Navigator.push(
   context,
@@ -539,6 +594,7 @@ Future<void> _refreshData() async {
   }
 
   Widget _buildSearchAndDonate(double screenWidth, double screenHeight) {
+    final donor = ref.watch(bloodProvider);
     log("BUTTON CHECK => $isOffline");
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -597,7 +653,10 @@ onChanged: (value) {
             ),
           ),
           SizedBox(width: screenWidth * 0.02),
-         if (!isOffline && bloodId == null )
+          
+        if (!_checkingDonor &&
+    !isOffline && 
+    bloodId == null)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

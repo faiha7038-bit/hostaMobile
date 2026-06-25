@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../common/top_snackbar.dart';
 import '../auth/signin.dart';
@@ -55,7 +56,7 @@ void initState() {
   _checkLogin();
   _loadJson();
   if (widget.editData == null) {
-    _loadUserPhone();   
+       _loadUserData();
   } else {
     _fillEditData();    
   }
@@ -163,13 +164,37 @@ void initState() {
     }
   }
 
-  Future<void> _loadUserPhone() async {
-    final prefs = await SharedPreferences.getInstance();
-    final phone = prefs.getString('userPhone');
-    if (phone != null) {
-      _phoneController.text = phone;
+ Future<void> _loadUserData() async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  if (userId == null || userId.isEmpty) return;
+
+  try {
+    final apiService = ApiService();
+
+    final response = await apiService.getAUser(userId);
+
+    print("USER RESPONSE => ${response.data}");
+
+    if (response.data != null) {
+      final user = response.data['data'] ?? response.data;
+
+      setState(() {
+        _phoneController.text =
+            user['mobileNumber']?.toString() ??
+            user['phone']?.toString() ??
+            '';
+
+        // optional
+        _placeController.text =
+            user['address']?['place']?.toString() ?? '';
+      });
     }
+  } catch (e) {
+    print("LOAD USER ERROR => $e");
   }
+}
 
   Future<void> _openSearchModal({
     required String title,
@@ -453,217 +478,224 @@ if (districts.isNotEmpty && _districtController.text.trim().isEmpty) {
       ),
       body: Form(
         key: _formKey,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(screenWidth * 0.04),
-          child: Column(
-            children: [
-              // Phone field
-              TextFormField(
-                controller: _phoneController,
-                readOnly: false,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
-                ],
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: "Phone",
-                  labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03,
-                      vertical: screenHeight * 0.015),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty)
-                    return "Phone number is required";
-                  if (value.trim().length != 10)
-                    return "Phone number must be 10 digits";
-                  return null;
-                },
-              ),
-              SizedBox(height: screenHeight * 0.012),
-
-              // NEW: Service Name text field
-              TextFormField(
-                controller: _serviceNameController,
-                decoration: InputDecoration(
-                  labelText: "Service Name",
-                  hintText: "e.g., City Care Ambulance",
-                  labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03,
-                      vertical: screenHeight * 0.015),
-                ),
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty) ? "Service name is required" : null,
-              ),
-              SizedBox(height: screenHeight * 0.012),
-
-              // Vehicle Type dropdown
-              DropdownButtonFormField<String>(
-                value: vehicleType,
-                validator: (value) =>
-                    (value == null || value.isEmpty) ? "Select vehicle type" : null,
-                items: vehicleTypes
-                    .map((e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(e, style: TextStyle(fontSize: screenWidth * 0.04)),
-                        ))
-                    .toList(),
-                onChanged: (val) => setState(() => vehicleType = val),
-                decoration: InputDecoration(
-                  labelText: "Vehicle Type",
-                  labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03,
-                      vertical: screenHeight * 0.015),
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.02),
-
-              // Country (searchable)
-              GestureDetector(
-                onTap: () => _openSearchModal(
-                    title: "Select Country", data: countries, onSelected: _onCountrySelected),
-                child: AbsorbPointer(
-                  child: TextField(
-                    controller: _countryController,
-                    decoration: InputDecoration(
-                      labelText: "Country",
-                      labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                      prefixIcon: Icon(Icons.public, size: screenWidth * 0.055),
-                      hintText: "Select Country",
-                      hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
-                    ),
+        child: Center(
+           child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: screenWidth > 600 ? 400 : double.infinity),
+              child: Padding(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                child: Column(
+              children: [
+                // Phone field
+                TextFormField(
+                  controller: _phoneController,
+                  readOnly: false,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: "Phone",
+                    labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03,
+                        vertical: screenHeight * 0.015),
                   ),
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.012),
-
-              // State (only visible after country selection)
-              if (states.isNotEmpty)
-                GestureDetector(
-                  onTap: () => _openSearchModal(
-                      title: "Select State", data: states, onSelected: _onStateSelected),
-                  child: AbsorbPointer(
-                    child: TextField(
-                      controller: _stateController,
-                      decoration: InputDecoration(
-                        labelText: "State",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        prefixIcon: Icon(Icons.map, size: screenWidth * 0.055),
-                        hintText: "Select State",
-                        hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
-                      ),
-                    ),
-                  ),
-                ),
-              if (states.isNotEmpty) SizedBox(height: screenHeight * 0.012),
-
-              // District (only visible after state selection)
-              if (districts.isNotEmpty)
-                GestureDetector(
-                  onTap: () => _openSearchModal(
-                      title: "Select District", data: districts, onSelected: _onDistrictSelected),
-                  child: AbsorbPointer(
-                    child: TextField(
-                      controller: _districtController,
-                      decoration: InputDecoration(
-                        labelText: "District",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        prefixIcon: Icon(Icons.location_city, size: screenWidth * 0.055),
-                        hintText: "Select District",
-                        hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
-                      ),
-                    ),
-                  ),
-                ),
-              if (districts.isNotEmpty) SizedBox(height: screenHeight * 0.012),
-
-              // Place
-              TextFormField(
-                controller: _placeController,
-                decoration: InputDecoration(
-                  labelText: "Place",
-                  labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
-                ),
                   validator: (value) {
-    if (value == null || value.trim().isEmpty) {
-      return "Place is required";
-    }
-    return null;
-  },
-              ),
-              SizedBox(height: screenHeight * 0.012),
-
-              // Pincode
-              TextFormField(
-                controller: _pincodeController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: "Pincode",
-                  labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                  contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
+                    if (value == null || value.trim().isEmpty)
+                      return "Phone number is required";
+                    if (value.trim().length != 10)
+                      return "Phone number must be 10 digits";
+                    return null;
+                  },
                 ),
-                 validator: (value) {
-    if (value == null || value.trim().isEmpty) {
-      return "Pincode is required";
-    }
-    if (value.trim().length != 6) {
-      return "Pincode must be 6 digits";
-    }
-    return null;
-  },
-              ),
-              SizedBox(height: screenHeight * 0.025),
-
-              // Submit button
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.08, vertical: screenHeight * 0.015),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                SizedBox(height: screenHeight * 0.015),
+          
+                // NEW: Service Name text field
+                TextFormField(
+                  controller: _serviceNameController,
+                  decoration: InputDecoration(
+                    labelText: "Service Name",
+                    hintText: "e.g., City Care Ambulance",
+                    labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03,
+                        vertical: screenHeight * 0.015),
+                  ),
+                  validator: (value) =>
+                      (value == null || value.trim().isEmpty) ? "Service name is required" : null,
                 ),
-                onPressed: _submit,
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        widget.editData == null ? "Register Ambulance" : "Update Ambulance",
-                        style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.04),
+                SizedBox(height: screenHeight * 0.012),
+          
+                // Vehicle Type dropdown
+                DropdownButtonFormField<String>(
+                  value: vehicleType,
+                  validator: (value) =>
+                      (value == null || value.isEmpty) ? "Select vehicle type" : null,
+                  items: vehicleTypes
+                      .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e, style: TextStyle(fontSize: screenWidth * 0.04)),
+                          ))
+                      .toList(),
+                  onChanged: (val) => setState(() => vehicleType = val),
+                  decoration: InputDecoration(
+                    labelText: "Vehicle Type",
+                    labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03,
+                        vertical: screenHeight * 0.015),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.02),
+          
+                // Country (searchable)
+                GestureDetector(
+                  onTap: () => _openSearchModal(
+                      title: "Select Country", data: countries, onSelected: _onCountrySelected),
+                  child: AbsorbPointer(
+                    child: TextField(
+                      controller: _countryController,
+                      decoration: InputDecoration(
+                        labelText: "Country",
+                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                        prefixIcon: Icon(Icons.public, size: screenWidth * 0.055),
+                        hintText: "Select Country",
+                        hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
                       ),
-              ),
-            ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.012),
+          
+                // State (only visible after country selection)
+                if (states.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => _openSearchModal(
+                        title: "Select State", data: states, onSelected: _onStateSelected),
+                    child: AbsorbPointer(
+                      child: TextField(
+                        controller: _stateController,
+                        decoration: InputDecoration(
+                          labelText: "State",
+                          labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          prefixIcon: Icon(Icons.map, size: screenWidth * 0.055),
+                          hintText: "Select State",
+                          hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (states.isNotEmpty) SizedBox(height: screenHeight * 0.012),
+          
+                // District (only visible after state selection)
+                if (districts.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => _openSearchModal(
+                        title: "Select District", data: districts, onSelected: _onDistrictSelected),
+                    child: AbsorbPointer(
+                      child: TextField(
+                        controller: _districtController,
+                        decoration: InputDecoration(
+                          labelText: "District",
+                          labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          prefixIcon: Icon(Icons.location_city, size: screenWidth * 0.055),
+                          hintText: "Select District",
+                          hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (districts.isNotEmpty) SizedBox(height: screenHeight * 0.012),
+          
+                // Place
+                TextFormField(
+                  controller: _placeController,
+                  decoration: InputDecoration(
+                    labelText: "Place",
+                    labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
+                  ),
+                    validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return "Place is required";
+              }
+              return null;
+            },
+                ),
+                SizedBox(height: screenHeight * 0.012),
+          
+                // Pincode
+                TextFormField(
+                  controller: _pincodeController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: "Pincode",
+                    labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
+                  ),
+                   validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return "Pincode is required";
+              }
+              if (value.trim().length != 6) {
+                return "Pincode must be 6 digits";
+              }
+              return null;
+            },
+                ),
+                SizedBox(height: screenHeight * 0.025),
+          
+                // Submit button
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.08, vertical: screenHeight * 0.015),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.025)),
+                  ),
+                  onPressed: _submit,
+                  child: isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          widget.editData == null ? "Register Ambulance" : "Update Ambulance",
+                          style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.04),
+                        ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+        ),
+    )
     );
   }
 }

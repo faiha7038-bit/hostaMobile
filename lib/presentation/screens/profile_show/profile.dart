@@ -6,13 +6,14 @@ import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/blood_details.dart';
 import 'package:hosta/presentation/screens/contact/contact.dart';
 import 'package:hosta/presentation/screens/lab/lab.dart';
+import 'package:hosta/presentation/screens/patient.dart';
 import 'package:hosta/presentation/screens/prescription.dart';
 import 'package:hosta/presentation/screens/profile-edit/profile.dart';
 import 'package:hosta/presentation/screens/privacy/privacy.dart';
 import 'package:hosta/presentation/screens/about/about.dart';
 import 'package:hosta/presentation/screens/settings/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+//import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../../../services/api_service.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -26,13 +27,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Map<String, dynamic> userData = {};
   bool isLoading = true;
   String? userId;
-  IO.Socket? socket;
+  //IO.Socket? socket;
 
   @override
   void initState() {
     super.initState();
     _loadUserId();
-    _setupSocketListener();
+   // _setupSocketListener();
   }
 
   Future<void> _loadUserId() async {
@@ -76,45 +77,45 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     } catch (e) {
       print("❌ Error loading user data: $e");
       if (mounted) {
-        showTopSnackBar(context, "Error loading profile data", isError: true);
+        //showTopSnackBar(context, "Error loading profile data", isError: true);
         setState(() => isLoading = false);
       }
     }
   }
 
-  void _setupSocketListener() {
-    try {
-      const String serverUrl = 'https://www.zorrowtek.in';
+  // void _setupSocketListener() {
+  //   try {
+  //     const String serverUrl = 'https://www.zorrowtek.in';
 
-      socket = IO.io(serverUrl, <String, dynamic>{
-        'transports': ['websocket', 'polling'],
-        'autoConnect': true,
-        'reconnection': true,
-        'reconnectionAttempts': 5,
-        'reconnectionDelay': 1000,
-      });
+  //     socket = IO.io(serverUrl, <String, dynamic>{
+  //       'transports': ['websocket', 'polling'],
+  //       'autoConnect': true,
+  //       'reconnection': true,
+  //       'reconnectionAttempts': 5,
+  //       'reconnectionDelay': 1000,
+  //     });
 
-      socket!.on('connect', (_) {
-        print("✅ Profile page connected to server");
-        if (userId != null && userId!.isNotEmpty) {
-          socket!.emit('joinUserRoom', {'userId': userId});
-        }
-      });
+  //     socket!.on('connect', (_) {
+  //       print("✅ Profile page connected to server");
+  //       if (userId != null && userId!.isNotEmpty) {
+  //         socket!.emit('joinUserRoom', {'userId': userId});
+  //       }
+  //     });
 
-      socket!.on('profile', (data) {
-        print('📡 Profile update received: $data');
-        final profileUserId = data['userId']?.toString();
+  //     socket!.on('profile', (data) {
+  //       print('📡 Profile update received: $data');
+  //       final profileUserId = data['userId']?.toString();
 
-        if (profileUserId == userId) {
-          _refreshUserData();
-        }
-      });
+  //       if (profileUserId == userId) {
+  //         _refreshUserData();
+  //       }
+  //     });
 
-      socket!.connect();
-    } catch (e) {
-      print('❌ Error setting up socket: $e');
-    }
-  }
+  //     socket!.connect();
+  //   } catch (e) {
+  //     print('❌ Error setting up socket: $e');
+  //   }
+  // }
 
   Future<void> _refreshUserData() async {
     if (userId == null || userId!.isEmpty) return;
@@ -181,9 +182,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   return null;
 }
 
-  void _navigateToViewProfile() {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => Profile()));
+ Future<void> _navigateToViewProfile() async {
+  final prefs = await SharedPreferences.getInstance();
+  String userId = prefs.getString('userId') ?? '';
+
+  if (userId.isEmpty) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const Signin()),
+    );
+    return;
   }
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => Profile()),
+  );
+}
 
   void _navigateToSettings() {
     Navigator.push(
@@ -206,8 +221,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   @override
   void dispose() {
-    socket?.disconnect();
-    socket?.close();
+    // socket?.disconnect();
+    // socket?.close();
     super.dispose();
   }
 
@@ -655,6 +670,62 @@ if (result == true) {
                                       },
                                     ),
                                     const Divider(height: 0),
+                                       
+                                     _buildProfileOption(
+                                      icon: Icons.person_add,
+                                      title: 'Patient details',
+                                      subtitle: 'Patient information',
+                                      screenWidth: screenWidth,
+                                      screenHeight: screenHeight,
+                                      onTap: () async {
+                                        final prefs =
+                                            await SharedPreferences.getInstance();
+                                        String userId =
+                                            prefs.getString('userId') ?? '';
+
+                                        if (userId.isEmpty) {
+                                           showDialog(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
+                                              content: Text(
+                                                "Please login first",
+                                                style: TextStyle(fontSize: screenWidth * 0.04),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            Signin(),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => const PatientDetailsScreen(),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                      const Divider(height: 0),
                                     //   _buildProfileOption(
                                     //   icon: Icons.history_outlined,
                                     //   title: 'My History',

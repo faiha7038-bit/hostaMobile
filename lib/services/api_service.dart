@@ -23,7 +23,7 @@ class ApiService {
 
   bool _initialized = false;
   Future<String?>? _refreshFuture;
-
+     
   final String baseUrl =
   // "http://35.174.10.32";
   "https://zorrowtek.in";
@@ -114,7 +114,7 @@ log("TOKEN => $token");
         },
       ),
     );
-
+log("${dio.options.baseUrl}");
     _initialized = true;
     log("✅ ApiService Initialized (Singleton)");
   }
@@ -188,7 +188,15 @@ Future<Response> getDoctorDetails(int doctorId) async {
     rethrow;
   }
 }
-
+//----------------------------PatientDetails----------------
+// Future<Response> getPatientDetails(String patientId) async {
+//   try {
+//     final response = await dio.get('/api/patients/$patientId');
+//     return response;
+//   } catch (e) {
+//     throw Exception('Failed to load patient details: $e');
+//   }
+// }
 // ---------------- LAB REPORT ----------------
 
  Future<String?> _getToken() async {
@@ -277,7 +285,7 @@ Future<Response> getDoctorDetails(int doctorId) async {
 // Future<Response> getLabReportById(String id) async {
 //   return await dio.get('/api/lab-results/$id');
 // }
-  // ---------------- NOTIFICATIONS ----------------
+  // ----------------------------------------- NOTIFICATIONS --------------------------------------------------------------
   
 Future<Response> getNotifications({int page = 1, int limit = 10}) async {
   return await dio.get('/api/notification?page=$page&limit=$limit');
@@ -289,6 +297,7 @@ Future<Response> getNotificationsByRole(String role, String id, {int page = 1, i
   Future<Response> markNotificationAsRead(String role, String userId, String notificationId) async {
     return await dio.patch('/api/notification/read/$role/$userId/$notificationId');
   }
+// mark notification as unread  
 
 //  Mark all as read
 Future<Response> markAllAsRead(String role, String userId) async {
@@ -299,6 +308,7 @@ Future<Response> markAllAsRead(String role, String userId) async {
   Future<Response> deleteNotification(String notificationId) async {
     return await dio.delete('/api/notification/$notificationId');
   }
+  //----------------------------------------------------------------------------------------------------------
   //Medicine Reminder CREATE
   Future<Response> createMedicineReminder(Map<String, dynamic> data) async {
     return await dio.post('/api/medicinereminders', data: data);
@@ -346,30 +356,62 @@ Future<Response> markAllAsRead(String role, String userId) async {
     );
   }
 
+//review 
+// Get all reviews
+Future<Response> getReviews({
+  String? hospitalId,
+  String? doctorId,
+ 
+  int page = 1,
+  int limit = 5,
+}) async {
+  return await dio.get(
+    '/api/review',
+    queryParameters: {
+      if (hospitalId != null) 'hospitalId': hospitalId,
+      if (doctorId != null) 'doctorId': doctorId,
+      
+      'page': page,
+      'limit': limit,
+    },
+  );
+}
 
+// Create review
+Future<Response> createReview(
+  Map<String, dynamic> reviewData,
+) async {
+  return await dio.post('/api/review', data: reviewData);
+}
 
-  Future<Response> getAHospitalsReview(String id) async {
-    return await dio.get('/api/reviews/hospital/$id');
-  }
+// Update review
+Future<Response> updateReview(
+  String reviewId,
+  Map<String, dynamic> reviewData,
+) async {
+  return await dio.put('/api/review/$reviewId', data: reviewData);
+}
 
-  // Create a reviewf
-  Future<Response> createAHospitalReview(
-    Map<String, dynamic> reviewData,
-  ) async {
-    return await dio.post('/api/reviews', data: reviewData);
-  }
+// Delete review
+Future<Response> deleteReview(String reviewId) async {
+  return await dio.delete('/api/review/$reviewId');
+}
+//Rating 
+Future getRating({
+  required String hospitalId,
+  required String doctorId,
+}) async {
+  final response = await dio.get(
+    '/api/review/rating',
+    queryParameters: {
+      'hospitalId': hospitalId,
+      'doctorId': doctorId,
+    },
+  );
 
-  // Update a review
-  Future<Response> updateAHospitalReview(
-    String id,
-    Map<String, dynamic> reviewData,
-  ) async {
-    return await dio.put('/api/reviews/$id', data: reviewData);
-  }
+  return response.data;
+}
 
-  Future<Response> deleteAHospitalReview(String id) async {
-    return await dio.delete('/api/reviews/$id');
-  }
 
   // GET all donors
   Future<Response> getAllDonors({
@@ -588,25 +630,12 @@ for (final c in cookies) {
 
 
   Future<Response> createBooking(Map<String, dynamic> bookingData) async {
-    print('📡 POST /api/booking');
-    print('📡 Data: $bookingData');
-
-    //final prefs = await SharedPreferences.getInstance();
-    // final token = prefs.getString('authToken');
+    log('📡 POST /api/booking');
+   
+ log("BASE URL => ${dio.options.baseUrl}");
+  log("BOOKING DATA => $bookingData");
     return await dio.post('/api/booking', data: bookingData);
 
-    // final response = await _dio.post(
-    //   '/api/booking',
-    //   data: bookingData,
-    //   options: Options(
-    //     headers: {
-    //       "Authorization": "Bearer $token",
-    //       "Content-Type": "application/json",
-    //     },
-    //   ),
-    // );
-
-    // return response; // ✅ THIS WAS MISSING
   }
 //Booking
   Future<Response> getAllBookings({
@@ -674,7 +703,7 @@ log("date=$date");
     return await dio.get('/api/doctor', queryParameters: queryParams);
   }
 
-  // In api_service.dart
+  
 
   Future<Response> getDoctorById(String doctorId) async {
     print("🔵 GET Doctor by ID API Call");
@@ -726,9 +755,7 @@ log("date=$date");
     return await dio.post('/api/users/auth/reset-password', data: data);
   }
 
-  // Future<Response> sendResetPasswrord( Map<String, dynamic> data) async {
-  //   return await _dio.post('/api/users/password', data: data);
-  // }
+  
   // ✅ CHANGE PASSWORD (new method)
   Future<Response> changePassword(Map<String, dynamic> data) async {
     return await dio.put('/api/users/auth/change-password', data: data);
@@ -851,7 +878,7 @@ log("date=$date");
     }
   }
 
- 
+ //-----------------------patients-------------------
   Future<Response> getPatients({
     required int hospitalId,
     required int userId,
@@ -861,7 +888,26 @@ log("date=$date");
       queryParameters: {'hospitalId': hospitalId, 'userId': userId},
     );
   }
+  
+Future<Response> getPatientsWithoutHospital({
+  required int userId,
+}) async {
+  return await dio.get(
+    '/api/patients',
+    queryParameters: {'userId': userId},
+  );
+}
 
+// Alternative: Try with different parameter names
+Future<Response> getPatientsWithDifferentParams({
+  required int userId,
+  required int hospitalId,
+}) async {
+  return await dio.get(
+    '/api/patients',
+    queryParameters: {'user_id': userId, 'hospital_id': hospitalId},
+  );
+}
 Future<Response> getCategories({
   String? searchQuery,
   int page = 1,
@@ -880,5 +926,9 @@ Future<Response> getCategories({
 
   log("Calling /api/category with params: $queryParams");
   return await dio.get('/api/category', queryParameters: queryParams);
+}
+//logout
+Future<Response> logout() async {
+  return await dio.post('/api/users/logout');
 }
 }

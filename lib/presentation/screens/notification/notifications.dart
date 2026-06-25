@@ -933,9 +933,9 @@ class _NotificationsState extends State<Notifications> {
           _isLoadingMore = false;
           isLoading = false;
         });
-        
-        final unreadCount = notifications.where((n) => n["read"] != true).length;
-        _updateBottomNavBadge(unreadCount);
+         _updateBadgeCount();
+        // final unreadCount = notifications.where((n) => n["read"] != true).length;
+        // _updateBottomNavBadge(unreadCount);
       }
       
     } catch (e) {
@@ -949,7 +949,26 @@ class _NotificationsState extends State<Notifications> {
       }
     }
   }
-
+Future<void> _updateBadgeCount() async {
+  if (userId == null || userId!.isEmpty) return;
+  
+  try {
+    final apiService = ApiService();
+    // ✅ Total unread count  separate API call
+    // final response = await apiService.getUnreadCount('user', userId!);
+    
+    // if (response.data['success'] == true) {
+    //   final unreadCount = response.data['count'] ?? 0;
+    //   _updateBottomNavBadge(unreadCount);
+    //   print('📊 Total unread count: $unreadCount');
+    // }
+  } catch (e) {
+     print('❌ Error getting unread count: $e');
+    // Fallback: current notifications-
+    final unreadCount = notifications.where((n) => n["read"] != true).length;
+    _updateBottomNavBadge(unreadCount);
+  }
+}
   // ✅ Mark As Read - Individual notification
   Future<void> _markAsRead(String notificationId) async {
     if (userId == null) return;
@@ -969,9 +988,10 @@ class _NotificationsState extends State<Notifications> {
               _updateFilteredList();
             }
           });
-          
-          final remainingUnread = notifications.where((n) => n["read"] != true).length;
-          _updateBottomNavBadge(remainingUnread);
+          _updateBadgeCount();
+
+          // final remainingUnread = notifications.where((n) => n["read"] != true).length;
+          // _updateBottomNavBadge(remainingUnread);
           
           final notification = notifications.firstWhere(
             (n) => n["_id"] == notificationId,
@@ -1071,7 +1091,36 @@ class _NotificationsState extends State<Notifications> {
       _updateBottomNavBadge(0);
     }
   }
+  void _handleNewNotification(dynamic data) async {
+  print("📨 New notification: $data");
   
+  if (mounted) {
+    await _fetchNotifications();
+    // ✅ Badge count update ചെയ്യാൻ
+    _updateBadgeCount();
+    _showLocalNotification(data);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(data['message'] ?? 'New notification'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'View',
+          textColor: Colors.white,
+          onPressed: () {
+            _navigateToNotificationDetails({
+              '_id': data['id'].toString(),
+              'message': data['message'],
+              'createdAt': DateTime.now().toIso8601String(),
+              'title': data['title'] ?? 'Notification',
+            });
+          },
+        ),
+      ),
+    );
+  }
+}
   void _navigateToNotificationDetails(Map<String, dynamic> notification) {
     Navigator.push(
       context,
@@ -1102,7 +1151,7 @@ class _NotificationsState extends State<Notifications> {
       });
 
       socket!.on('connect', (_) {
-        print("✅ Socket connected");
+       // print("✅ Socket connected");
         if (userId != null) {
           socket!.emit('joinUserRoom', userId);
           socket!.emit('userOnline', userId);
@@ -1128,35 +1177,6 @@ class _NotificationsState extends State<Notifications> {
       socket!.connect();
     } catch (e) {
       print("❌ Socket setup error: $e");
-    }
-  }
-
-  void _handleNewNotification(dynamic data) async {
-    print("📨 New notification: $data");
-    
-    if (mounted) {
-      await _fetchNotifications();
-      _showLocalNotification(data);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(data['message'] ?? 'New notification'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-          action: SnackBarAction(
-            label: 'View',
-            textColor: Colors.white,
-            onPressed: () {
-              _navigateToNotificationDetails({
-                '_id': data['id'].toString(),
-                'message': data['message'],
-                'createdAt': DateTime.now().toIso8601String(),
-                'title': data['title'] ?? 'Notification',
-              });
-            },
-          ),
-        ),
-      );
     }
   }
 

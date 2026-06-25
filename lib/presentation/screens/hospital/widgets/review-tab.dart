@@ -1,32 +1,18 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:hosta/data/models/review_model.dart';
+import 'package:hosta/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ========== REVIEWS TAB - MAIN COMPONENT ==========
 class ReviewsTab extends StatefulWidget {
   final String hospitalId;
-  final List<dynamic> reviews;
-  final String? currentUserId;
-  final String? currentUserName;
-  final String? currentUserEmail;
-  final bool isReviewLoading;
-  final VoidCallback onCreateReview;
-  final Function(String) onUpdateReview;
-  final Function(String) onDeleteReview;
-  final VoidCallback onNavigateToLogin;
-  final Function onInitializeUser;
+
 
   const ReviewsTab({
     super.key,
     required this.hospitalId,
-    required this.reviews,
-    required this.currentUserId,
-    required this.currentUserName,
-    required this.currentUserEmail,
-    required this.isReviewLoading,
-    required this.onCreateReview,
-    required this.onUpdateReview,
-    required this.onDeleteReview,
-    required this.onNavigateToLogin,
-    required this.onInitializeUser,
+    
   });
 
   @override
@@ -37,656 +23,856 @@ class _ReviewsTabState extends State<ReviewsTab> {
   // Review form state
   double rating = 0;
   final TextEditingController reviewController = TextEditingController();
-  
+  double avgRating = 0;
+int totalReviews = 0;
+int selectedRating = 0;
+bool showAllReviews = false;
+ bool isreviewsLoading = false;
+
+bool isLoading = false;
+String? currentUserImage;
+Map<int, int> ratingBreakdown = {
+  5: 0,
+  4: 0,
+  3: 0,
+  2: 0,
+  1: 0,
+};
   // Edit review state
   String? editingReviewId;
   double editingRating = 0;
+ 
+ List<Review> reviews = [];
+  Review? myReview;
+  
+     int currentPage = 1;
+  bool hasMore = true;
+  bool loadMoreLoading = false;
+  String? currentUserName;
+
+
   final TextEditingController editingReviewController = TextEditingController();
 
-  @override
-  void dispose() {
-    reviewController.dispose();
-    editingReviewController.dispose();
-    super.dispose();
-  }
+ @override
+void initState() {
+  super.initState();
 
-  void _clearReviewForm() {
-    reviewController.clear();
-    setState(() {
-      rating = 0;
-    });
-  }
+  _fetchRating();
+  fetchReviews();
+  fetchMyReview();
+}
 
-  void _startEditReview(Map<String, dynamic> review) {
-    setState(() {
-      editingReviewId = review["_id"];
-      editingRating = (review["rating"] ?? 0).toDouble();
-      editingReviewController.text = review["comment"] ?? "";
-    });
-  }
-
-  void _cancelEdit() {
-    setState(() {
-      editingReviewId = null;
-      editingRating = 0;
-      editingReviewController.clear();
-    });
-  }
-
-  void _handleCreateReview() {
-    if (widget.currentUserId == null) {
-      widget.onNavigateToLogin();
-      return;
-    }
-
-    if (rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please select a rating")),
-      );
-      return;
-    }
-
-    if (reviewController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please write a review")),
-      );
-      return;
-    }
-
-    widget.onCreateReview();
-    _clearReviewForm();
-  }
-
-  void _handleUpdateReview() {
-    if (editingRating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please select a rating")),
-      );
-      return;
-    }
-
-    if (editingReviewController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please write a review")),
-      );
-      return;
-    }
-
-    widget.onUpdateReview(editingReviewId!);
-    _cancelEdit();
-  }
-
-  void _handleDeleteReview(String reviewId) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Delete Review",
-          style: TextStyle(fontSize: screenWidth * 0.045),
-        ),
-        content: Text(
-          "Are you sure you want to delete this review?",
-          style: TextStyle(fontSize: screenWidth * 0.04),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Cancel",
-              style: TextStyle(fontSize: screenWidth * 0.04),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onDeleteReview(reviewId);
-            },
-            child: Text(
-              "Delete",
-              style: TextStyle(
-                color: Colors.red,
-                fontSize: screenWidth * 0.04,
-              ),
-            ),
-          ),
-        ],
-      ),
+Future<void> _fetchRating() async {
+  try {
+    final res = await ApiService().getRating(
+      
+      hospitalId: widget.hospitalId,
+      doctorId: "",
     );
-  }
+log("RATING RESPONSE => $res");
 
-  // Helper methods for review data
-  bool _isCurrentUserReview(Map<String, dynamic> review) {
+    final data = res['data'];
+
+    setState(() {
+      avgRating = (data['averageRating'] ?? 0).toDouble();
+      totalReviews = data['totalReviews'] ?? 0;
+
+      final breakdown = data['ratingBreakdown'] ?? {};
+
+      ratingBreakdown = {
+        5: breakdown['5']?['count'] ?? 0,
+        4: breakdown['4']?['count'] ?? 0,
+        3: breakdown['3']?['count'] ?? 0,
+        2: breakdown['2']?['count'] ?? 0,
+        1: breakdown['1']?['count'] ?? 0,
+      };
+    });
+
+    log("AVG => $avgRating");
+    log("TOTAL => $totalReviews");
+    log("BREAKDOWN => $ratingBreakdown");
+  } catch (e) {
+    log("RATING ERROR => $e");
+  }
+}
+ Future<void> fetchReviews({bool loadMore = false}) async {
     try {
-      if (widget.currentUserId == null) return false;
-      if (review["userId"] == null) return false;
-      final userData = review["userId"];
-      final userId = userData["_id"]?.toString();
-      return userId == widget.currentUserId;
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserId = prefs.getString('userId');
+
+      final res = await ApiService().getReviews(
+       hospitalId: widget.hospitalId,
+        page: currentPage,
+        limit: 5,
+      );
+      log("PAGINATION => ${res.data['pagination']}");
+log("fetchres${res.data}");
+log("CURRENT PAGE => $currentPage");
+
+log("HAS NEXT PAGE => ${res.data['pagination']['hasNextPage']}");
+      final data = res.data['data'] as List;
+log("DATA LENGTH => ${data.length}");
+      final newData = data
+          .where((e) => e['userId'].toString() != currentUserId)
+          .map<Review>((e) => Review.fromJson(e))
+          .toList();
+
+      setState(() {
+        if (loadMore) {
+          reviews.addAll(newData);
+        } else {
+          reviews = newData;
+        }
+
+        hasMore = res.data['pagination']['hasNextPage'] ?? false;
+        loadMoreLoading = false;
+        log("HAS MORE => ${res.data['pagination']['hasNextPage']}");
+        log("REVIEWS => ${newData.length}");
+      });
     } catch (e) {
-      return false;
+      setState(() => loadMoreLoading = false);
+      log("REVIEWS ERROR => $e");
+      
     }
   }
-
-  String _getUserName(Map<String, dynamic> review) {
+  Future<void> fetchMyReview() async {
     try {
-      if (review["userId"] == null) return "Anonymous";
-      return review["userId"]["name"]?.toString() ?? "Anonymous";
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+
+      if (userId == null || userId.isEmpty) return;
+
+      final res = await ApiService().getReviews(
+        hospitalId: widget.hospitalId,
+      );
+
+      final data = res.data['data'] as List;
+
+      for (final item in data) {
+        if (item['userId'].toString() == userId) {
+          setState(() {
+            myReview = Review.fromJson(item);
+          });
+          break;
+        }
+      }
     } catch (e) {
-      return "Anonymous";
+      log("MY REVIEW ERROR => $e");
     }
   }
+Future<void> createReview(
+  int rating,
+  String comment,
+) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
 
-  String _getUserInitial(String userName) {
-    try {
-      if (userName.isEmpty) return "U";
-      return userName[0].toUpperCase();
-    } catch (e) {
-      return "U";
-    }
-  }
+    final userId = prefs.getString("userId");
 
-  int _getRating(Map<String, dynamic> review) {
-    try {
-      return (review["rating"] ?? 0).toInt();
-    } catch (e) {
-      return 0;
-    }
-  }
+    await ApiService().createReview({
+      "userId": int.parse(userId!),
+      "hospitalId": int.parse(widget.hospitalId),
+      "rating": rating,
+      "comment": comment,
+    });
 
-  String _getComment(Map<String, dynamic> review) {
-    try {
-      return review["comment"]?.toString() ?? "";
-    } catch (e) {
-      return "";
-    }
+    await _fetchRating();
+    await fetchReviews();
+    await fetchMyReview();
+  } catch (e) {
+    debugPrint(e.toString());
   }
+}
+Future<void> updateReview(
+  String reviewId,
+  int rating,
+  String comment,
+) async {
+  try {
+    await ApiService().updateReview(
+      reviewId,
+      {
+        "rating": rating,
+        "comment": comment,
+      },
+    );
 
-  String _getReviewDate(Map<String, dynamic> review) {
-    try {
-      return review["createdAt"]?.toString() ?? "";
-    } catch (e) {
-      return "";
-    }
+    await _fetchRating();
+    await fetchReviews();
+    await fetchMyReview();
+  } catch (e) {
+    debugPrint(e.toString());
   }
+}
+Future<void> deleteReview(
+  String reviewId,
+) async {
+  try {
+    await ApiService().deleteReview(reviewId);
 
-  bool _isTempReview(Map<String, dynamic> review) {
-    try {
-      return review["isTemp"] == true;
-    } catch (e) {
-      return false;
-    }
-  }
+    setState(() {
+      myReview = null;
+    });
 
-  bool _isSubmittingReview(Map<String, dynamic> review) {
-    try {
-      return review["isSubmitting"] == true;
-    } catch (e) {
-      return false;
-    }
+    await _fetchRating();
+    await fetchReviews();
+  } catch (e) {
+    debugPrint(e.toString());
   }
-
-  bool _isUpdatingReview(Map<String, dynamic> review) {
-    try {
-      return review["isUpdating"] == true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  String _formatDate(String dateString) {
-    try {
-      final date = DateTime.parse(dateString);
-      return "${date.day}/${date.month}/${date.year}";
-    } catch (_) {
-      return dateString;
-    }
-  }
+}
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     
-    return Padding(
-      padding: EdgeInsets.all(screenWidth * 0.04),
-      child: Column(
-        children: [
-          // Authentication Status
-          if (widget.currentUserId == null)
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(screenWidth * 0.03),
-              margin: EdgeInsets.only(bottom: screenHeight * 0.02),
-              decoration: BoxDecoration(
-                color: Colors.orange[50],
-                borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                border: Border.all(color: Colors.orange, width: screenWidth * 0.0025),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info,
-                    color: Colors.orange[700],
-                    size: screenWidth * 0.05,
-                  ),
-                  SizedBox(width: screenWidth * 0.02),
-                  Expanded(
-                    child: Text(
-                      "Login to submit or manage reviews",
-                      style: TextStyle(
-                        color: Colors.orange[700],
-                        fontWeight: FontWeight.w500,
-                        fontSize: screenWidth * 0.035,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+  return Padding(
+  padding: EdgeInsets.all(screenWidth * 0.04),
+  child: SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        
+        const Text(
+          "Ratings and Reviews",
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
 
-          // Reviews List
-          Expanded(
-            child: widget.isReviewLoading
-                ? Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: screenWidth * 0.008,
-                    ),
-                  )
-                : widget.reviews.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.reviews,
-                              size: screenWidth * 0.16,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: screenHeight * 0.02),
-                            Text(
-                              "No reviews yet",
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.04,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            Text(
-                              "Be the first to review!",
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.035,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        // ✅ FIX: shrinkWrap false, AlwaysScrollableScrollPhysics
-                        shrinkWrap: false,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: widget.reviews.length,
-                        itemBuilder: (context, index) {
-                          final review = widget.reviews[index];
-                          final isOwnReview = _isCurrentUserReview(review);
-                          final isTemp = _isTempReview(review);
-                          final isSubmitting = _isSubmittingReview(review);
-                          final isUpdating = _isUpdatingReview(review);
-                          final userName = _getUserName(review);
-                          final userInitial = _getUserInitial(userName);
-                          final ratingValue = _getRating(review);
-                          final comment = _getComment(review);
-                          final reviewDate = _getReviewDate(review);
+        _ratingOverview(),
+        const SizedBox(height: 20),
 
-                          return Card(
-                            margin: EdgeInsets.only(bottom: screenHeight * 0.0125),
-                            color: isTemp
-                                ? Colors.grey[100]
-                                : (isUpdating
-                                    ? Colors.blue[50]
-                                    : (isSubmitting
-                                        ? Colors.yellow[50]
-                                        : null)),
-                            child: Padding(
-                              padding: EdgeInsets.all(screenWidth * 0.03),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: Colors.green[100],
-                                        radius: screenWidth * 0.045,
-                                        child: Text(
-                                          userInitial,
-                                          style: TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: screenWidth * 0.035,
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(width: screenWidth * 0.03),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              userName,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: screenWidth * 0.04,
-                                              ),
-                                            ),
-                                            if (isSubmitting)
-                                              Text(
-                                                "Submitting...",
-                                                style: TextStyle(
-                                                  fontSize: screenWidth * 0.03,
-                                                  color: Colors.orange,
-                                                  fontStyle: FontStyle.italic,
-                                                ),
-                                              )
-                                            else if (isUpdating)
-                                              Text(
-                                                "Updating...",
-                                                style: TextStyle(
-                                                  fontSize: screenWidth * 0.03,
-                                                  color: Colors.blue,
-                                                  fontStyle: FontStyle.italic,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      Row(
-                                        children: List.generate(5, (starIndex) {
-                                          return Icon(
-                                            starIndex < ratingValue
-                                                ? Icons.star
-                                                : Icons.star_border,
-                                            color: Colors.amber,
-                                            size: screenWidth * 0.045,
-                                          );
-                                        }),
-                                      ),
-                                    ],
-                                  ),
-                                  if (comment.isNotEmpty) ...[
-                                    SizedBox(height: screenHeight * 0.01),
-                                    Text(
-                                      comment,
-                                      style: TextStyle(fontSize: screenWidth * 0.035),
-                                    ),
-                                  ],
-                                  if (reviewDate.isNotEmpty) ...[
-                                    SizedBox(height: screenHeight * 0.005),
-                                    Text(
-                                      _formatDate(reviewDate),
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.03,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                  if (isOwnReview && !isTemp && !isSubmitting && !isUpdating) ...[
-                                    SizedBox(height: screenHeight * 0.01),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        TextButton.icon(
-                                          onPressed: () => _startEditReview(review),
-                                          icon: Icon(
-                                            Icons.edit,
-                                            size: screenWidth * 0.04,
-                                          ),
-                                          label: Text(
-                                            "Edit",
-                                            style: TextStyle(fontSize: screenWidth * 0.035),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            minimumSize: Size.zero,
-                                            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
-                                          ),
-                                        ),
-                                        SizedBox(width: screenWidth * 0.02),
-                                        TextButton.icon(
-                                          onPressed: () => _handleDeleteReview(review["_id"]),
-                                          icon: Icon(
-                                            Icons.delete,
-                                            size: screenWidth * 0.04,
-                                            color: Colors.red,
-                                          ),
-                                          label: Text(
-                                            "Delete",
-                                            style: TextStyle(
-                                              color: Colors.red,
-                                              fontSize: screenWidth * 0.035,
-                                            ),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            minimumSize: Size.zero,
-                                            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+        myReview != null
+            ? _buildMyReviewCard()
+            : _buildWriteReviewCard(),
+
+        const SizedBox(height: 20),
+
+        Text(
+          "Patient Reviews",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: screenWidth * .045,
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        /// ✅ LOADING / EMPTY / DATA (FIXED)
+        if (isreviewsLoading)
+          const Center(child: CircularProgressIndicator())
+        else if (reviews.isEmpty)
+          const Text("No reviews yet")
+        else
+          Column(
+            children: (showAllReviews
+                    ? reviews
+                    : reviews.take(5))
+                .map((r) => _reviewTile(r, screenWidth))
+                .toList(),
           ),
 
-          Divider(thickness: screenWidth * 0.0025),
+        const SizedBox(height: 10),
 
-          // Review Form (Create or Edit)
-          if (editingReviewId != null)
-            _buildEditReviewForm(screenWidth, screenHeight)
-          else
-            _buildCreateReviewForm(screenWidth, screenHeight),
+        if (totalReviews > 5 && !showAllReviews)
+          TextButton(
+            onPressed: () async {
+              setState(() {
+                showAllReviews = true;
+              });
+
+              currentPage = 2;
+
+              while (hasMore && currentPage <= 20) {
+                await fetchReviews();
+                currentPage++;
+              }
+            },
+            child: const Text(
+              "See All Reviews",
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+        const Divider(),
+
+        /// ✅ REVIEW FORM AREA (NOW INSIDE COLUMN PROPERLY)
+        // if (editingReviewId != null)
+        //   _buildEditReviewForm(screenWidth, screenHeight)
+        // else
+        //   _buildCreateReviewForm(screenWidth, screenHeight),
+      ],
+    ),
+  ),
+);
+    
+  }
+  Widget _buildWriteReviewCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Rate this doctor",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Tell others what you think",
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 12),
+         Row(
+  mainAxisAlignment: MainAxisAlignment.start,
+  children: List.generate(5, (index) {
+    final isSelected = index < selectedRating;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedRating = index + 1;
+        });
+      },
+      child: Icon(
+        isSelected ? Icons.star : Icons.star_border,
+        color: Colors.amber,
+        size: 28,
+      ),
+    );
+  }),
+),
+          const SizedBox(height: 12),
+          GestureDetector(
+           onTap: () {
+  _showReviewDialog(initialRating: selectedRating);
+},
+            child: Text(
+              "Write a review",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade700,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ========== CREATE REVIEW FORM ==========
-  Widget _buildCreateReviewForm(double screenWidth, double screenHeight) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "Write a Review:",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: screenWidth * 0.04,
-          ),
-        ),
-        SizedBox(height: screenHeight * 0.0125),
-        _buildRatingStars(
-          rating,
-          (newRating) => setState(() => rating = newRating),
-          widget.currentUserId != null,
-          screenWidth,
-          screenHeight,
-        ),
-        SizedBox(height: screenHeight * 0.0125),
-        TextField(
-          controller: reviewController,
-          decoration: InputDecoration(
-            hintText: widget.currentUserId == null 
-                ? "Please login to write a review"
-                : "Share your experience...",
-            hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(screenWidth * 0.025),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.03,
-              vertical: screenHeight * 0.015,
+  Widget _buildMyReviewCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Your Review",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          maxLines: 3,
-          enabled: widget.currentUserId != null && !widget.isReviewLoading,
-          style: TextStyle(fontSize: screenWidth * 0.035),
-        ),
-        SizedBox(height: screenHeight * 0.015),
-        Center(
-          child: ElevatedButton.icon(
-            onPressed: widget.currentUserId == null 
-                ? widget.onNavigateToLogin 
-                : (widget.isReviewLoading ? null : _handleCreateReview),
-            icon: Icon(
-              widget.currentUserId == null ? Icons.login : Icons.send, 
-              color: Colors.white,
-              size: screenWidth * 0.05,
-            ),
-            label: Text(
-              widget.currentUserId == null 
-                  ? "Login to Review" 
-                  : (widget.isReviewLoading ? "Submitting..." : "Submit Review"),
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: screenWidth * 0.04,
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundImage:
+                    myReview!.imageUrl != null && myReview!.imageUrl!.isNotEmpty
+                        ? NetworkImage(myReview!.imageUrl!)
+                        : null,
+                child: myReview!.imageUrl == null || myReview!.imageUrl!.isEmpty
+                    ? Text(
+                        myReview!.name.isNotEmpty
+                            ? myReview!.name[0].toUpperCase()
+                            : "U",
+                      )
+                    : null,
               ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: widget.currentUserId == null ? Colors.orange : Colors.green,
-              padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.06,
-                vertical: screenHeight * 0.015,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      myReview!.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Row(
+                      children: List.generate(
+                        5,
+                        (index) => Icon(
+                          index < myReview!.rating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(screenWidth * 0.025),
+              PopupMenuButton(
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: "edit",
+                    child: Text("Edit"),
+                  ),
+                  const PopupMenuItem(
+                    value: "delete",
+                    child: Text("Delete"),
+                  ),
+                ],
+                onSelected: (value) async {
+                  if (value == "edit") {
+                    _showEditReviewDialog();
+                  }
+
+                  if (value == "delete") {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text("Delete Review"),
+                        content: const Text(
+                          "Are you sure you want to delete this review?",
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text("Delete"),
+                          ),
+                        ],
+                      ),
+                    );
+
+ if (confirm == true)  {
+  await ApiService().deleteReview(myReview!.id.toString());
+
+  setState(() {
+    myReview = null;
+    reviews = [];
+    currentPage = 1;
+    hasMore = true;
+  });
+
+  await fetchReviews(); // fresh reload
+}
+                  }
+                },
               ),
-            ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+          Text(myReview!.comment),
+        ],
+      ),
     );
   }
-
-  // ========== EDIT REVIEW FORM ==========
-  Widget _buildEditReviewForm(double screenWidth, double screenHeight) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+ Widget _ratingOverview() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
       children: [
-        Text(
-          "Edit Your Review:",
-          style: TextStyle(
-            fontWeight: FontWeight.bold, 
-            fontSize: screenWidth * 0.04, 
-            color: Colors.green,
-          ),
-        ),
-        SizedBox(height: screenHeight * 0.0125),
-        _buildRatingStars(
-          editingRating,
-          (newRating) => setState(() => editingRating = newRating),
-          true,
-          screenWidth,
-          screenHeight,
-        ),
-        SizedBox(height: screenHeight * 0.0125),
-        TextField(
-          controller: editingReviewController,
-          decoration: InputDecoration(
-            hintText: "Edit your review...",
-            hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(screenWidth * 0.025),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.03,
-              vertical: screenHeight * 0.015,
-            ),
-          ),
-          maxLines: 3,
-          enabled: !widget.isReviewLoading,
-          style: TextStyle(fontSize: screenWidth * 0.035),
-        ),
-        SizedBox(height: screenHeight * 0.015),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        
+        /// LEFT SIDE (4.5 + stars + count)
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ElevatedButton.icon(
-              onPressed: widget.isReviewLoading ? null : _handleUpdateReview,
-              icon: Icon(
-                Icons.save,
-                color: Colors.white,
-                size: screenWidth * 0.05,
-              ),
-              label: Text(
-                widget.isReviewLoading ? "Updating..." : "Update Review",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: screenWidth * 0.04,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.05,
-                  vertical: screenHeight * 0.015,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(screenWidth * 0.025),
-                ),
+            Text(
+              avgRating.toStringAsFixed(1),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(width: screenWidth * 0.03),
-            TextButton.icon(
-              onPressed: widget.isReviewLoading ? null : _cancelEdit,
-              icon: Icon(
-                Icons.cancel,
-                size: screenWidth * 0.05,
-              ),
-              label: Text(
-                "Cancel",
-                style: TextStyle(fontSize: screenWidth * 0.04),
-              ),
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenWidth * 0.05,
-                  vertical: screenHeight * 0.015,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(screenWidth * 0.025),
-                ),
-              ),
+
+            Row(
+              children: List.generate(5, (index) {
+                return Icon(
+                  index < avgRating.round()
+                      ? Icons.star
+                      : Icons.star_border,
+                  color: Colors.amber,
+                  size: 18,
+                );
+              }),
+            ),
+
+            const SizedBox(height: 5),
+
+            Text(
+              "$totalReviews reviews",
+              style: const TextStyle(color: Colors.grey),
             ),
           ],
         ),
+
+        const SizedBox(width: 20),
+
+        /// RIGHT SIDE (bars)
+        Expanded(
+          child: Column(
+            children: List.generate(5, (i) {
+              int star = 5 - i;
+              int count = ratingBreakdown[star] ?? 0;
+
+              double percent = totalReviews == 0
+                  ? 0
+                  : count / totalReviews;
+
+              return Row(
+                children: [
+                  Text("$star"),
+                  const SizedBox(width: 6),
+
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: percent,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.shade300,
+                      valueColor:
+                          const AlwaysStoppedAnimation(Colors.blue),
+                    ),
+                  ),
+
+                  const SizedBox(width: 6),
+
+                  Text(count.toString()),
+                ],
+              );
+            }),
+          ),
+        ),
       ],
+    ),
+  );
+}
+
+    Widget _reviewTile(Review review, double screenWidth) {
+    final isSmallScreen = screenWidth < 600;
+
+    final name = review.name;
+    final imageUrl = review.imageUrl;
+    final rating = review.rating;
+    final comment = review.comment;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.all(isSmallScreen ? 10.0 : 12.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// NAME + STARS
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundImage:
+                    imageUrl != null && imageUrl.toString().isNotEmpty
+                        ? NetworkImage(imageUrl)
+                        : null,
+                child: imageUrl == null
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : "P",
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Row(
+                children: List.generate(
+                  5,
+                  (index) => Icon(
+                    index < rating ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 6),
+
+          /// COMMENT
+          Text(
+            comment,
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: isSmallScreen ? 12 : 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
+  void _showReviewDialog({int initialRating = 0}) {
+  final controller = TextEditingController();
+ int stars = initialRating;
 
-  // ========== RATING STARS WIDGET ==========
-  Widget _buildRatingStars(
-    double currentRating,
-    Function(double) onRatingChanged,
-    bool isEnabled,
-    double screenWidth,
-    double screenHeight,
-  ) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(5, (index) {
-        return IconButton(
-          icon: Icon(
-            index < currentRating ? Icons.star : Icons.star_border,
-            color: isEnabled ? Colors.amber : Colors.grey,
-            size: screenWidth * 0.075,
-          ),
-          onPressed: isEnabled 
-              ? () => onRatingChanged(index + 1.0)
-              : widget.onNavigateToLogin,
+  showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+
+            /// ⭐ HEADER
+            title: const Text(
+              "Add Review",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+
+                /// 👤 USER INFO ROW
+Row(
+  children: [
+    CircleAvatar(
+      backgroundColor: Colors.green,
+      backgroundImage: (currentUserImage != null && currentUserImage!.isNotEmpty)
+          ? NetworkImage(currentUserImage!)
+          : null,
+      child: (currentUserImage == null || currentUserImage!.isEmpty)
+          ? const Icon(Icons.person, color: Colors.white)
+          : null,
+    ),
+
+    const SizedBox(width: 10),
+
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          currentUserName ?? "User",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const Text(
+          "Posting publicly",
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      ],
+    ),
+  ],
+),
+
+                const SizedBox(height: 16),
+
+                /// ⭐ STARS
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final isSelected = index < stars;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setStateDialog(() {
+                          stars = index + 1;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          isSelected
+                              ? Icons.star
+                              : Icons.star_border,
+                          size: 34,
+                          color: isSelected
+                              ? Colors.amber
+                              : Colors.grey.shade400,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+
+                const SizedBox(height: 12),
+
+                /// ✍️ COMMENT BOX
+                TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: "Describe your experience (optional)",
+                    hintStyle: const TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.green),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                onPressed: () async {
+                   log("SUBMIT CLICKED");
+                  final prefs = await SharedPreferences.getInstance();
+                  final userId = prefs.getString('userId');
+
+                  final body = {
+                    "userId": int.parse(userId!),
+                    "hospitalId":widget.hospitalId ,
+                   
+                    "rating": stars,
+                    "comment": controller.text.trim(),
+                  };
+log("CREATE REVIEW BODY => $body");
+  final res = await ApiService().createReview(body);
+log(" create res=${res.data}");
+
+
+
+              Navigator.pop(context);
+
+                  await fetchMyReview();
+                  await fetchReviews();
+                  setState(() {
+  selectedRating = 0;
+});
+                },
+                child: const Text(
+                  "Submit",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+  void _showEditReviewDialog() {
+    final controller = TextEditingController(text: myReview!.comment);
+
+    int stars = myReview!.rating;
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: const Text("Edit Review"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () {
+                          setStateDialog(() {
+                            stars = index + 1;
+                          });
+                        },
+                        child: Icon(
+                          Icons.star,
+                          color: index < stars ? Colors.amber : Colors.grey,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: controller,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    await ApiService().updateReview(
+                      myReview!.id.toString(),
+                      {
+                        "rating": stars,
+                        "comment": controller.text.trim(),
+                      },
+                    );
+
+                    Navigator.pop(context);
+
+                    await fetchMyReview();
+                    await fetchReviews();
+
+                    setState(() {});
+                  },
+                  child: const Text("Update"),
+                ),
+              ],
+            );
+          },
         );
-      }),
+      },
     );
   }
 }

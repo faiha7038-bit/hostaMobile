@@ -5,6 +5,7 @@ import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
 import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
@@ -40,7 +41,23 @@ void initState() {
   super.initState();
 
   _fetchHospitals();
+// SocketService().addListener(
+//   [
+//     'HOSPITAL_REGISTERED',
+//     'HOSPITAL_UPDATED',
+//     'HOSPITAL_BLACKLISTED',
+//   ],
+//   (_) {
+//     log("🔄 Refetch Hospitals");
+//     setState(() {
+//       hospitals.clear();
+//       currentPage = 1;
+//       hasNextPage = true;
+//     });
 
+//     _fetchHospitals();
+//   },
+// );
   _scrollController.addListener(() {
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
@@ -49,6 +66,12 @@ void initState() {
       _loadMoreHospitals();
     }
   });
+}
+@override
+void dispose() {
+  _scrollController.dispose();
+  _debounce?.cancel();
+  super.dispose();
 }
 Future<void> _loadMoreHospitals() async {
   if (isLoadingMore || !hasNextPage) return;

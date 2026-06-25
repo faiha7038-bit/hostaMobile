@@ -357,7 +357,7 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Error loading hospital data: $error"),
+           // Text("Error loading hospital data: $error"),
             ElevatedButton(
               onPressed: () => ref.invalidate(hospitalDetailsProvider(widget.hospitalId)),
               child: Text("Retry"),
@@ -452,59 +452,33 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
                     ],
                   ),
                   Expanded(
-                    child: TabBarView(
-                      children: [
-                        InfoTab(
-                          hospital: hospitalData,
-                          makePhoneCall: _makePhoneCall,
-                        ),
-                        SpecialtiesTab(
-                          hospital: hospitalData,
-                          onSpecialtyTap: _navigateToDoctorsPage,
-                        ),
-                        HoursTab(
-                          hospital: hospitalData,
-                          formatTime: _formatTime,
-                        ),
-
-                        LocationTab(
-                          hospital: hospitalData,
-                          userLatitude: _currentPosition?.latitude,
-                          userLongitude: _currentPosition?.longitude,
-                        ),
-                        SizedBox(
-                          // ✅ Wrap LocationTab with SizedBox
-                          width: double.infinity,
-                          height: double.infinity,
-                          child: LocationTab(
-                            hospital: hospitalData,
-                            userLatitude: _currentPosition?.latitude,
-                            userLongitude: _currentPosition?.longitude,
-                          ),
-                        ),
-                        ReviewsTab(
-                          hospitalId: widget.hospitalId,
-                          reviews: reviewsAsync.when(
-                            data: (reviews) => reviews,
-                            loading: () => [],
-                            error: (_, __) => [],
-                          ),
-                          currentUserId: userState.userId,
-                          currentUserName: userState.userName,
-                          currentUserEmail: userState.userEmail,
-                          isReviewLoading: isReviewLoading,
-                          onCreateReview: () async {},
-                          onUpdateReview: (reviewId) {},
-                          onDeleteReview: _deleteReview,
-                          onNavigateToLogin: _navigateToLogin,
-                          onInitializeUser: () async {
-                            await ref
-                                .read(userProvider.notifier)
-                                .initializeUser();
-                          },
-                        ),
-                      ],
-                    ),
+                    child: 
+                  TabBarView(
+  children: [
+    InfoTab(
+      hospital: hospitalData,
+      makePhoneCall: _makePhoneCall,
+    ),
+    SpecialtiesTab(
+      hospital: hospitalData,
+      onSpecialtyTap: _navigateToDoctorsPage,
+    ),
+    HoursTab(
+      hospital: hospitalData,
+      formatTime: _formatTime,
+    ),
+    LocationTab(
+      hospital: hospitalData,
+      userLatitude: _currentPosition?.latitude,
+      userLongitude: _currentPosition?.longitude,
+    ),
+    ReviewsTab(
+      hospitalId: widget.hospitalId,
+    
+    
+    ),
+  ],
+)
                   ),
                 ],
               ),
