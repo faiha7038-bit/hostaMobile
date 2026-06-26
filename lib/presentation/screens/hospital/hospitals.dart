@@ -7,7 +7,6 @@ import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
 import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
 import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/api_service.dart';
 
@@ -49,6 +48,7 @@ SocketService().addListener(
   ],
   (_) {
     log("🔄 Refetch Hospitals");
+    if (!mounted) return;
     setState(() {
       hospitals.clear();
       currentPage = 1;
@@ -75,7 +75,7 @@ void dispose() {
 }
 Future<void> _loadMoreHospitals() async {
   if (isLoadingMore || !hasNextPage) return;
-
+if (!mounted) return;
   setState(() => isLoadingMore = true);
 
   await _fetchHospitals(
@@ -83,7 +83,7 @@ Future<void> _loadMoreHospitals() async {
     page: currentPage + 1,
     loadMore: true,
   );
-
+if (!mounted) return;
   setState(() => isLoadingMore = false);
 }
 Future<void> _fetchHospitals({
@@ -94,8 +94,10 @@ Future<void> _fetchHospitals({
   try {
     if (!loadMore) {
       if (query.isEmpty) {
+        if (!mounted) return;
         setState(() => isLoading = true);
       } else {
+        if (!mounted) return;
         setState(() => isSearching = true);
       }
     }
@@ -122,7 +124,7 @@ Future<void> _fetchHospitals({
       return hospitalType ==
           widget.type.toLowerCase();
     }).toList();
-
+if (!mounted) return;
     setState(() {
       hospitals = loadMore
           ? [...hospitals, ...filtered]
@@ -135,6 +137,7 @@ Future<void> _fetchHospitals({
       isSearching = false;
     });
   } catch (e) {
+    if (!mounted) return;
     setState(() {
       isLoading = false;
       isSearching = false;
@@ -210,19 +213,19 @@ Future<void> _fetchHospitals({
   // }
 
   // 👇 Helper method (kept as is, not used now but harmless)
-  String _mapTypeToBackend(String frontendType) {
-    if (frontendType.toLowerCase() == 'allopathy') {
-      return 'alopathy';
-    }
-    return frontendType;
-  }
+  // String _mapTypeToBackend(String frontendType) {
+  //   if (frontendType.toLowerCase() == 'allopathy') {
+  //     return 'alopathy';
+  //   }
+  //   return frontendType;
+  // }
 
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    final Uri url = Uri.parse("tel:$phoneNumber");
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
-    }
-  }
+  // Future<void> _makePhoneCall(String phoneNumber) async {
+  //   final Uri url = Uri.parse("tel:$phoneNumber");
+  //   if (await canLaunchUrl(url)) {
+  //     await launchUrl(url);
+  //   }
+  // }
 
   Future<void> _ensureLocationEnabled() async {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -294,55 +297,7 @@ Future<void> _fetchHospitals({
   return false;
 }
 
-  // bool _isOpenNow(Map<String, dynamic> hospital) {
-  //   final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
-  //   if (workingHoursClinic != null && workingHoursClinic.isNotEmpty) {
-  //     return _isOpenNowNewFormat(hospital);
-  //   }
 
-  //   final workingHours = hospital["working_hours"] as List<dynamic>?;
-  //   if (workingHours == null || workingHours.isEmpty) return false;
-
-  //   final now = DateTime.now();
-  //   final today = [
-  //     "Monday",
-  //     "Tuesday",
-  //     "Wednesday",
-  //     "Thursday",
-  //     "Friday",
-  //     "Saturday",
-  //     "Sunday"
-  //   ][now.weekday - 1];
-
-  //   final todayHours = workingHours.firstWhere(
-  //     (day) => day["day"] == today,
-  //     orElse: () => null,
-  //   );
-
-  //   if (todayHours == null || todayHours["is_holiday"] == true) return false;
-
-  //   final open = todayHours["opening_time"];
-  //   final close = todayHours["closing_time"];
-  //   if (open == null || close == null) return false;
-
-  //   try {
-  //     int nowMinutes = now.hour * 60 + now.minute;
-  //     final openParts = open.split(":");
-  //     int openMinutes = int.parse(openParts[0]) * 60 + int.parse(openParts[1]);
-
-  //     final closeParts = close.split(":");
-  //     int closeMinutes = int.parse(closeParts[0]) * 60 +
-  //         int.parse(closeParts[1]);
-
-  //     if (closeMinutes < openMinutes) {
-  //       return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
-  //     } else {
-  //       return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
-  //     }
-  //   } catch (_) {
-  //     return false;
-  //   }
-  // }
 
   bool _isOpenNowNewFormat(Map<String, dynamic> hospital) {
     final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
@@ -616,6 +571,7 @@ if (filterNearest && userPosition != null) {
               ),
               child: TextField(
                 onChanged: (value) {
+                  if (!mounted) return;
   setState(() {
     searchQuery = value;
   });
@@ -680,8 +636,10 @@ if (filterNearest && userPosition != null) {
                     onSelected: (val) async {
                       if (val) {
                         await _ensureLocationEnabled();
+                        if (!mounted) return;
                         setState(() => filterNearest = true);
                       } else {
+                        if (!mounted) return;
                         setState(() => filterNearest = false);
                       }
                     },
@@ -788,6 +746,7 @@ if (filterNearest && userPosition != null) {
               padding: EdgeInsets.only(top: screenHeight * 0.02),
               child: TextButton(
                 onPressed: () async {
+                  
   setState(() {
     searchQuery = '';
   });
@@ -834,10 +793,10 @@ if (filterNearest && userPosition != null) {
 
     final address = getAddress(hospital["address"]);
     final phone = hospital["phone"] ?? "";
-    log("LAT: ${hospital["latitude"]}");
-log("LON: ${hospital["longitude"]}");
-log("USER LAT: ${userPosition?.latitude}");
-log("USER LNG: ${userPosition?.longitude}");
+//     log("LAT: ${hospital["latitude"]}");
+// log("LON: ${hospital["longitude"]}");
+// log("USER LAT: ${userPosition?.latitude}");
+// log("USER LNG: ${userPosition?.longitude}");
     final lat =
     double.tryParse(hospital["latitude"].toString()) ?? 0.0;
 
