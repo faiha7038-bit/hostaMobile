@@ -315,9 +315,7 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
                             fontWeight:
                                 FontWeight.bold,
                           ),
-                          mainAxisAlignment:
-                              MainAxisAlignment
-                                  .spaceEvenly,
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
         
                           pinTheme: PinTheme(
                             shape:
@@ -326,7 +324,7 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
                                 BorderRadius.circular(
                                     8),
                             fieldHeight: 40,
-                           fieldWidth: MediaQuery.of(context).size.width * 0.10,
+                           fieldWidth: (constraints.maxWidth / 6.8),
         
                             activeFillColor:
                                 Colors.white,
