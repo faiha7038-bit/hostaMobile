@@ -1,12 +1,10 @@
+
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
 import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
-import 'package:hosta/services/socket-service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/api_service.dart';
@@ -41,23 +39,7 @@ void initState() {
   super.initState();
 
   _fetchHospitals();
-SocketService().addListener(
-  [
-    'HOSPITAL_REGISTERED',
-    'HOSPITAL_UPDATED',
-    'HOSPITAL_BLACKLISTED',
-  ],
-  (_) {
-    log("🔄 Refetch Hospitals");
-    setState(() {
-      hospitals.clear();
-      currentPage = 1;
-      hasNextPage = true;
-    });
 
-    _fetchHospitals();
-  },
-);
   _scrollController.addListener(() {
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
@@ -66,12 +48,6 @@ SocketService().addListener(
       _loadMoreHospitals();
     }
   });
-}
-@override
-void dispose() {
-  _scrollController.dispose();
-  _debounce?.cancel();
-  super.dispose();
 }
 Future<void> _loadMoreHospitals() async {
   if (isLoadingMore || !hasNextPage) return;
@@ -518,6 +494,38 @@ bool _isOpenNowNoBreak(Map<String, dynamic> hospital) {
     );
   }
 
+  // ========== FIXED SEARCH LOGIC - HANDLES ADDRESS MAP ==========
+  // bool _matchesSearchQuery(Map<String, dynamic> hospital) {
+  //   if (searchQuery.isEmpty) return true;
+
+  //   final cleanQuery = searchQuery.replaceAll(' ', '').toLowerCase();
+  //   final hospitalName = (hospital["name"] ?? '')
+  //       .toString()
+  //       .replaceAll(' ', '')
+  //       .toLowerCase();
+
+  //   // Convert address (Map or String) to plain string for searching
+  //   String getAddressString(dynamic addr) {
+  //     if (addr == null) return '';
+  //     if (addr is String) return addr;
+  //     if (addr is Map) {
+  //       final parts = <String>[];
+  //       if (addr['place'] != null) parts.add(addr['place'].toString());
+  //       if (addr['district'] != null) parts.add(addr['district'].toString());
+  //       if (addr['state'] != null) parts.add(addr['state'].toString());
+  //       return parts.join(' ');
+  //     }
+  //     return '';
+  //   }
+
+  //   final rawAddress = getAddressString(hospital["address"]);
+  //   final hospitalAddress = rawAddress.replaceAll(' ', '').toLowerCase();
+
+  //   return hospitalName.contains(cleanQuery) ||
+  //       hospitalAddress.contains(cleanQuery);
+  // }
+
+  // ========== BUILD METHODS ==========
 
   @override
   Widget build(BuildContext context) {
@@ -953,43 +961,7 @@ print(_calculateDistance(lat, lon));
         ),
       ),
     ),
-onPressed: () async {
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getString('userId') ?? '';
-
-  if (userId.isEmpty) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Login Required"),
-        content: const Text(
-          "Please login to book an appointment.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const Signin(),
-                ),
-              );
-            },
-            child: const Text(
-              "Login",
-              style: TextStyle(color: Colors.green),
-            ),
-          ),
-        ],
-      ),
-    );
-    return;
-  }
+onPressed: () {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
