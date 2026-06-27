@@ -34,6 +34,7 @@ String? currentUserImage;
 int selectedRating = 0;
 double avgRating = 0.0;
 int totalReviews = 0;
+bool canReview = false;
 bool showAllReviews = false;
 Map<int, int> ratingBreakdown = {
   5: 0,
@@ -187,7 +188,7 @@ log("DOCTOR ID => ${widget.doctor.id}");
                     );
 
                     Navigator.pop(context);
-
+                    await _fetchRating();
                     await _fetchMyReview();
                     await _fetchReviews();
 
@@ -254,7 +255,7 @@ log("DATA LENGTH => ${data.length}");
       final res = await ApiService().getReviews(
         doctorId: widget.doctor.id.toString(),
       );
-
+log("GET REVIEWS => ${res.data}");
       final data = res.data['data'] as List;
 
       for (final item in data) {
@@ -996,6 +997,7 @@ if (totalReviews > 5 && !showAllReviews)
   setState(() {
     selectedRating = index + 1;
   });
+  _showReviewDialog(initialRating: index + 1);
 },
       child: Icon(
         isSelected ? Icons.star : Icons.star_border,
@@ -1170,7 +1172,7 @@ onTap: () async {
     currentPage = 1;
     hasMore = true;
   });
-
+await _fetchRating();
   await _fetchReviews(); // fresh reload
 }
                   }
@@ -1396,17 +1398,23 @@ Row(
                     "rating": stars,
                     "comment": controller.text.trim(),
                   };
-log("CREATE REVIEW BODY => $body");
+try {
   final res = await ApiService().createReview(body);
-log(" create res=${res.data}");
-     
+log("createreview=${res.data}");
+  Navigator.pop(context);
 
-
-              Navigator.pop(context);
-
-                  await _fetchMyReview();
-                  await _fetchReviews();
-                  setState(() {});
+  await _fetchMyReview();
+  await _fetchReviews();
+  await _fetchRating();
+} catch (e) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      backgroundColor: Colors.green,
+      content: Text("You can review only after your consultation is completed."),
+    ),
+  );
+}
+                 // setState(() {});
                 },
                 child: const Text(
                   "Submit",

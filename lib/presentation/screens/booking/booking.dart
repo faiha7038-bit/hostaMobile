@@ -20,6 +20,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   bool _listenerAdded = false;
   @override
   void initState() {
+    print("initsrate called");
     super.initState();
       _checkToken();
       
@@ -71,9 +72,13 @@ _scrollController.addListener(() {
   }
   
 void _setupSocketListener() {
-  if (_listenerAdded) return;
+   print("🔥 _setupSocketListener called");
+  if (_listenerAdded) {
+  log("Listener already added");
+  return;
+}
 
-  _listenerAdded = true;
+_listenerAdded = true;
 
   SocketService().addListener(
     [
@@ -84,7 +89,7 @@ void _setupSocketListener() {
       'BOOKING_COMPLETED',
     ],
     (data) async {
-      if (!mounted) return;
+      //if (!mounted) return;
 
       log("📅 BOOKING EVENT => $data");
 
@@ -93,6 +98,11 @@ void _setupSocketListener() {
           .refreshBookings();
     },
   );
+}
+@override
+void dispose() {
+  log("BookingScreen dispose");
+  super.dispose();
 }
   Future<void> _selectDate() async {
     final now = DateTime.now();

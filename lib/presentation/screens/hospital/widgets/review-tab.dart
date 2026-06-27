@@ -1,6 +1,8 @@
 import 'dart:developer';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/review_model.dart';
+import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/services/api_service.dart';
 import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -388,11 +390,45 @@ Future<void> deleteReview(
     final isSelected = index < selectedRating;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedRating = index + 1;
-        });
-      },
+     onTap: () async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  if (userId == null || userId.isEmpty) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Login Required"),
+        content: const Text("Please login to write a review."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const Signin(),
+                ),
+              );
+            },
+            child: const Text("Login"),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+
+  setState(() {
+    selectedRating = index + 1;
+  });
+
+  _showReviewDialog(initialRating: index + 1);
+},
       child: Icon(
         isSelected ? Icons.star : Icons.star_border,
         color: Colors.amber,
@@ -809,32 +845,43 @@ Row(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                 ),
-                onPressed: () async {
-                   log("SUBMIT CLICKED");
-                  final prefs = await SharedPreferences.getInstance();
-                  final userId = prefs.getString('userId');
+              onPressed: () async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
 
-                  final body = {
-                    "userId": int.parse(userId!),
-                    "hospitalId":widget.hospitalId ,
-                   
-                    "rating": stars,
-                    "comment": controller.text.trim(),
-                  };
-log("CREATE REVIEW BODY => $body");
-  final res = await ApiService().createReview(body);
-log(" create res=${res.data}");
+    final body = {
+      "userId": int.parse(userId!),
+      "hospitalId": widget.hospitalId,
+      "rating": stars,
+      "comment": controller.text.trim(),
+    };
 
+    final res = await ApiService().createReview(body);
 
+    Navigator.pop(context);
 
-              Navigator.pop(context);
+    await fetchMyReview();
+    await fetchReviews();
+    await _fetchRating();
 
-                  await fetchMyReview();
-                  await fetchReviews();
-                  setState(() {
-  selectedRating = 0;
-});
-                },
+    setState(() {
+      selectedRating = 0;
+    });
+  } 
+ on DioException catch (e) {
+  Navigator.pop(context);
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text(
+        "You can review this hospital only after completing your consultation.",
+      ),
+    ),
+  );
+}
+},
+                
                 child: const Text(
                   "Submit",
                   style: TextStyle(color: Colors.white),
