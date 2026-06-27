@@ -1,5 +1,4 @@
 import 'dart:developer';
-
 import 'package:alarm/alarm.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' as firebase;
 import 'package:flutter/material.dart';
@@ -52,12 +51,13 @@ void main() async {
     print("✅ Permission: ${settings.authorizationStatus}");
     
     // Wait for iOS APNS token
-   Future.delayed(const Duration(seconds: 2));
+  await Future.delayed(const Duration(seconds: 2));
     
-   String? apnsToken = await messaging.getAPNSToken();
-print("🍏 APNS TOKEN: $apnsToken");
-    String? fcmToken = await messaging.getToken();
-log("🔥 FCM TOKEN: $fcmToken");
+//    String? apnsToken = await messaging.getAPNSToken();
+// print("🍏 APNS TOKEN: $apnsToken");
+
+
+
     // Initialize FCM
     final firebaseMsg = FirebaseMsg();
     await firebaseMsg.initFCM();
