@@ -329,12 +329,15 @@ Future<void> _submit() async {
   if (!isEdit) {
     if (formState.dateOfBirth == null ||
         formState.bloodGroup == null ||
-        formState.selectedCountry == null ||
-        formState.selectedState == null) {
+        formState.selectedCountry == null ) {
       showTopSnackBar(context, "Please fill all required fields", isError: true);
       return;
     }
-
+ if (formState.states.isNotEmpty &&
+      formState.selectedState == null) {
+    showTopSnackBar(context, "Please select state", isError: true);
+    return;
+  }
     if (formState.districts.isNotEmpty &&
         formState.selectedDistrict == null) {
       showTopSnackBar(context, "Please select district", isError: true);

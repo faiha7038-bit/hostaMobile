@@ -34,7 +34,9 @@ String? currentUserImage;
 int selectedRating = 0;
 double avgRating = 0.0;
 int totalReviews = 0;
+bool canReview = false;
 bool showAllReviews = false;
+late Function(dynamic) _onReviewEvent;
 Map<int, int> ratingBreakdown = {
   5: 0,
   4: 0,
@@ -55,10 +57,37 @@ Map<int, int> ratingBreakdown = {
     _fetchRating();
       _setupSocketListener(); 
   }
-  void _setupSocketListener() {
+  @override
+void dispose() {
+  SocketService().removeListener("RATING_REGISTERED", _onReviewEvent);
+  SocketService().removeListener("RATING_UPDATED", _onReviewEvent);
+  SocketService().removeListener("REVIEW_REGISTERED", _onReviewEvent);
+  SocketService().removeListener("REVIEW_UPDATED", _onReviewEvent);
+
+  super.dispose();
+}
+void _setupSocketListener() {
   if (_listenerAdded) return;
 
   _listenerAdded = true;
+
+  _onReviewEvent = (data) async {
+    if (!mounted) return;
+
+    log("⭐ REVIEW/RATING EVENT => $data");
+
+    await _fetchRating();
+    await _fetchMyReview();
+
+    currentPage = 1;
+    hasMore = true;
+
+    await _fetchReviews();
+
+    if (mounted) {
+      setState(() {});
+    }
+  };
 
   SocketService().addListener(
     [
@@ -67,23 +96,7 @@ Map<int, int> ratingBreakdown = {
       'REVIEW_REGISTERED',
       'REVIEW_UPDATED',
     ],
-    (data) async {
-      if (!mounted) return;
-
-      log("⭐ REVIEW/RATING EVENT => $data");
-
-      await _fetchRating();
-      await _fetchMyReview();
-
-      currentPage = 1;
-      hasMore = true;
-
-      await _fetchReviews();
-
-      if (mounted) {
-        setState(() {});
-      }
-    },
+    _onReviewEvent,
   );
 }
 Future<void> _loadUser() async {
@@ -187,7 +200,7 @@ log("DOCTOR ID => ${widget.doctor.id}");
                     );
 
                     Navigator.pop(context);
-
+                    await _fetchRating();
                     await _fetchMyReview();
                     await _fetchReviews();
 
@@ -254,7 +267,7 @@ log("DATA LENGTH => ${data.length}");
       final res = await ApiService().getReviews(
         doctorId: widget.doctor.id.toString(),
       );
-
+log("GET REVIEWS => ${res.data}");
       final data = res.data['data'] as List;
 
       for (final item in data) {
@@ -561,7 +574,8 @@ if (totalReviews > 5 && !showAllReviews)
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadiusGeometry.circular(10)),
                     backgroundColor: Colors.green),
-                onPressed: doctorDetails!.bookingOpen
+                onPressed:
+                  (doctorDetails!.bookingOpen && doctorDetails!.isActive)
                     ? () async {
                         final prefs = await SharedPreferences.getInstance();
                         final userId = prefs.getString('userId') ?? '';
@@ -613,7 +627,7 @@ if (totalReviews > 5 && !showAllReviews)
                       }
                     : null,
                 child: Text(
-                  doctorDetails!.bookingOpen ? "Book Appointment" : "CLOSED",
+                 ( doctorDetails!.bookingOpen && doctorDetails!.isActive) ? "Book Appointment" : "CLOSED",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -996,6 +1010,7 @@ if (totalReviews > 5 && !showAllReviews)
   setState(() {
     selectedRating = index + 1;
   });
+  _showReviewDialog(initialRating: index + 1);
 },
       child: Icon(
         isSelected ? Icons.star : Icons.star_border,
@@ -1170,7 +1185,7 @@ onTap: () async {
     currentPage = 1;
     hasMore = true;
   });
-
+await _fetchRating();
   await _fetchReviews(); // fresh reload
 }
                   }
@@ -1396,17 +1411,23 @@ Row(
                     "rating": stars,
                     "comment": controller.text.trim(),
                   };
-log("CREATE REVIEW BODY => $body");
+try {
   final res = await ApiService().createReview(body);
-log(" create res=${res.data}");
-     
+log("createreview=${res.data}");
+  Navigator.pop(context);
 
-
-              Navigator.pop(context);
-
-                  await _fetchMyReview();
-                  await _fetchReviews();
-                  setState(() {});
+  await _fetchMyReview();
+  await _fetchReviews();
+  await _fetchRating();
+} catch (e) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      backgroundColor: Colors.green,
+      content: Text("You can review only after your consultation is completed."),
+    ),
+  );
+}
+                 // setState(() {});
                 },
                 child: const Text(
                   "Submit",

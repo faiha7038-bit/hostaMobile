@@ -215,6 +215,7 @@ Future<void> fetchBookings({
   final userId = state.userId;
 log("RESET = $reset");
   if (userId == null || userId.isEmpty) {
+      await loadUserIdAndFetchBookings(); 
     setLoading(false);
     return;
   }

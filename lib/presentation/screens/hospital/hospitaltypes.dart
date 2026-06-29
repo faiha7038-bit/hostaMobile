@@ -1,7 +1,5 @@
-
 import 'dart:async';
 import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/hospital-categorymodel.dart';
 import 'package:hosta/presentation/screens/hospital/hospitals.dart';
@@ -21,6 +19,7 @@ Timer? _debounce;
   bool isLoading = false;
   List<Category> categories = [];
 bool _listenerAdded = false;
+late Function(dynamic) _onCategoryEvent;
   int page = 1;
   int limit = 10;
 
@@ -30,10 +29,20 @@ bool _listenerAdded = false;
     fetchCategories();
      _setupSocketListener(); 
   }
+  
 void _setupSocketListener() {
   if (_listenerAdded) return;
 
   _listenerAdded = true;
+   _onCategoryEvent = (data) async {
+    if (!mounted) return;
+
+    log("🏥 CATEGORY EVENT => $data");
+
+    await fetchCategories(
+      query: searchQuery.isEmpty ? null : searchQuery,
+    );
+  };
 
   SocketService().addListener(
     [
@@ -41,15 +50,7 @@ void _setupSocketListener() {
       'CATEGORY_UPDATED',
       'CATEGORY_DELETED',
     ],
-    (data) async {
-      if (!mounted) return;
-
-      log("🏥 CATEGORY EVENT => $data");
-
-      await fetchCategories(
-        query: searchQuery.isEmpty ? null : searchQuery,
-      );
-    },
+     _onCategoryEvent,
   );
 }
 Future<void> fetchCategories({String? query}) async {
@@ -95,6 +96,9 @@ void onSearchChanged(String val) {
 @override
 void dispose() {
   _debounce?.cancel();
+   SocketService().removeListener("CATEGORY_REGISTERED", _onCategoryEvent);
+  SocketService().removeListener("CATEGORY_UPDATED", _onCategoryEvent);
+  SocketService().removeListener("CATEGORY_DELETED", _onCategoryEvent);
   super.dispose();
 }
 

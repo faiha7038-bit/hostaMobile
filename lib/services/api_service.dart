@@ -900,6 +900,24 @@ Future<Response> getPatients({
     },
   );
 }
+//..........Documents...................
+  Future<Response> getDocuments(int patientId) {
+    return dio.get('/api/documents', queryParameters: {
+      'patientId': patientId,
+    });
+  }
+  Future<Response> createDocument(Map data) {
+    return dio.post('/api/documents', data: data);
+  }
+
+  Future<Response> updateDocument(String id, Map data) {
+    return dio.put('/api/documents/$id', data: data);
+  }
+
+  Future<Response> deleteDocument(String id) {
+    return dio.delete('/api/documents/$id');
+  }
+
 Future<Response> getCategories({
   String? searchQuery,
   int page = 1,

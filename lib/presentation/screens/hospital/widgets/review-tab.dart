@@ -1,6 +1,8 @@
 import 'dart:developer';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/review_model.dart';
+import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/services/api_service.dart';
 import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,7 +31,8 @@ int totalReviews = 0;
 int selectedRating = 0;
 bool showAllReviews = false;
  bool isreviewsLoading = false;
-
+late Function(dynamic) _onReviewEvent;
+late Function(dynamic) _onRatingEvent;
 bool isLoading = false;
 String? currentUserImage;
 Map<int, int> ratingBreakdown = {
@@ -63,48 +66,47 @@ void initState() {
   fetchMyReview();
   _setupSocketListeners();
 }
+@override
+void dispose() {
+  reviewController.dispose();
+  editingReviewController.dispose();
+
+  SocketService().removeListener("REVIEW_REGISTERED", _onReviewEvent);
+  SocketService().removeListener("REVIEW_UPDATED", _onReviewEvent);
+
+  SocketService().removeListener("RATING_REGISTERED", _onRatingEvent);
+  SocketService().removeListener("RATING_UPDATED", _onRatingEvent);
+
+  super.dispose();
+}
 void _setupSocketListeners() {
-  final socket = SocketService().socket;
-
-  // REVIEW REGISTERED
-  socket.on("REVIEW_REGISTERED", (data) async {
-    log("🔥 REVIEW_REGISTERED => $data");
+  _onReviewEvent = (data) async {
+    log("🔥 Review Event => $data");
 
     await _fetchRating();
     await fetchReviews();
     await fetchMyReview();
 
     if (mounted) setState(() {});
-  });
+  };
 
-  // REVIEW UPDATED
-  socket.on("REVIEW_UPDATED", (data) async {
-    log("🔥 REVIEW_UPDATED => $data");
-
-    await _fetchRating();
-    await fetchReviews();
-    await fetchMyReview();
-
-    if (mounted) setState(() {});
-  });
-
-  // RATING REGISTERED
-  socket.on("RATING_REGISTERED", (data) async {
-    log("⭐ RATING_REGISTERED => $data");
+  _onRatingEvent = (data) async {
+    log("⭐ Rating Event => $data");
 
     await _fetchRating();
 
     if (mounted) setState(() {});
-  });
+  };
 
-  // RATING UPDATED
-  socket.on("RATING_UPDATED", (data) async {
-    log("⭐ RATING_UPDATED => $data");
+  SocketService().addListener(
+    ["REVIEW_REGISTERED", "REVIEW_UPDATED"],
+    _onReviewEvent,
+  );
 
-    await _fetchRating();
-
-    if (mounted) setState(() {});
-  });
+  SocketService().addListener(
+    ["RATING_REGISTERED", "RATING_UPDATED"],
+    _onRatingEvent,
+  );
 }
 Future<void> _fetchRating() async {
   try {
@@ -388,11 +390,45 @@ Future<void> deleteReview(
     final isSelected = index < selectedRating;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedRating = index + 1;
-        });
-      },
+     onTap: () async {
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId');
+
+  if (userId == null || userId.isEmpty) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Login Required"),
+        content: const Text("Please login to write a review."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const Signin(),
+                ),
+              );
+            },
+            child: const Text("Login"),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+
+  setState(() {
+    selectedRating = index + 1;
+  });
+
+  _showReviewDialog(initialRating: index + 1);
+},
       child: Icon(
         isSelected ? Icons.star : Icons.star_border,
         color: Colors.amber,
@@ -809,32 +845,43 @@ Row(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                 ),
-                onPressed: () async {
-                   log("SUBMIT CLICKED");
-                  final prefs = await SharedPreferences.getInstance();
-                  final userId = prefs.getString('userId');
+              onPressed: () async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
 
-                  final body = {
-                    "userId": int.parse(userId!),
-                    "hospitalId":widget.hospitalId ,
-                   
-                    "rating": stars,
-                    "comment": controller.text.trim(),
-                  };
-log("CREATE REVIEW BODY => $body");
-  final res = await ApiService().createReview(body);
-log(" create res=${res.data}");
+    final body = {
+      "userId": int.parse(userId!),
+      "hospitalId": widget.hospitalId,
+      "rating": stars,
+      "comment": controller.text.trim(),
+    };
 
+    final res = await ApiService().createReview(body);
 
+    Navigator.pop(context);
 
-              Navigator.pop(context);
+    await fetchMyReview();
+    await fetchReviews();
+    await _fetchRating();
 
-                  await fetchMyReview();
-                  await fetchReviews();
-                  setState(() {
-  selectedRating = 0;
-});
-                },
+    setState(() {
+      selectedRating = 0;
+    });
+  } 
+ on DioException catch (e) {
+  Navigator.pop(context);
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text(
+        "You can review this hospital only after completing your consultation.",
+      ),
+    ),
+  );
+}
+},
+                
                 child: const Text(
                   "Submit",
                   style: TextStyle(color: Colors.white),
