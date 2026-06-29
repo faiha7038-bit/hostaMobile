@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_app_badger_plus/flutter_app_badger_plus.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
@@ -7,11 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/screens/profile_show/profile.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../screens/home/home.dart';
 import '../screens/booking/booking.dart';
 import '../screens/notification/notifications.dart';
@@ -31,7 +28,7 @@ class BottomNavState extends ConsumerState<Bottomnav> {
   Map<String, dynamic> userData = {};
   bool isLoadingUser = true;
   String? userId;
-  IO.Socket? socket;
+  
   OverlayEntry? _overlayEntry;
   Timer? _refreshTimer;
   // PageController for swipe functionality
@@ -57,8 +54,19 @@ class BottomNavState extends ConsumerState<Bottomnav> {
     _loadUserId();
     _checkBadgeSupport();
     _initializeFCM();
+     initSocket();
   }
+Future<void> initSocket() async {
+  final prefs = await SharedPreferences.getInstance();
 
+  final token = prefs.getString("authToken");
+  final userId = prefs.getString("userId");
+
+  if (token != null && userId != null) {
+    SocketService().connect(token);
+    SocketService().joinUserRoom(userId);
+  }
+}
   void _initializePages() {
     pages = [
        Home(key: ValueKey('home_page')),
@@ -513,23 +521,7 @@ Future<void> makePhoneCall(String phoneNumber) async {
     }
   }
 
-  Future<void> _sendFCMTokenToSocket() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final fcmToken = prefs.getString('fcm_token');
-      
-      if (fcmToken != null && socket != null && socket!.connected) {
-        print('📡 Sending FCM token to socket...');
-        socket!.emit('registerFCMToken', {
-          'userId': userId,
-          'fcmToken': fcmToken,
-        });
-        print('✅ FCM token sent to socket successfully');
-      }
-    } catch (e) {
-      print('❌ Error sending FCM token to socket: $e');
-    }
-  }
+
 
   Future<void> _refetchNotifications() async {
     try {
@@ -735,8 +727,7 @@ void updateNotificationCount(int count) {
     _removeOverlay();
     _pageController.dispose();
     _refreshTimer?.cancel();
-    socket?.disconnect();
-    socket?.close();
+   
     print('🔄 BottomNav disposed');
     super.dispose();
   }

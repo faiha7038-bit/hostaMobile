@@ -164,10 +164,15 @@ if (authToken != null &&
 
   log("✅ Saved authToken");
 
-  final socket = SocketService();
-  socket.connect(authToken);
+final socketService = SocketService();
 
-  log("🔥 SOCKET CONNECTED");
+socketService.connect(authToken);
+
+if (userId != null && userId.isNotEmpty) {
+  socketService.joinUserRoom(userId);
+}
+
+log("🔥 SOCKET CONNECTED");
 } else {
   log("⚠️ No token in response");
 }

@@ -18,6 +18,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isFetchingMore = false;
   bool _listenerAdded = false;
+  late Function(dynamic) _onBookingEvent;
   @override
   void initState() {
     print("initsrate called");
@@ -72,13 +73,18 @@ _scrollController.addListener(() {
   }
   
 void _setupSocketListener() {
-   print("🔥 _setupSocketListener called");
-  if (_listenerAdded) {
-  log("Listener already added");
-  return;
-}
+  if (_listenerAdded) return;
 
-_listenerAdded = true;
+  _listenerAdded = true;
+
+  final notifier = ref.read(bookingStateProvider.notifier);
+
+  _onBookingEvent = (data) async {
+    log("📅 BOOKING EVENT => $data");
+
+    notifier.setLoading(true);
+    await notifier.fetchBookings(reset: true);
+  };
 
   SocketService().addListener(
     [
@@ -88,20 +94,20 @@ _listenerAdded = true;
       'BOOKING_ACCEPTED',
       'BOOKING_COMPLETED',
     ],
-    (data) async {
-      //if (!mounted) return;
-
-      log("📅 BOOKING EVENT => $data");
-
-      await ref
-          .read(bookingStateProvider.notifier)
-          .refreshBookings();
-    },
+    _onBookingEvent,
   );
 }
 @override
 void dispose() {
   log("BookingScreen dispose");
+   SocketService().removeListener("BOOKING_REGISTERED", _onBookingEvent);
+  SocketService().removeListener("BOOKING_UPDATED", _onBookingEvent);
+  SocketService().removeListener("BOOKING_CANCELLED", _onBookingEvent);
+  SocketService().removeListener("BOOKING_ACCEPTED", _onBookingEvent);
+  SocketService().removeListener("BOOKING_COMPLETED", _onBookingEvent);
+
+  _scrollController.dispose();
+
   super.dispose();
 }
   Future<void> _selectDate() async {

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/providers/specialities-provider.dart';
@@ -15,28 +14,39 @@ class Specialties extends ConsumerStatefulWidget {
 
 class _SpecialitesState extends ConsumerState<Specialties> {
   Timer? _debounceTimer;
+  late Function(dynamic) _onSpecialityEvent;
     //final Debouncer _debouncer = Debouncer(const Duration(milliseconds: 500));
  @override
 void initState() {
   super.initState();
+  _onSpecialityEvent = (_) {
+    log("🔄 Refetch Specialties from socket");
 
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _refreshSpecialties();
+      }
+    });
+  };
   SocketService().addListener(
     [
       'SPECIALITY_REGISTERED',
       'SPECIALITY_UPDATED',
       'SPECIALITY_DELETED',
     ],
-    (_) {
-      log("🔄 Refetch Specialties from socket");
-
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          _refreshSpecialties();
-        }
-      });
-    },
+    _onSpecialityEvent,
   );
+}
+@override
+void dispose() {
+  _debounceTimer?.cancel();
+
+  SocketService().removeListener("SPECIALITY_REGISTERED", _onSpecialityEvent);
+  SocketService().removeListener("SPECIALITY_UPDATED", _onSpecialityEvent);
+  SocketService().removeListener("SPECIALITY_DELETED", _onSpecialityEvent);
+
+  super.dispose();
 }
 void _refreshSpecialties() {
   final searchQuery = ref.read(searchQueryProvider);

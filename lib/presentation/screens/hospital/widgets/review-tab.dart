@@ -31,7 +31,8 @@ int totalReviews = 0;
 int selectedRating = 0;
 bool showAllReviews = false;
  bool isreviewsLoading = false;
-
+late Function(dynamic) _onReviewEvent;
+late Function(dynamic) _onRatingEvent;
 bool isLoading = false;
 String? currentUserImage;
 Map<int, int> ratingBreakdown = {
@@ -65,48 +66,47 @@ void initState() {
   fetchMyReview();
   _setupSocketListeners();
 }
+@override
+void dispose() {
+  reviewController.dispose();
+  editingReviewController.dispose();
+
+  SocketService().removeListener("REVIEW_REGISTERED", _onReviewEvent);
+  SocketService().removeListener("REVIEW_UPDATED", _onReviewEvent);
+
+  SocketService().removeListener("RATING_REGISTERED", _onRatingEvent);
+  SocketService().removeListener("RATING_UPDATED", _onRatingEvent);
+
+  super.dispose();
+}
 void _setupSocketListeners() {
-  final socket = SocketService().socket;
-
-  // REVIEW REGISTERED
-  socket.on("REVIEW_REGISTERED", (data) async {
-    log("🔥 REVIEW_REGISTERED => $data");
+  _onReviewEvent = (data) async {
+    log("🔥 Review Event => $data");
 
     await _fetchRating();
     await fetchReviews();
     await fetchMyReview();
 
     if (mounted) setState(() {});
-  });
+  };
 
-  // REVIEW UPDATED
-  socket.on("REVIEW_UPDATED", (data) async {
-    log("🔥 REVIEW_UPDATED => $data");
-
-    await _fetchRating();
-    await fetchReviews();
-    await fetchMyReview();
-
-    if (mounted) setState(() {});
-  });
-
-  // RATING REGISTERED
-  socket.on("RATING_REGISTERED", (data) async {
-    log("⭐ RATING_REGISTERED => $data");
+  _onRatingEvent = (data) async {
+    log("⭐ Rating Event => $data");
 
     await _fetchRating();
 
     if (mounted) setState(() {});
-  });
+  };
 
-  // RATING UPDATED
-  socket.on("RATING_UPDATED", (data) async {
-    log("⭐ RATING_UPDATED => $data");
+  SocketService().addListener(
+    ["REVIEW_REGISTERED", "REVIEW_UPDATED"],
+    _onReviewEvent,
+  );
 
-    await _fetchRating();
-
-    if (mounted) setState(() {});
-  });
+  SocketService().addListener(
+    ["RATING_REGISTERED", "RATING_UPDATED"],
+    _onRatingEvent,
+  );
 }
 Future<void> _fetchRating() async {
   try {

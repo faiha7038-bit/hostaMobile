@@ -27,7 +27,7 @@ class _DoctorsState extends ConsumerState<Doctors> {
   String? errorMessage;
  Timer? _debounceTimer;
  final ScrollController _scrollController = ScrollController();
-
+late Function(dynamic) _onDoctorEvent;
 int currentPage = 1;
 bool hasNextPage = true;
 bool isPaginationLoading = false;
@@ -38,25 +38,7 @@ void initState() {
   super.initState();
 
   _fetchDoctors();
-SocketService().addListener(
-  [
-  " DOCTOR_REGISTERED",
-      "DOCTOR_UPDATED",
-      "DOCTOR_DELETED",
-     " DOCTOR_PASSWORD_RESET",
-      "DOCTOR_PASSWORD_CHANGED"
-
-  ],
-  (_) {
-    log("🔄 Refetch Doctors");
-
-    doctors.clear();
-    currentPage = 1;
-    hasNextPage = true;
-
-    _fetchDoctors();
-  },
-);
+_setupSocket();
   _scrollController.addListener(() {
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
@@ -66,13 +48,38 @@ SocketService().addListener(
     }
   });
 }
+void _setupSocket() {
+  _onDoctorEvent = (_) {
+    log("🔄 Refetch Doctors");
 
+    doctors.clear();
+    currentPage = 1;
+    hasNextPage = true;
+
+    _fetchDoctors();
+  };
+
+  SocketService().addListener(
+    [
+      "DOCTOR_REGISTERED",
+      "DOCTOR_UPDATED",
+      "DOCTOR_DELETED",
+      "DOCTOR_PASSWORD_RESET",
+      "DOCTOR_PASSWORD_CHANGED",
+    ],
+    _onDoctorEvent,
+  );
+}
     @override
 
 void dispose() {
   _debounceTimer?.cancel();
   _scrollController.dispose();
-  
+    SocketService().removeListener("DOCTOR_REGISTERED", _onDoctorEvent);
+  SocketService().removeListener("DOCTOR_UPDATED", _onDoctorEvent);
+  SocketService().removeListener("DOCTOR_DELETED", _onDoctorEvent);
+  SocketService().removeListener("DOCTOR_PASSWORD_RESET", _onDoctorEvent);
+  SocketService().removeListener("DOCTOR_PASSWORD_CHANGED", _onDoctorEvent);
   super.dispose();
 }
   void _onSearchChanged(String value) {

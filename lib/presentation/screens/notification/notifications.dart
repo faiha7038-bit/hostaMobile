@@ -774,7 +774,7 @@ class _NotificationsState extends State<Notifications> {
       await FCMService.subscribeToTopic('user_$userId');
       await _initializeNotifications();
       await _fetchNotifications();
-      _setupSocketListener();
+     // _setupSocketListener();
     } else {
       setState(() => isLoading = false);
     }
@@ -1133,53 +1133,53 @@ class _NotificationsState extends State<Notifications> {
         ));
   }
 
-  void _setupSocketListener() {
-    try {
-      if (socket != null) {
-        socket!.disconnect();
-        socket!.dispose();
-      }
+  // void _setupSocketListener() {
+  //   try {
+  //     if (socket != null) {
+  //       socket!.disconnect();
+  //       socket!.dispose();
+  //     }
 
-      socket = IO.io('https://www.zorrowtek.in', <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-        'reconnection': true,
-        'reconnectionAttempts': 5,
-        'reconnectionDelay': 2000,
-        'reconnectionDelayMax': 10000,
-        'timeout': 20000,
-        'forceNew': true,
-      });
+  //     socket = IO.io('https://www.zorrowtek.in', <String, dynamic>{
+  //       'transports': ['websocket'],
+  //       'autoConnect': true,
+  //       'reconnection': true,
+  //       'reconnectionAttempts': 5,
+  //       'reconnectionDelay': 2000,
+  //       'reconnectionDelayMax': 10000,
+  //       'timeout': 20000,
+  //       'forceNew': true,
+  //     });
 
-      socket!.on('connect', (_) {
-        // print("✅ Socket connected");
-        if (userId != null) {
-          socket!.emit('joinUserRoom', userId);
-          socket!.emit('userOnline', userId);
-        }
-      });
+  //     socket!.on('connect', (_) {
+  //       // print("✅ Socket connected");
+  //       if (userId != null) {
+  //         socket!.emit('joinUserRoom', userId);
+  //         socket!.emit('userOnline', userId);
+  //       }
+  //     });
 
-      socket!.on('connect_error', (error) {
-        print("❌ Connection error: $error");
-      });
+  //     socket!.on('connect_error', (error) {
+  //       print("❌ Connection error: $error");
+  //     });
 
-      socket!.on('error', (error) {
-        print("❌ Socket error: $error");
-      });
+  //     socket!.on('error', (error) {
+  //       print("❌ Socket error: $error");
+  //     });
 
-      socket!.on('disconnect', (_) {
-        print("⚠️ Socket disconnected");
-      });
+  //     socket!.on('disconnect', (_) {
+  //       print("⚠️ Socket disconnected");
+  //     });
 
-      socket!.on('pushNotification', _handleNewNotification);
-      socket!.on('notificationRead', _handleNotificationRead);
-      socket!.on('notificationDeleted', _handleNotificationDeleted);
+  //     socket!.on('pushNotification', _handleNewNotification);
+  //     socket!.on('notificationRead', _handleNotificationRead);
+  //     socket!.on('notificationDeleted', _handleNotificationDeleted);
 
-      socket!.connect();
-    } catch (e) {
-      print("❌ Socket setup error: $e");
-    }
-  }
+  //     socket!.connect();
+  //   } catch (e) {
+  //     print("❌ Socket setup error: $e");
+  //   }
+  // }
 
   void _handleNotificationRead(dynamic data) {
     print("📖 Notification read: $data");

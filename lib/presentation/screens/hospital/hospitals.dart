@@ -24,7 +24,7 @@ class _HospitalsState extends State<Hospitals> {
 int currentPage = 1;
 bool hasNextPage = true;
 bool isLoadingMore = false;
-
+late Function(dynamic) _onHospitalEvent;
   bool isLoading = true;
   bool isSearching=true;
   List<dynamic> hospitals = [];
@@ -40,24 +40,7 @@ void initState() {
   super.initState();
 
   _fetchHospitals();
-SocketService().addListener(
-  [
-    'HOSPITAL_REGISTERED',
-    'HOSPITAL_UPDATED',
-    'HOSPITAL_BLACKLISTED',
-  ],
-  (_) {
-    log("🔄 Refetch Hospitals");
-    if (!mounted) return;
-    setState(() {
-      hospitals.clear();
-      currentPage = 1;
-      hasNextPage = true;
-    });
-
-    _fetchHospitals();
-  },
-);
+_setupSocket();
   _scrollController.addListener(() {
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
@@ -71,7 +54,34 @@ SocketService().addListener(
 void dispose() {
   _scrollController.dispose();
   _debounce?.cancel();
+   SocketService().removeListener("HOSPITAL_REGISTERED", _onHospitalEvent);
+  SocketService().removeListener("HOSPITAL_UPDATED", _onHospitalEvent);
+  SocketService().removeListener("HOSPITAL_BLACKLISTED", _onHospitalEvent);
   super.dispose();
+}
+void _setupSocket() {
+  _onHospitalEvent = (_) {
+    log("🔄 Refetch Hospitals");
+
+    if (!mounted) return;
+
+    setState(() {
+      hospitals.clear();
+      currentPage = 1;
+      hasNextPage = true;
+    });
+
+    _fetchHospitals();
+  };
+
+  SocketService().addListener(
+    [
+      'HOSPITAL_REGISTERED',
+      'HOSPITAL_UPDATED',
+      'HOSPITAL_BLACKLISTED',
+    ],
+    _onHospitalEvent,
+  );
 }
 Future<void> _loadMoreHospitals() async {
   if (isLoadingMore || !hasNextPage) return;

@@ -62,6 +62,7 @@ bool isOffline = false;
 Timer? _debounce;
 List<dynamic> allDonors = [];
  bool _listenerAdded = false;
+ late Function(dynamic) _onDonorEvent;
 final Map<String, List<String>> compatibilityMap = {
   "A+": ["A+", "A-", "O+", "O-"],
   "A-": ["A-", "O-"],
@@ -77,6 +78,9 @@ StreamSubscription? _connectivitySubscription;
 void dispose() {
   _debounce?.cancel();
   _connectivitySubscription?.cancel();
+   SocketService().removeListener("DONOR_REGISTERED", _onDonorEvent);
+  SocketService().removeListener("DONOR_UPDATED", _onDonorEvent);
+  SocketService().removeListener("DONOR_DELETED", _onDonorEvent);
   super.dispose();
 }
 @override
@@ -95,16 +99,17 @@ void _setupSocketListener() {
   if (_listenerAdded) return;
 
   _listenerAdded = true;
+    _onDonorEvent = (data) async {
+    log("🩸 DONOR EVENT => $data");
+    await _fetchDonors();
+  };
 SocketService().addListener(
   [
     'DONOR_REGISTERED',
     'DONOR_UPDATED',
     'DONOR_DELETED',
   ],
-  (data) async {
-    log("🩸 DONOR EVENT => $data");
-    await _fetchDonors();
-  },
+ _onDonorEvent,
 );
  
 }

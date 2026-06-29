@@ -12,7 +12,7 @@ class Profile extends ConsumerStatefulWidget {
 }
 
 class _ProfileState extends ConsumerState<Profile> {
- @override
+late Function(dynamic) _onUserEvent;
 
 
 @override
@@ -20,20 +20,29 @@ void initState() {
   super.initState();
 
   ref.read(userDataProvider.notifier).loadUserIdAndProfile();
+    _onUserEvent = (data) {
+    log("📩 User Event => $data");
+
+    if (mounted) {
+      ref.read(userDataProvider.notifier).loadProfile();
+    }
+  };
 SocketService().addListener(
   [
     "USER_REGISTERED",
     "USER_UPDATED",
     "USER_DELETED",
   ],
-  (data) {
-    log("📩 User Event => $data");
-
-     if (mounted) {
-        ref.read(userDataProvider.notifier).loadProfile();
-      }
-  },
+   _onUserEvent,
 );
+}
+@override
+void dispose() {
+  SocketService().removeListener("USER_REGISTERED", _onUserEvent);
+  SocketService().removeListener("USER_UPDATED", _onUserEvent);
+  SocketService().removeListener("USER_DELETED", _onUserEvent);
+
+  super.dispose();
 }
 void _showProfileOptions(
   BuildContext context,
