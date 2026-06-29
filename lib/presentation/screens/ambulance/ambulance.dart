@@ -9,7 +9,6 @@ import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/ambulance-provider.dart';
 import 'package:hosta/services/socket-service.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -26,7 +25,7 @@ class _AmbulanceState extends ConsumerState<Ambulance> {
 final TextEditingController _searchController = TextEditingController();
 StreamSubscription? _connectivitySubscription;
 String? userId;
-
+late Function(dynamic) _onAmbulanceEvent;
 List<dynamic> _filterOfflineData(
   List<dynamic> list,
   
@@ -120,6 +119,9 @@ void dispose() {
   _debounce?.cancel();
   _searchController.dispose();
   _connectivitySubscription?.cancel();
+    SocketService().removeListener("AMBULANCE_REGISTERED", _onAmbulanceEvent);
+  SocketService().removeListener("AMBULANCE_UPDATED", _onAmbulanceEvent);
+  SocketService().removeListener("AMBULANCE_DELETED", _onAmbulanceEvent);
   super.dispose();
 }
   @override
@@ -131,25 +133,9 @@ void dispose() {
       _fetchAmbulances();
        _refreshAmbulanceId();
        _loadUser();
-          // SOCKET EVENTS
-   SocketService().addListener(
-  [
-    'AMBULANCE_REGISTERED',
-    'AMBULANCE_UPDATED',
-    'AMBULANCE_DELETED',
-  ],
-  (_) async {
-    if (!mounted) return;
+       _setupSocketListener();
+     
 
-    log("🚑 Ambulance Changed - Refetching");
-
-    ref.invalidate(ambulanceListProvider);
-    ref.invalidate(allAmbulancesProvider);
-
-    await _fetchAmbulances(showLoader: false);
-    await _refreshAmbulanceId();
-  },
-);
      _connectivitySubscription =
     Connectivity().onConnectivityChanged.listen((results) {
 
@@ -165,6 +151,28 @@ void dispose() {
 });
   
   }
+  void _setupSocketListener() {
+  _onAmbulanceEvent = (_) async {
+    if (!mounted) return;
+
+    log("🚑 Ambulance Changed - Refetching");
+
+    ref.invalidate(ambulanceListProvider);
+    ref.invalidate(allAmbulancesProvider);
+
+    await _fetchAmbulances(showLoader: false);
+    await _refreshAmbulanceId();
+  };
+
+  SocketService().addListener(
+    [
+      'AMBULANCE_REGISTERED',
+      'AMBULANCE_UPDATED',
+      'AMBULANCE_DELETED',
+    ],
+    _onAmbulanceEvent,
+  );
+}
   Future<void> _loadUser() async {
   final prefs = await SharedPreferences.getInstance();
   setState(() {

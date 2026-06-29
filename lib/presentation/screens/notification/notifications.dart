@@ -56,7 +56,7 @@ class _NotificationsState extends State<Notifications> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= 
+    if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       _loadMoreNotifications();
     }
@@ -64,7 +64,7 @@ class _NotificationsState extends State<Notifications> {
   
   Future<void> _setup() async {
     await _getUserId();
-    
+
     if (userId != null && userId!.isNotEmpty) {
       await _loadLocalReadStatus();
       await FCMService.initialize();
@@ -119,11 +119,13 @@ class _NotificationsState extends State<Notifications> {
       // You don't need to specify sound here for default sound
     );
 
-    final plugin = flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final plugin =
+        flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
     await plugin?.createNotificationChannel(channel);
 
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
       android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: true,
@@ -228,18 +230,18 @@ class _NotificationsState extends State<Notifications> {
     } else {
       setState(() => _isLoadingMore = true);
     }
-    
+
     try {
       final apiService = ApiService();
       await apiService.init();
       
       final response = await apiService.getNotificationsByRole(
-        'user', 
-        userId!, 
+        'user',
+        userId!,
         page: _currentPage,
         limit: 10,
       );
-      
+
       print("📡 Response Status: ${response.statusCode}");
       print("📡 Page: $_currentPage");
       
@@ -453,11 +455,12 @@ class _NotificationsState extends State<Notifications> {
   Future<void> _markAllAsRead() async {
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please login first'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Please login first'), backgroundColor: Colors.red),
       );
       return;
     }
-    
+
     final unreadCount = notifications.where((n) => n["read"] != true).length;
     if (unreadCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -666,10 +669,11 @@ Future<void> _showLocalNotification(Map<String, dynamic> data) async {
       bool matchesRead = (!showUnread && !showRead) ||
           (showUnread && n["read"] != true) ||
           (showRead && n["read"] == true);
-      
+
       bool matchesDate = selectedDate.isEmpty ||
-          DateFormat('yyyy-MM-dd').format(DateTime.parse(n["createdAt"])) == selectedDate;
-      
+          DateFormat('yyyy-MM-dd').format(DateTime.parse(n["createdAt"])) ==
+              selectedDate;
+
       return matchesRead && matchesDate;
     }).toList();
   }
@@ -695,7 +699,7 @@ Future<void> _showLocalNotification(Map<String, dynamic> data) async {
     final screenWidth = MediaQuery.of(context).size.width;
     final unreadCount = notifications.where((n) => n["read"] != true).length;
     final readCount = notifications.where((n) => n["read"] == true).length;
-  
+
     if (userId == null || userId!.isEmpty) {
       return Scaffold(
         backgroundColor: const Color(0xFFECFDF5),
@@ -716,7 +720,7 @@ Future<void> _showLocalNotification(Map<String, dynamic> data) async {
         ),
       );
     }
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
@@ -743,7 +747,8 @@ Future<void> _showLocalNotification(Map<String, dynamic> data) async {
                       children: [
                         Row(
                           children: [
-                            _buildFilterChip("Unread ($unreadCount)", showUnread, () {
+                            _buildFilterChip(
+                                "Unread ($unreadCount)", showUnread, () {
                               setState(() {
                                 showUnread = !showUnread;
                                 showRead = false;
@@ -763,9 +768,12 @@ Future<void> _showLocalNotification(Map<String, dynamic> data) async {
                         GestureDetector(
                           onTap: _handleBadgeTap,
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: unreadCount > 0 ? Colors.red : Colors.grey[300],
+                              color: unreadCount > 0
+                                  ? Colors.red
+                                  : Colors.grey[300],
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
@@ -828,9 +836,11 @@ Future<void> _showLocalNotification(Map<String, dynamic> data) async {
                           )
                         : ListView.builder(
                             controller: _scrollController,
-                            itemCount: filteredList.length + (_hasMorePages ? 1 : 0),
+                            itemCount:
+                                filteredList.length + (_hasMorePages ? 1 : 0),
                             itemBuilder: (context, index) {
-                              if (index == filteredList.length && _hasMorePages) {
+                              if (index == filteredList.length &&
+                                  _hasMorePages) {
                                 return Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Center(
@@ -850,27 +860,36 @@ Future<void> _showLocalNotification(Map<String, dynamic> data) async {
                                   ),
                                 );
                               }
-                              
+
                               final n = filteredList[index];
                               return Card(
                                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 child: ListTile(
                                   leading: CircleAvatar(
-                                    backgroundColor: n["read"] == true ? Colors.grey[300] : Colors.green[100],
+                                    backgroundColor: n["read"] == true
+                                        ? Colors.grey[300]
+                                        : Colors.green[100],
                                     child: Icon(
-                                      n["read"] == true ? Icons.notifications_none : Icons.notifications_active,
-                                      color: n["read"] == true ? Colors.grey : Colors.green,
+                                      n["read"] == true
+                                          ? Icons.notifications_none
+                                          : Icons.notifications_active,
+                                      color: n["read"] == true
+                                          ? Colors.grey
+                                          : Colors.green,
                                     ),
                                   ),
                                   title: Text(
                                     n["message"] ?? "No message",
                                     style: TextStyle(
-                                      fontWeight: n["read"] == true ? FontWeight.normal : FontWeight.bold,
+                                      fontWeight: n["read"] == true
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  subtitle: Text(_getRelativeTime(n["createdAt"])),
+                                  subtitle:
+                                      Text(_getRelativeTime(n["createdAt"])),
                                   trailing: n["read"] == true
                                       ? null
                                       : Container(

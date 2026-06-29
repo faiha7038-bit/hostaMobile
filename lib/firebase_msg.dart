@@ -27,11 +27,11 @@ class FirebaseMsg {
     if (_token != null) return _token; // already initialized
 
 
- if (Firebase.apps.isEmpty) {
-     await Firebase.initializeApp();
-   // print('⚠️ No Firebase app, but continuing anyway...');
-    // Don't initialize here - let the platform handle it
-  }
+//  if (Firebase.apps.isEmpty) {
+//      await Firebase.initializeApp();
+//    // print('⚠️ No Firebase app, but continuing anyway...');
+//     // Don't initialize here - let the platform handle it
+//   }
 
     try {
       print('🔍 DEBUG: Starting FCM initialization...');
@@ -65,8 +65,9 @@ class FirebaseMsg {
       await _configurePlatformSettings();
 
       // Get FCM token
-      _token = await msgService.getToken();
-      print('🪙 TOKEN DEBUG - FCM Token: ${_token ?? "NULL"}');
+      // Get FCM token with retry
+_token = await _getFcmToken();
+print('🪙 TOKEN DEBUG - FCM Token: ${_token ?? "NULL"}');
 
       // Save token locally
       if (_token != null) await _saveFCMToken(_token!);
@@ -179,7 +180,23 @@ class FirebaseMsg {
     await _showLocalNotification(message);
     print('📱 END OF FOREGROUND MESSAGE\n');
   }
+Future<String?> _getFcmToken() async {
+  for (int i = 0; i < 3; i++) {
+    try {
+      final token = await msgService.getToken();
 
+      if (token != null) {
+        return token;
+      }
+    } catch (e) {
+      print("🔄 FCM retry ${i + 1}: $e");
+    }
+
+    await Future.delayed(const Duration(seconds: 2));
+  }
+
+  return null;
+}
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
     if (notification == null) return;

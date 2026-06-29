@@ -7,11 +7,9 @@ import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/screens/profile_show/profile.dart';
 import 'package:hosta/services/socket-service.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../screens/home/home.dart';
 import '../screens/booking/booking.dart';
 import '../screens/notification/notifications.dart';
@@ -34,7 +32,7 @@ class BottomNavState extends ConsumerState<Bottomnav> {
   Map<String, dynamic> userData = {};
   bool isLoadingUser = true;
   String? userId;
-  IO.Socket? socket;
+  
   OverlayEntry? _overlayEntry;
   Timer? _refreshTimer;
   late PageController _pageController;
@@ -89,8 +87,19 @@ void _setupSocket() async {
         _loadNotificationCountFromAPI();
       }
     });
+     initSocket();
   }
+Future<void> initSocket() async {
+  final prefs = await SharedPreferences.getInstance();
 
+  final token = prefs.getString("authToken");
+  final userId = prefs.getString("userId");
+
+  if (token != null && userId != null) {
+    SocketService().connect(token);
+    SocketService().joinUserRoom(userId);
+  }
+}
   void _initializePages() {
     pages = [
       Home(key: ValueKey('home_page')),
@@ -803,8 +812,6 @@ void _setupSocket() async {
     _removeOverlay();
     _pageController.dispose();
     _refreshTimer?.cancel();
-    socket?.disconnect();
-    socket?.close();
     print('🔄 BottomNav disposed');
     super.dispose();
   }

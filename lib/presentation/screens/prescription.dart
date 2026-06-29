@@ -25,7 +25,7 @@ class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
   ScrollController scrollController = ScrollController();
   final TextEditingController _dateController = TextEditingController();
   DateTime? selectedDate;
-
+late Function(dynamic) _onPrescriptionEvent;
   List<dynamic> allPrescriptions = [];
   List<dynamic> prescriptions = [];
 
@@ -54,41 +54,28 @@ class _PrescriptionDetailsScreenState extends State<PrescriptionDetailsScreen> {
     scrollController.dispose();
     _dateController.dispose();
     _debounceTimer?.cancel();
+      SocketService().removeListener("PRESCRIPTION_CREATED", _onPrescriptionEvent);
+  SocketService().removeListener("PRESCRIPTION_UPDATED", _onPrescriptionEvent);
+  SocketService().removeListener("PRESCRIPTION_DELETED", _onPrescriptionEvent);
     super.dispose();
   }
 void _setupSocketListeners() {
-  final socket = SocketService().socket;
-
-  socket.on("PRESCRIPTION_CREATED", (data) async {
-    log("💊 PRESCRIPTION_CREATED => $data");
-
-    await fetchPrescriptions();
-
-    if (mounted) {
-      setState(() {});
-    }
-  });
-
-  socket.on("PRESCRIPTION_UPDATED", (data) async {
-    log("💊 PRESCRIPTION_UPDATED => $data");
+ 
+  _onPrescriptionEvent = (data) async {
+    log("Prescription Event => $data");
 
     await fetchPrescriptions();
-
-    if (mounted) {
-      setState(() {});
-    }
-  });
-
-  socket.on("PRESCRIPTION_DELETED", (data) async {
-    log("🗑️ PRESCRIPTION_DELETED => $data");
-
-    await fetchPrescriptions();
-
-    if (mounted) {
-      setState(() {});
-    }
-  });
+  };
+ SocketService().addListener(
+  [
+    "PRESCRIPTION_CREATED",
+    "PRESCRIPTION_UPDATED",
+    "PRESCRIPTION_DELETED",
+  ],
+  _onPrescriptionEvent,
+);
 }
+
   void _clearDateFilter() {
     setState(() {
       selectedDate = null;
@@ -289,7 +276,7 @@ void _setupSocketListeners() {
 
   // ✅ UPDATED: Get doctor name from our map
   String _getDoctorName(dynamic prescription) {
-    final doctorId = prescription['doctorId'];
+    final doctorId = prescription['prescribedBy'];
     
     // 1. Check if we have the doctor name in our map
     if (doctorId != null && doctorNames.containsKey(doctorId)) {
@@ -307,7 +294,7 @@ void _setupSocketListeners() {
       return 'Doctor #$doctorId';
     }
     
-    return 'Unknown Doctor';
+    return ' Doctor';
   }
 
   String _getPatientName(dynamic prescription) {

@@ -2,61 +2,110 @@ import 'dart:developer';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class SocketService {
+
   static final SocketService _instance = SocketService._internal();
   factory SocketService() => _instance;
 
   SocketService._internal();
 
-  late IO.Socket socket;
-// SocketEventRouter? router;
+  IO.Socket? socket;
   final Map<String, List<Function(dynamic)>> _listeners = {};
    String? _currentUserId;
-// void setRouter(SocketEventRouter r) {
-//   router = r;
-// }
-  void connect(String token) {
-    socket = IO.io(
-      "https://zorrowtek.in",
-      IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .enableReconnection()
-          .setAuth({"token": token})
-          .build(),
-    );
 
-    socket.onConnect((_) {
-      log("✅ Socket Connected");
+ void connect(String token) {
+  log("connect() CALLED");
 
-      // ✅ Join user room if userId is set
-       if (_currentUserId != null) {
-        _joinUserRoom(_currentUserId!);
-      }
-    });
+  if (socket != null) {
+    if (socket!.connected) {
+      log("✅ Socket already connected");
+      return;
+    }
 
-   socket.onAny((event, data) {
-  log("📩 EVENT => $event");
+    socket!.dispose();
+    socket = null;
+  }
 
-//  router?.handle(event, data);
+  socket = IO.io(
+    "https://zorrowtek.in",
+    IO.OptionBuilder()
+        .setTransports(['websocket'])
+        .enableReconnection()
+        .setReconnectionAttempts(999999)
+        .setReconnectionDelay(2000)
+        .setAuth({"token": token})
+        .build(),
+  );
 
-  if (_listeners.containsKey(event)) {
-    for (final callback in _listeners[event]!) {
+   socket!.onConnect((_) {
+  log("✅ Socket Connected");
+
+  if (_currentUserId != null) {
+    _joinUserRoom(_currentUserId!);
+  }
+});
+
+socket!.onDisconnect((reason) {
+  log("❌ Socket Disconnected: $reason");
+});
+
+socket!.onConnectError((err) {
+  log("❌ Connect Error: $err");
+});
+
+socket!.onReconnect((_) {
+  log("🔄 Reconnected");
+});
+
+socket!.onReconnectAttempt((attempt) {
+  log("🔄 Reconnect attempt: $attempt");
+});
+
+// Direct events
+socket!.onAny((event, data) {
+  final listeners = _listeners[event];
+  if (listeners != null) {
+    for (final callback in listeners) {
       callback(data);
     }
   }
 });
 
-    socket.connect();
-  }
- // ✅ New method to join user room
-  void joinUserRoom(String userId) {
-    _currentUserId = userId;
-    if (socket.connected) {
-      _joinUserRoom(userId);
+// System events (Booking, Prescription, etc.)
+socket!.on("system_event", (payload) {
+  if (payload == null) return;
+
+  final message = payload["message"]?.toString() ?? "";
+  final match = RegExp(r'\[(.*?)\]').firstMatch(message);
+
+  if (match == null) return;
+
+  final event = match.group(1)!;
+
+  log("System Event => $event");
+
+  final listeners = _listeners[event];
+  if (listeners != null) {
+    for (final callback in listeners) {
+      callback(payload["data"]);
     }
   }
+});
+
+    socket!.connect();
+ 
+  }
+  
+ // ✅ New method to join user room
+ void joinUserRoom(String userId) {
+  _currentUserId = userId;
+
+  if (socket != null && socket!.connected) {
+    _joinUserRoom(userId);
+  }
+}
    void _joinUserRoom(String userId) {
-    socket.emit('joinUserRoom', userId);
-    socket.emit('userOnline', userId);
+    socket!.emit('joinUserRoom', userId);
+    socket!.emit('userOnline', userId);
     log("✅ Joined user room: $userId");
   }
 
