@@ -7,6 +7,7 @@ import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/screens/profile_show/profile.dart';
 import 'package:hosta/services/socket-service.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../screens/home/home.dart';
@@ -22,6 +23,9 @@ class Bottomnav extends ConsumerStatefulWidget {
 }
 
 class BottomNavState extends ConsumerState<Bottomnav> {
+  
+  static final GlobalKey<BottomNavState> navigatorKey = GlobalKey<BottomNavState>();
+  
   int currentTabIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int notificationCount = 0;
@@ -31,7 +35,6 @@ class BottomNavState extends ConsumerState<Bottomnav> {
   
   OverlayEntry? _overlayEntry;
   Timer? _refreshTimer;
-  // PageController for swipe functionality
   late PageController _pageController;
   
   final FirebaseMsg _firebaseMsg = FirebaseMsg();
@@ -41,19 +44,49 @@ class BottomNavState extends ConsumerState<Bottomnav> {
     GlobalKey(),
     GlobalKey(),
     GlobalKey(),
-    GlobalKey(), // Added for profile page
+    GlobalKey(),
   ];
 
   late List<Widget> pages;
-
+// ✅ GlobalKey for accessing from other screens
+  static final GlobalKey<BottomNavState> botttomNavKey = 
+      GlobalKey<BottomNavState>();
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: currentTabIndex);
     _initializePages();
     _loadUserId();
+     _setupSocket();
     _checkBadgeSupport();
     _initializeFCM();
+    _startPeriodicRefresh();
+  }
+
+void _setupSocket() async {
+    try {
+      // Get userId from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      userId = prefs.getString('userId');
+      
+      if (userId != null && userId!.isNotEmpty) {
+        final socketService = SocketService();
+        socketService.joinUserRoom(userId!);
+        print("✅ BottomNav: Joined user room: $userId");
+      }
+    } catch (e) {
+      print("❌ BottomNav socket setup error: $e");
+    }
+  }
+
+  void _startPeriodicRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(Duration(seconds: 10), (timer) {
+      if (mounted) {
+        print('🔄 Periodic refresh checking notification count...');
+        _loadNotificationCountFromAPI();
+      }
+    });
      initSocket();
   }
 Future<void> initSocket() async {
@@ -69,13 +102,14 @@ Future<void> initSocket() async {
 }
   void _initializePages() {
     pages = [
-       Home(key: ValueKey('home_page')),
+      Home(key: ValueKey('home_page')),
       BookingScreen(key: _pageKeys[1]),
-       Notifications(key: ValueKey('notifications_page')),
-      ProfilePage(key: _pageKeys[3]), // Added profile page to pages list
+      Notifications(key: ValueKey('notifications_page')),
+      ProfilePage(key: _pageKeys[3]),
     ];
   }
 
+  // ==================== FCM METHODS ====================
   Future<void> _initializeFCM() async {
     try {
       print('🔍 DEBUG: Initializing FCM in BottomNav...');
@@ -98,10 +132,6 @@ Future<void> initSocket() async {
         print('🚀 Sending FCM token to backend server...');
         print('🪙 FCM Token: $fcmToken');
         print('👤 User ID: $userId');
-        
-        // TODO: Send to your backend API
-        // await ApiService().registerFCMToken(userId, fcmToken);
-        
         print('✅ FCM token sent to backend successfully');
       } else {
         print('⚠️ Cannot send FCM token: User ID or Token missing');
@@ -142,10 +172,6 @@ Future<void> initSocket() async {
       if (userId != null && userId.isNotEmpty) {
         print('🔄 Sending refreshed FCM token to backend...');
         print('🪙 New FCM Token: $newToken');
-        
-        // TODO: Send refreshed token to your backend API
-        // await ApiService().updateFCMToken(userId, newToken);
-        
         print('✅ Refreshed FCM token sent to backend successfully');
       }
     } catch (e) {
@@ -189,74 +215,45 @@ Future<void> initSocket() async {
     _updateAppIconBadge();
 
     print('📱 Notification handled - Title: $title, Body: $body, From FCM: $isFromFCM');
-    
     _refetchNotifications();
   }
 
   void _handleNotificationTap(RemoteMessage message) {
     print('📱 Notification tapped, navigating to notifications page');
-    
     if (mounted) {
       _navigateToTab(3);
     }
-    
     _refetchNotifications();
   }
+
+  // ==================== NAVIGATION METHODS ====================
   void _navigateToTab(int index) {
-  // Skip call button index
-  int pageIndex = index;
+    int pageIndex = index;
+    if (index > 2) {
+      pageIndex = index - 1;
+    }
 
-  if (index > 2) {
-    pageIndex = index - 1;
-  }
+    if (pageIndex >= 0 && pageIndex < pages.length) {
+      setState(() {
+        currentTabIndex = index;
+      });
 
-  if (pageIndex >= 0 && pageIndex < pages.length) {
-    setState(() {
-      currentTabIndex = index;
-    });
+      _pageController.animateToPage(
+        pageIndex,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
 
-    _pageController.animateToPage(
-      pageIndex,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-
-    if (index == 3) {
-      _markNotificationsAsRead();
-      //_resetBadgeCountOnly();
-       } else if (index == 0) {
-      _loadNotificationCountFromAPI();
+      // if (index == 3) {
+      //   _markNotificationsAsRead();
+      // } 
+      if (index == 0) {
+        _loadNotificationCountFromAPI();
+      }
     }
   }
-}
-// void _resetBadgeCountOnly() {
-//   if (mounted && notificationCount > 0) {
-//     setState(() {
-//       notificationCount = 0;
-//       _saveNotificationCountToStorage(0);
-//       FlutterAppBadger.removeBadge();
-//     });
-//     print('📱 Badge count reset when navigating to notifications');
-//   }
-// }
-  // void _navigateToTab(int index) {
-  //   if (index >= 0 && index < pages.length) {
-  //     setState(() {
-  //       currentTabIndex = index;
-  //     });
-      
-  //     _pageController.animateToPage(
-  //       index,
-  //       duration: const Duration(milliseconds: 300),
-  //       curve: Curves.easeInOut,
-  //     );
-      
-  //     if (index == 3) {
-  //       _markNotificationsAsRead();
-  //     }
-  //   }
-  // }
 
+  // ==================== BADGE METHODS ====================
   Future<void> _checkBadgeSupport() async {
     try {
       bool isSupported = await FlutterAppBadger.isAppBadgeSupported();
@@ -280,6 +277,7 @@ Future<void> initSocket() async {
     }
   }
 
+  // ==================== USER DATA METHODS ====================
   Future<void> _loadUserId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -296,7 +294,6 @@ Future<void> initSocket() async {
       if (userId != null && userId!.isNotEmpty) {
         await _loadUserData();
         await _loadNotificationCountFromStorage();
-      //  _setupSocketListener();
       } else {
         setState(() => isLoadingUser = false);
       }
@@ -304,36 +301,6 @@ Future<void> initSocket() async {
     } catch (e) {
       print("❌ Error loading user ID: $e");
       setState(() => isLoadingUser = false);
-    }
-  }
-
-  Future<void> _loadNotificationCountFromStorage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedCount = prefs.getInt('notification_count') ?? 0;
-      if (mounted) {
-        setState(() {
-          notificationCount = savedCount;
-        });
-        _updateAppIconBadge();
-      }
-      
-      print('📊 Loaded notification count from storage: $savedCount');
-      await _loadNotificationCountFromAPI();
-    } catch (e) 
-    {
-      print("❌ Error loading notification count from storage: $e");
-      await _loadNotificationCountFromAPI();
-    }
-  }
-
-  Future<void> _saveNotificationCountToStorage(int count) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('notification_count', count);
-      print('💾 Saved notification count to storage: $count');
-    } catch (e) {
-      print("❌ Error saving notification count to storage: $e");
     }
   }
 
@@ -353,7 +320,6 @@ Future<void> initSocket() async {
         });
       }
       print('👤 User data loaded successfully');
-      print('📸 User picture data: ${userData['picture']}'); // Debug print
     } catch (e) {
       print("❌ Error loading user data: $e");
       showTopSnackBar(context, "Error loading user data", isError: true);
@@ -364,174 +330,172 @@ Future<void> initSocket() async {
     }
   }
 
+  // ==================== NOTIFICATION COUNT METHODS ====================
+  
+  Future<void> _loadNotificationCountFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedCount = prefs.getInt('unread_count_$userId') ?? 0;
+      
+      print('📊 Loaded notification count from storage: $savedCount');
+     final locallyReadIds = prefs.getStringList('locally_read_ids_$userId') ?? [];
+    final localReadCount = locallyReadIds.length;
+    
+    print('📊 Local read count: $localReadCount');
+    
+      if (mounted) {
+        setState(() {
+          notificationCount = savedCount;
+        });
+        _updateAppIconBadge();
+      }
+      
+      await _loadNotificationCountFromAPI();
+    } catch (e) {
+      print("❌ Error loading notification count from storage: $e");
+      await _loadNotificationCountFromAPI();
+    }
+  }
+
+  Future<void> _saveNotificationCountToStorage(int count) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('unread_count_$userId', count);
+      await prefs.setInt('notification_count', count);
+      print('💾 Saved notification count to storage: $count');
+    } catch (e) {
+      print("❌ Error saving notification count to storage: $e");
+    }
+  }
 
   Future<void> _loadNotificationCountFromAPI() async {
     _refreshTimer?.cancel();
     _refreshTimer = Timer(const Duration(milliseconds: 500), () async {
-    if (userId == null || userId!.isEmpty) {
-      return;
-    }
+      if (userId == null || userId!.isEmpty) {
+        return;
+      }
 
+      try {
+        final apiService = ApiService();
+     //   final response = await apiService.getUnreadCount('user', userId!);
+         final response = await apiService.getNotificationsByRole(
+        'user', 
+        userId!, 
+        page: 1, 
+        limit: 100  // Get all notifications
+      );
+        print('📊 Notifications list response: ${response.data['success']}');
+
+        
+        if (response.data['success'] == true) {
+           final notificationList = response.data['data'] as List? ?? [];
+            int unreadCount = 0;
+    // ✅ Load local read status
+        final prefs = await SharedPreferences.getInstance();
+        final locallyReadIds = prefs.getStringList('locally_read_ids_$userId') ?? [];
+        final localReadSet = locallyReadIds.toSet();
+        
+        for (var notification in notificationList) {
+          final notificationId = notification['id']?.toString() ?? '';
+          final userReadStatus = notification['userReadStatus'] as Map? ?? {};
+
+ final isReadFromServer = userReadStatus[userId] == true;
+          final isReadLocally = localReadSet.contains(notificationId);
+          final isRead = isReadFromServer || isReadLocally;
+          
+          if (!isRead) {
+            unreadCount++;
+          }
+        }
+          print('📊 Unread count from API: $unreadCount');
+        
+
+          if (mounted && notificationCount != unreadCount) {
+            setState(() {
+              notificationCount = unreadCount;
+            });
+            await _saveNotificationCountToStorage(unreadCount);
+            _updateAppIconBadge();
+          }
+          print('📊 Loaded unread count from API: $unreadCount');
+        } else {
+          await _loadNotificationCountFromNotifications();
+        }
+      } catch (e) {
+        print("❌ Error loading unread count from API: $e");
+        await _loadNotificationCountFromNotifications();
+      }
+    });
+  }
+
+  Future<void> _loadNotificationCountFromNotifications() async {
     try {
       final apiService = ApiService();
-    //   final response = await apiService.getNotificationsByRole('user', userId!);
-      final response = await ApiService().getNotifications();
-      
-      List<dynamic> notifications = [];
-       if (response.data is Map && response.data['success'] == true) {
-      final data = response.data['data'];
-      if (data is List) {
-        notifications = data;
-      }
-    } else if (response.data is List) {
-      notifications = response.data;
-    }
+      final response = await apiService.getNotificationsByRole('user', userId!, page: 1, limit: 100);
+      print('📊 Notifications list response: ${response.data['success']}');
+    
+      if (response.data['success'] == true) {
+        final notificationList = response.data['data'] as List? ?? [];
         
-      final unreadCount = notifications.where((notification) {
-         final userReadStatus = notification['userReadStatus'] as Map? ?? {};
-      final isRead = userReadStatus[userId] == true;
-      return !isRead;
-      }).length;
-             print('📊 Unread notification count: $unreadCount');
-      if (mounted && notificationCount != unreadCount) {
-        setState(() {
-          notificationCount = unreadCount;
-        });
-        await _saveNotificationCountToStorage(unreadCount);
-        _updateAppIconBadge();
+        final unreadCount = notificationList.where((notification) {
+          final userReadStatus = notification['userReadStatus'] as Map? ?? {};
+          final isRead = userReadStatus[userId] == true;
+          return !isRead;
+        }).length;
+        print('📊 Unread count from notifications list: $unreadCount');
+        if (mounted) {
+          setState(() {
+            notificationCount = unreadCount;
+          });
+          await _saveNotificationCountToStorage(unreadCount);
+          _updateAppIconBadge();
+        }
+        print('📊 Loaded unread count from notifications: $unreadCount');
       }
-      
-     // print('📊 Loaded notification count from API: $unreadCount');
     } catch (e) {
-      print("❌ Error loading notifications from API: $e");
-      // if (mounted) {
-      //   setState(() {
-      //     notificationCount = 0;
-      //   });
-      //   _updateAppIconBadge();
-      // }
+      print("❌ Error loading from notifications: $e");
     }
   }
-    );
-  }
-Future<void> makePhoneCall(String phoneNumber) async {
-  bool? res = await FlutterPhoneDirectCaller.callNumber(phoneNumber);
 
-  if (res == true) {
-    print("Call Started");
-  } else {
-    print("Call Failed");
-  }
-}
-//   void _setupSocketListener() {
-//     try {
-//       const String serverUrl = 'https://www.zorrowtek.in';
+  // ✅ FIXED: Mark notifications as read
+  void _markNotificationsAsRead() {
+    if (mounted && notificationCount > 0) {
+      setState(() {
+        notificationCount = 0;
+        _saveNotificationCountToStorage(0);
+        FlutterAppBadger.removeBadge();
+      });
       
-//       socket = IO.io(serverUrl, <String, dynamic>{
-//         'transports': ['websocket', 'polling'],
-//         'autoConnect': true,
-//         'reconnection': true,
-//         'reconnectionAttempts': 5,
-//         'reconnectionDelay': 1000,
-//       });
-// //9567900329
-//       socket!.on('connect', (_) {
-//         print("✅ Connected to server via Socket.IO");
-        
-//         _sendFCMTokenToSocket();
-        
-//         if (userId != null && userId!.isNotEmpty) {
-//           socket!.emit('joinUserRoom', {'userId': userId});
-//           print("🚪 Joined user room: $userId");
-//         }
-//       });
-
-//       socket!.on('disconnect', (_) {
-//         print("🔌 Disconnected from server");
-//       });
-
-//       socket!.on('error', (error) {
-//         print('⚠️ Socket error: $error');
-//       });
-
-//       socket!.on('pushNotificationPhone', (data) {
-//         print('📡 Socket notification received: $data');
-        
-//         final notificationUserId = data['userId']?.toString();
-//         final message = data['message']?.toString() ?? 'New notification';
-//         final title = data['title']?.toString() ?? 'New Notification';
-        
-//         if (notificationUserId == userId) {
-//           print('📱 Processing socket notification for current user');
-          
-//           final remoteMessage = RemoteMessage(
-//             notification: RemoteNotification(
-//               title: title,
-//               body: message,
-//             ),
-//             data: data is Map<String, dynamic> ? data : {'fromSocket': 'true'},
-//           );
-          
-//           _handleIncomingNotification(remoteMessage, isFromFCM: false);
-//         }
-//       });
-
-//       socket!.on('profile', (data) {
-//         print('📡 Profile update socket event received: $data');
-        
-//         final profileUserId = data['userId']?.toString();
-        
-//         if (profileUserId == userId) {
-//           print('🔄 Processing profile update for current user');
-//           _refreshUserData();
-//         }
-//       });
-
-//       //socket!.connect();
-//       print('🔌 Socket.IO connection initiated');
-
-//     } catch (e) {
-//       print('❌ Error setting up socket: $e');
-//     }
-//   }
-
-  Future<void> _refreshUserData() async {
-    if (userId == null || userId!.isEmpty) {
-      return;
+      print('📱 Notifications marked as read locally');
+      _markAllNotificationsAsReadOnServer();
     }
+  }
 
+  Future<void> _markAllNotificationsAsReadOnServer() async {
+    if (userId == null || userId!.isEmpty) return;
+    
     try {
-      print('🔄 Refreshing user data after profile update...');
+      final apiService = ApiService();
+      final response = await apiService.markAllAsRead('user', userId!);
       
-      final response = await ApiService().getAUser(userId!);
-      
-      if (mounted) {
-        setState(() {
-          userData = response.data['data'] ?? {};
-        });
+      if (response.data['success'] == true) {
+        print('✅ All notifications marked as read on server');
+        
+        if (mounted) {
+          setState(() {
+            notificationCount = 0;
+          });
+          await _saveNotificationCountToStorage(0);
+          FlutterAppBadger.removeBadge();
+        }
       }
-      
-      print('✅ User data refreshed successfully after profile update');
-      
     } catch (e) {
-      print('❌ Error refreshing user data: $e');
-      if (mounted) {
-        showTopSnackBar(context, "Error refreshing profile data", isError: true);
-      }
+      print('❌ Error marking all as read on server: $e');
+      // Already marked locally, so it's fine
     }
   }
 
-
-
-  Future<void> _refetchNotifications() async {
-    try {
-      print('🔄 Refetching notifications from API...');
-      await _loadNotificationCountFromAPI();
-    } catch (e) {
-      print("❌ Error refetching notifications: $e");
-    }
-  }
-
+  // ✅ FIXED: Increment notification count
   void _incrementNotificationCount() {
     if (mounted) {
       setState(() {
@@ -543,6 +507,65 @@ Future<void> makePhoneCall(String phoneNumber) async {
     }
   }
 
+  // ✅ FIXED: Decrement notification count
+  void _decrementBadgeCount() {
+    if (mounted && notificationCount > 0) {
+      setState(() {
+        notificationCount--;
+        _saveNotificationCountToStorage(notificationCount);
+      });
+      
+      if (notificationCount == 0) {
+        FlutterAppBadger.removeBadge();
+      } else {
+        FlutterAppBadger.updateBadgeCount(notificationCount);
+      }
+      print('📱 Badge decreased to: $notificationCount');
+    }
+  }
+
+  // ✅ FIXED: Update notification count from outside
+  void updateNotificationCount(int count) {
+    print('📊 updateNotificationCount called with: $count');
+    print('📊 Current notificationCount before: $notificationCount');
+    
+    if (mounted) {
+      setState(() {
+        notificationCount = count;
+        _saveNotificationCountToStorage(count);
+      });
+      
+      if (count > 0) {
+        FlutterAppBadger.updateBadgeCount(count);
+        print('🛎️ App badge updated to: $count');
+      } else {
+        FlutterAppBadger.removeBadge();
+        print('🛎️ App badge removed');
+      }
+      print('📊 notificationCount after: $notificationCount');
+    }
+  }
+
+  Future<void> _refetchNotifications() async {
+    try {
+      print('🔄 Refetching notifications from API...');
+      await _loadNotificationCountFromAPI();
+    } catch (e) {
+      print("❌ Error refetching notifications: $e");
+    }
+  }
+
+  // ==================== PHONE CALL ====================
+  Future<void> makePhoneCall(String phoneNumber) async {
+    bool? res = await FlutterPhoneDirectCaller.callNumber(phoneNumber);
+    if (res == true) {
+      print("Call Started");
+    } else {
+      print("Call Failed");
+    }
+  }
+
+  // ==================== OVERLAY METHODS ====================
   void _showCustomPushNotification(String title, String message) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -635,9 +658,7 @@ Future<void> makePhoneCall(String phoneNumber) async {
     );
 
     Overlay.of(context).insert(_overlayEntry!);
-
     Future.delayed(const Duration(seconds: 5), _removeOverlay);
-    
     print('📱 Custom push notification shown: $title');
   }
 
@@ -649,176 +670,80 @@ Future<void> makePhoneCall(String phoneNumber) async {
     }
   }
 
-  void _markNotificationsAsRead() {
-    if (mounted && notificationCount > 0) {
-      setState(() {
-        notificationCount = 0;
-        _saveNotificationCountToStorage(0);
-        FlutterAppBadger.removeBadge(); 
-      });
-    //  _updateAppIconBadge(); 
-         
-      print('📱 Notifications marked as read');
-       _markAllNotificationsAsReadOnServer();
-    }
-  }
-  
-  Future<void> _markAllNotificationsAsReadOnServer() async {
-  if (userId == null || userId!.isEmpty) return;
-  
-  try {
-    final apiService = ApiService();
-    final response = await apiService.markAllAsRead('user', userId!);
-    // Call your API to mark all as read
-   // await apiService.markAllAsRead('user', userId!);
-     if (response.data['success'] == true) {
-      print('✅ All notifications marked as read on server');
-      
-      if (mounted) {
-        setState(() {
-          notificationCount = 0;
-        });
-        await _saveNotificationCountToStorage(0);
-        FlutterAppBadger.removeBadge();
-      }
-    }
-    //print('✅ All notifications marked as read on server');
-  } catch (e) {
-    print('❌ Error marking all as read on server: $e');
-  }
-}
-
-  // Call this from notification screen when user clicks a notification
-void _decrementBadgeCount() {
-  if (mounted && notificationCount > 0) {
-    setState(() {
-      notificationCount--;
-      _saveNotificationCountToStorage(notificationCount);
-    });
-    
-    if (notificationCount == 0) {
-      FlutterAppBadger.removeBadge();
-    } else {
-      FlutterAppBadger.updateBadgeCount(notificationCount);
-    }
-    print('📱 Badge decreased to: $notificationCount');
-  }
-}
-void updateNotificationCount(int count) {
-  if (mounted) {
-    setState(() {
-      notificationCount = count;
-      _saveNotificationCountToStorage(count);
-    });
-    
-    // Update app icon badge
-    if (count > 0) {
-      FlutterAppBadger.updateBadgeCount(count);
-       print('🛎️ App badge updated to: $count');
-    } else {
-      FlutterAppBadger.removeBadge();
-      print('🛎️ App badge removed');
-    }
-  }
-}
-
-  @override
-  void dispose() {
-    _removeOverlay();
-    _pageController.dispose();
-    _refreshTimer?.cancel();
-   
-    print('🔄 BottomNav disposed');
-    super.dispose();
-  }
-
-  Widget _buildNotificationWithBadge() {
-     final screenWidth = MediaQuery.of(context).size.width;
-    // final screenHeight = MediaQuery.of(context).size.height;
-    return Stack(
-  clipBehavior: Clip.none,
-  children: [
-    Icon(
-      currentTabIndex == 2
-          ? Icons.notifications
-          : Icons.notifications_outlined,
-      color: Colors.white,
-      size: screenWidth * 0.08,
-    ),
-
-    if (notificationCount > 0)
-      Positioned(
-        right: -4,
-        top: -4,
-        child: Container(
-          width: 20,
-          height: 20,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: Colors.red,
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            notificationCount > 99 ? '99+' : '$notificationCount',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-  ],
-);
-  }
-
-  // Helper method to safely get profile image URL from your data structure
+  // ==================== UI BUILD METHODS ====================
   String? _getProfileImageUrl() {
     final picture = userData['picture'];
-    
     if (picture == null) return null;
     
-    // Handle your specific image structure: { imageUrl: { type: String }, public_id: { type: String } }
     if (picture is Map) {
-      // Check if imageUrl exists in the picture map
       if (picture['imageUrl'] != null) {
         final imageUrl = picture['imageUrl'];
-        // Handle if imageUrl is a Map with type field or direct string
         if (imageUrl is Map && imageUrl['type'] != null) {
           return imageUrl['type'] as String?;
         } else if (imageUrl is String && imageUrl.isNotEmpty) {
           return imageUrl;
         }
       }
-      
-      // Also check if picture itself has a url field (fallback)
       if (picture['url'] is String) {
         final url = picture['url'] as String;
         if (url.isNotEmpty) return url;
       }
-      
-      // Check if picture has a direct string value
       if (picture['type'] is String) {
         final type = picture['type'] as String;
         if (type.isNotEmpty) return type;
       }
     }
     
-    // If picture is directly a string (fallback)
     if (picture is String && picture.isNotEmpty) {
       return picture;
     }
-    
     return null;
   }
 
-  // New method to build the profile icon with user image
+  Widget _buildNotificationWithBadge() {
+  final screenWidth = MediaQuery.of(context).size.width;
+  return Stack(
+    clipBehavior: Clip.none,
+    children: [
+      Icon(
+        currentTabIndex == 2
+            ? Icons.notifications
+            : Icons.notifications_outlined,
+        color: Colors.white,
+        size: screenWidth * 0.08,
+      ),
+      if (notificationCount > 0)
+        Positioned(
+          right: -4,
+          top: -4,
+          child: Container(
+            width: 20,
+            height: 20,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              // ✅ FIXED: Show actual number, even if > 99
+              '$notificationCount',  // ← Changed from 99+ to actual number
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
   Widget _buildProfileIcon() {
     final screenWidth = MediaQuery.of(context).size.width;
     String? profileImageUrl = _getProfileImageUrl();
     
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-      // User has profile image - show circular image
       return Container(
         width: screenWidth * 0.09,
         height: screenWidth * 0.09,
@@ -844,7 +769,6 @@ void updateNotificationCount(int count) {
             height: screenWidth * 0.09,
             errorBuilder: (context, error, stackTrace) {
               print('❌ Error loading profile image: $error');
-              // Fallback to icon if image fails to load
               return Container(
                 color: Colors.white,
                 child: Icon(
@@ -874,7 +798,6 @@ void updateNotificationCount(int count) {
         ),
       );
     } else {
-      // No profile image - show default icon
       return Icon(
         currentTabIndex == 4 ? Icons.person : Icons.person_outline,
         color: Colors.white,
@@ -883,37 +806,37 @@ void updateNotificationCount(int count) {
     }
   }
 
+  // ==================== DISPOSE ====================
+  @override
+  void dispose() {
+    _removeOverlay();
+    _pageController.dispose();
+    _refreshTimer?.cancel();
+    print('🔄 BottomNav disposed');
+    super.dispose();
+  }
+
+  // ==================== BUILD ====================
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width; 
-    final screenHeight = MediaQuery.of(context).size.height;
-   
-    
-    // print("🎯 Current notification count: $notificationCount");
-    // print("👤 User ID: $userId");
-    // print("📱 Current tab index: $currentTabIndex");
-    // print("🖼️ Profile image URL: ${_getProfileImageUrl()}");
+    final screenWidth = MediaQuery.of(context).size.width;
     
     return Scaffold(
       key: _scaffoldKey,
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {
-  int navIndex = index;
-
-  // Adjust because call button exists in navbar
-  if (index >= 2) {
-    navIndex = index + 1;
-  }
-
-  setState(() {
-    currentTabIndex = navIndex;
-
-    if (navIndex == 3) {
-      _markNotificationsAsRead();
-    }
-  });
-},
+          int navIndex = index;
+          if (index >= 2) {
+            navIndex = index + 1;
+          }
+          setState(() {
+            currentTabIndex = navIndex;
+            // if (navIndex == 3) {
+            //   _markNotificationsAsRead();
+            // }
+          });
+        },
         children: pages,
       ),
       bottomNavigationBar: Container(
@@ -926,10 +849,10 @@ void updateNotificationCount(int count) {
         child: BottomNavigationBar(
           currentIndex: currentTabIndex,
           onTap: (index) {
-             if (index == 2) {
-      makePhoneCall("9567900329");
-      return; // Don't navigate to a page
-    }
+            if (index == 2) {
+              makePhoneCall("9567900329");
+              return;
+            }
             _navigateToTab(index);
           },
           type: BottomNavigationBarType.fixed,
@@ -945,34 +868,25 @@ void updateNotificationCount(int count) {
             fontSize: screenWidth * 0.0275,
           ),
           items: [
-            BottomNavigationBarItem(
-              icon: Icon(
-                currentTabIndex == 0 ? Icons.home : Icons.home_outlined,
-                size: screenWidth * 0.07,
-              ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined, size: 24),
               label: "Home",
             ),
-            BottomNavigationBarItem(
-              icon: Icon(
-                currentTabIndex == 1
-                    ? Icons.calendar_month
-                    : Icons.calendar_month_outlined,
-                size: screenWidth * 0.07,
-              ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month_outlined, size: 24),
               label: "Bookings",
             ),
-                BottomNavigationBarItem(
-                  
-     icon: IconButton(
-  onPressed: () {
-    makePhoneCall("9567900329");
-  },
-  icon: Icon(
-    Icons.add_call,
-    color: Colors.red,
-    size: screenWidth * 0.08,
-  ),
-),
+            BottomNavigationBarItem(
+              icon: IconButton(
+                onPressed: () {
+                  makePhoneCall("9567900329");
+                },
+                icon: const Icon(
+                  Icons.add_call,
+                  color: Colors.red,
+                  size: 28,
+                ),
+              ),
               label: "",
             ),
             BottomNavigationBarItem(
@@ -989,4 +903,3 @@ void updateNotificationCount(int count) {
     );
   }
 }
-

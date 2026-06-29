@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   amplify_db_common
   file_selector_linux
   flutter_timezone
+  open_file_linux
   printing
   url_launcher_linux
 )

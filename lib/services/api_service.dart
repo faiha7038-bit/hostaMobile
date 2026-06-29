@@ -189,14 +189,14 @@ Future<Response> getDoctorDetails(int doctorId) async {
   }
 }
 //----------------------------PatientDetails----------------
-// Future<Response> getPatientDetails(String patientId) async {
-//   try {
-//     final response = await dio.get('/api/patients/$patientId');
-//     return response;
-//   } catch (e) {
-//     throw Exception('Failed to load patient details: $e');
-//   }
-// }
+Future<Response> getPatientDetails(String patientId) async {
+  try {
+    final response = await dio.get('/api/patients/$patientId');
+    return response;
+  } catch (e) {
+    throw Exception('Failed to load patient details: $e');
+  }
+}
 // ---------------- LAB REPORT ----------------
 
  Future<String?> _getToken() async {
@@ -285,29 +285,168 @@ Future<Response> getDoctorDetails(int doctorId) async {
 // Future<Response> getLabReportById(String id) async {
 //   return await dio.get('/api/lab-results/$id');
 // }
-  // ----------------------------------------- NOTIFICATIONS --------------------------------------------------------------
-  
-Future<Response> getNotifications({int page = 1, int limit = 10}) async {
-  return await dio.get('/api/notification?page=$page&limit=$limit');
-}
-Future<Response> getNotificationsByRole(String role, String id, {int page = 1, int limit = 10}) async {
-  return await dio.get('/api/notification/$role/$id?page=$page&limit=$limit');
-}
-//  Mark single notification as read
-  Future<Response> markNotificationAsRead(String role, String userId, String notificationId) async {
-    return await dio.patch('/api/notification/read/$role/$userId/$notificationId');
-  }
-// mark notification as unread  
+  // ==================== NOTIFICATIONS ====================
 
-//  Mark all as read
+// ✅ GET NOTIFICATIONS BY ROLE (USER)
+Future<Response> getNotificationsByRole(
+  String role,
+  String userId, {
+  int page = 1,
+  int limit = 10,
+}) async {
+  try {
+    final response = await dio.get(
+      '/api/notification/$role/$userId',  // ← ADDED /api
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+      },
+    );
+    log("✅ Notifications response: ${response.statusCode}");
+    return response;
+  } catch (e) {
+    log("❌ getNotificationsByRole error: $e");
+    rethrow;
+  }
+}
+
+// ✅ MARK SINGLE NOTIFICATION AS READ
+Future<Response> markNotificationAsRead(
+  String role,
+  String userId,
+  String notificationId,
+) async {
+  try {
+    final response = await dio.put(
+      '/api/notification/read/$role/$userId',  
+    );
+    log("✅ Mark as read response: ${response.statusCode}");
+    return response;
+  } catch (e) {
+    log("❌ markNotificationAsRead error: $e");
+    rethrow;
+  }
+}
+
+// ✅ MARK ALL NOTIFICATIONS AS READ
 Future<Response> markAllAsRead(String role, String userId) async {
-  return await dio.patch('/api/notification/read-all/$role/$userId');
+  try {
+    final response = await dio.patch(
+      '/api/notification/read-all/$role/$userId',
+      data: {
+        'userId': userId,
+      },
+    );
+    return response;
+  } catch (e) {
+    rethrow;
+  }
 }
 
-//  DELETE - Delete notification
-  Future<Response> deleteNotification(String notificationId) async {
-    return await dio.delete('/api/notification/$notificationId');
+
+// ✅ GET UNREAD COUNT
+Future<Response> getUnreadCount(
+  String role,
+  String userId,
+) async {
+  try {
+    final response = await dio.get(
+      '/api/notification/unread/$role/$userId',  // ← ADDED /api
+    );
+    log("✅ Unread count response: ${response.statusCode}");
+    return response;
+  } catch (e) {
+    log("❌ getUnreadCount error: $e");
+    rethrow;
   }
+}
+
+// ✅ GET UNREAD NOTIFICATIONS
+Future<Response> getUnreadNotifications(
+  String role,
+  String userId,
+) async {
+  try {
+    final response = await dio.get(
+      '/api/notification/unread/$role/$userId',  // ← ADDED /api
+    );
+    return response;
+  } catch (e) {
+    log("❌ getUnreadNotifications error: $e");
+    rethrow;
+  }
+}
+// Future<Response> getNotifications({int page = 1, int limit = 10}) async {
+//   return await dio.get('/api/notification?page=$page&limit=$limit');
+// }
+// Future<Response> getNotificationsByRole(String role, String id, {int page = 1, int limit = 10}) async {
+//   return await dio.get('/api/notification/$role/$id?page=$page&limit=$limit');
+// }
+// //  Mark single notification as read
+//   Future<Response> markNotificationAsRead(String role, String userId, String notificationId) async {
+//     return await dio.patch('/api/notification/read/$role/$userId/$notificationId');
+//   }
+  // ✅ Get notifications by role
+//   Future<Response> getNotificationsByRole(
+//     String role, 
+//     String id, {
+//     int page = 1, 
+//     int limit = 10,
+//   }) async {
+//     return await dio.get(
+//       '/api/notification/$role/$id',
+//       queryParameters: {
+//         'page': page,
+//         'limit': limit,
+//       },
+//     );
+//   }
+
+//  Future<Response> markNotificationAsRead(
+//     String role, 
+//     String userId, 
+//     String notificationId,
+//   ) async {
+//     // Endpoint: /api/notification/read/user/3
+//     // Body: { "notificationId": "146" }
+//     return await dio.patch(
+//       '/api/notification/read/$role/$userId',
+//       data: {
+//         'notificationId': notificationId,
+//       },
+//     );
+//   }
+
+// // mark notification as unread  
+//   Future<Response> getUnreadCount(String role, String userId) async {
+//     return await dio.get('/api/notification/unread/$role/$userId');
+//   }
+
+// //  Mark all as read
+// Future<Response> markAllAsRead(String role, String userId) async {
+//     return await dio.patch(
+//       '/notification/read-all',
+//       data: {
+//         'role': role,
+//         'userId': userId,
+//       },
+//     );
+//   }
+// ✅ CORRECT - Mark All Read
+// Future<Response> markAllAsRead(String role, String userId) async {
+//   // Endpoint: /api/notification/read-all/user/4
+//   return await dio.patch(
+//     '/api/notification/read-all/$role/$userId',
+//   );
+// }
+// Future<Response> markAllAsRead(String role, String userId) async {
+//   return await dio.patch('/api/notification/read-all/$role/$userId');
+// }
+
+// //  DELETE - Delete notification
+//   Future<Response> deleteNotification(String notificationId) async {
+//     return await dio.delete('/api/notification/$notificationId');
+//   }
   //----------------------------------------------------------------------------------------------------------
   //Medicine Reminder CREATE
   Future<Response> createMedicineReminder(Map<String, dynamic> data) async {
