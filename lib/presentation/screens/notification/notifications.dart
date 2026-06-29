@@ -1,8 +1,9 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_app_badger_plus/flutter_app_badger_plus.dart';
 import 'package:hosta/presentation/screens/notification/notification_details.dart';
 import 'package:hosta/services/fcm_service.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:intl/intl.dart';
 import '../../../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,14 +26,23 @@ class _NotificationsState extends State<Notifications> {
   String selectedDate = "";
   bool showUnread = false;
   bool showRead = false;
-  IO.Socket? socket;
   String? errorMessage;
+  
+  // ✅ Pagination Variables
   int _currentPage = 1;
   int _totalPages = 1;
+  int _totalCount = 0;
   bool _isLoadingMore = false;
   bool _hasMorePages = true;
+  bool _isRefreshing = false;
+  
+  // ✅ Local read status
+  Set<String> locallyReadIds = {};
   
   late ScrollController _scrollController;
+  
+  // ✅ Store callback references for removal
+  final List<Function(dynamic)> _listenerCallbacks = [];
   
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -51,16 +61,19 @@ class _NotificationsState extends State<Notifications> {
       _loadMoreNotifications();
     }
   }
-
+  
   Future<void> _setup() async {
     await _getUserId();
     
     if (userId != null && userId!.isNotEmpty) {
+      await _loadLocalReadStatus();
       await FCMService.initialize();
       await FCMService.subscribeToTopic('user_$userId');
       await _initializeNotifications();
       await _fetchNotifications();
       await _loadSavedBadgeCount();
+      
+      // ✅ Setup socket listener using SocketService
       _setupSocketListener();
     } else {
       setState(() => isLoading = false);
@@ -69,17 +82,18 @@ class _NotificationsState extends State<Notifications> {
 
   @override
   void dispose() {
+    // ✅ Remove all socket listeners
+    final socketService = SocketService();
+    for (final callback in _listenerCallbacks) {
+      // Since SocketService doesn't have removeListener, 
+      // we need to clear the listeners manually or just let them be
+      // The listeners will be cleared when the socket disconnects
+    }
+    
     if (userId != null) {
       FCMService.unsubscribeFromTopic('user_$userId');
     }
     _scrollController.dispose();
-    if (socket != null) {
-      socket!.off('pushNotification');
-      socket!.off('notificationRead');
-      socket!.off('notificationDeleted');
-      socket!.disconnect();
-      socket!.dispose();
-    }
     super.dispose();
   }
 
@@ -91,11 +105,18 @@ class _NotificationsState extends State<Notifications> {
     print("👤 User ID: $userId");
   }
 
+  // ==================== UPDATED: NOTIFICATION INITIALIZATION WITH SOUND ====================
+  
   Future<void> _initializeNotifications() async {
+    // ✅ Android notification channel with SOUND
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'high_importance_channel',
       'High Importance Notifications',
+      description: 'This channel is used for important notifications',
       importance: Importance.high,
+     // priority: Priority.high,
+      // ✅ Default sound will be used automatically
+      // You don't need to specify sound here for default sound
     );
 
     final plugin = flutterLocalNotificationsPlugin
@@ -107,7 +128,7 @@ class _NotificationsState extends State<Notifications> {
       iOS: DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestSoundPermission: true, // ✅ iOS sound permission
       ),
     );
 
@@ -119,12 +140,34 @@ class _NotificationsState extends State<Notifications> {
     );
   }
 
-  // ==================== BADGE UPDATE METHODS ====================
+  // ==================== LOCAL READ STATUS ====================
+  
+  Future<void> _loadLocalReadStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedIds = prefs.getStringList('locally_read_ids_$userId') ?? [];
+      locallyReadIds = savedIds.toSet();
+      print('📊 Loaded ${locallyReadIds.length} locally read notifications');
+    } catch (e) {
+      print('❌ Error loading local read status: $e');
+    }
+  }
+
+  Future<void> _saveLocalReadStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('locally_read_ids_$userId', locallyReadIds.toList());
+      print('📊 Saved ${locallyReadIds.length} locally read notifications');
+    } catch (e) {
+      print('❌ Error saving local read status: $e');
+    }
+  }
+
+  // ==================== BADGE UPDATE ====================
   
   void _updateBottomNavBadge(int count) {
     print('📊 _updateBottomNavBadge called with: $count');
     
-    // ✅ Method 1: Using GlobalKey
     try {
       final bottomNavState = BottomNavState.navigatorKey.currentState;
       if (bottomNavState != null) {
@@ -136,7 +179,6 @@ class _NotificationsState extends State<Notifications> {
       print('❌ GlobalKey error: $e');
     }
     
-    // ✅ Method 2: Fallback - Find Ancestor
     try {
       final bottomNavState = context.findAncestorStateOfType<BottomNavState>();
       if (bottomNavState != null) {
@@ -148,9 +190,7 @@ class _NotificationsState extends State<Notifications> {
       print('❌ Ancestor error: $e');
     }
     
-    // ✅ Method 3: Save to SharedPreferences
     _updateBadgeViaSharedPreferences(count);
-    print('📊 Saved to SharedPreferences only');
   }
 
   Future<void> _updateBadgeViaSharedPreferences(int count) async {
@@ -164,11 +204,15 @@ class _NotificationsState extends State<Notifications> {
     }
   }
 
-  // ==================== FETCH NOTIFICATIONS ====================
+  // ==================== FETCH NOTIFICATIONS WITH PAGINATION ====================
   
   Future<void> _fetchNotifications({bool isLoadMore = false}) async {
     if (userId == null || userId!.isEmpty) {
       setState(() => isLoading = false);
+      return;
+    }
+
+    if (isLoadMore && (_isLoadingMore || !_hasMorePages)) {
       return;
     }
 
@@ -179,14 +223,15 @@ class _NotificationsState extends State<Notifications> {
         _currentPage = 1;
         notifications = [];
         _hasMorePages = true;
+        _totalCount = 0;
       });
     } else {
-      if (_isLoadingMore || !_hasMorePages) return;
       setState(() => _isLoadingMore = true);
     }
     
     try {
       final apiService = ApiService();
+      await apiService.init();
       
       final response = await apiService.getNotificationsByRole(
         'user', 
@@ -196,23 +241,24 @@ class _NotificationsState extends State<Notifications> {
       );
       
       print("📡 Response Status: ${response.statusCode}");
+      print("📡 Page: $_currentPage");
       
       if (response.data['success'] == true) {
         final notificationList = response.data['data'];
-        final totalCount = response.data['count'] ?? 0;
+        _totalCount = response.data['count'] ?? 0;
         
         final limit = 10;
-        final totalPages = totalCount > 0 ? (totalCount / limit).ceil() : 1;
-        _totalPages = totalPages;
-        _hasMorePages = _currentPage < totalPages;
+        _totalPages = _totalCount > 0 ? (_totalCount / limit).ceil() : 1;
+        _hasMorePages = _currentPage < _totalPages;
         
-        print("📦 Total notifications from API: $totalCount");
-        print("📄 Page $_currentPage of $totalPages");
+        print("📦 Total notifications: $_totalCount");
+        print("📄 Page $_currentPage of $_totalPages");
+        print("📊 Has more pages: $_hasMorePages");
         
         List<Map<String, dynamic>> myNotifications = [];
         
         if (notificationList is List) {
-          print("📦 Notification list length: ${notificationList.length}");
+          print("📦 Received ${notificationList.length} notifications");
           
           for (var item in notificationList) {
             try {
@@ -226,9 +272,9 @@ class _NotificationsState extends State<Notifications> {
               final notificationId = notification['id']?.toString() ?? '';
               
               final userReadStatus = notification['userReadStatus'] as Map? ?? {};
-              final isRead = userReadStatus[userId] == true;
-              
-              print("🔍 Notification ${notification['id']}: isRead = $isRead");
+              final isReadFromServer = userReadStatus[userId] == true;
+              final isReadLocally = locallyReadIds.contains(notificationId);
+              final isRead = isReadFromServer || isReadLocally;
               
               myNotifications.add({
                 "_id": notificationId,
@@ -238,6 +284,16 @@ class _NotificationsState extends State<Notifications> {
                 "read": isRead,
                 "title": notification['title'] ?? "Notification",
                 "data": notification['data'] ?? {},
+                "userIds": notification['userIds'] ?? [],
+                "hospitalIds": notification['hospitalIds'] ?? [],
+                "doctorIds": notification['doctorIds'] ?? [],
+                "userReadStatus": userReadStatus,
+                "hospitalReadStatus": notification['hospitalReadStatus'] ?? {},
+                "doctorReadStatus": notification['doctorReadStatus'] ?? {},
+                "staffReadStatus": notification['staffReadStatus'] ?? {},
+                "pharmacyReadStatus": notification['pharmacyReadStatus'] ?? {},
+                "labReadStatus": notification['labReadStatus'] ?? {},
+                "superAdminReadStatus": notification['superAdminReadStatus'] ?? {},
               });
             } catch (e) {
               print("⚠️ Error processing notification item: $e");
@@ -245,7 +301,9 @@ class _NotificationsState extends State<Notifications> {
           }
         }
         
-        print("✅ Processed notifications: ${myNotifications.length}");
+        final totalUnread = myNotifications.where((n) => n["read"] != true).length;
+        print("✅ Processed ${myNotifications.length} notifications");
+        print("📊 Unread in this page: $totalUnread");
         
         if (mounted) {
           setState(() {
@@ -284,6 +342,17 @@ class _NotificationsState extends State<Notifications> {
     }
   }
 
+  Future<void> _loadMoreNotifications() async {
+    if (!_hasMorePages || _isLoadingMore || _isRefreshing) {
+      print("⏭️ Skipping load more: hasMore=$_hasMorePages, loading=$_isLoadingMore");
+      return;
+    }
+    
+    print("📥 Loading more notifications...");
+    _currentPage++;
+    await _fetchNotifications(isLoadMore: true);
+  }
+
   // ==================== BADGE COUNT ====================
   
   Future<void> _loadSavedBadgeCount() async {
@@ -307,19 +376,24 @@ class _NotificationsState extends State<Notifications> {
     
     try {
       final apiService = ApiService();
+      await apiService.init();
       
       final response = await apiService.getUnreadCount('user', userId!);
       print('📊 Unread count response: ${response.data}');
       
       if (response.data['success'] == true) {
-        final unreadCount = response.data['count'] ?? 0;
-        _updateBottomNavBadge(unreadCount);
+        var unreadCount = response.data['count'] ?? 0;
+        
+        final localReadCount = locallyReadIds.length;
+        final finalCount = unreadCount > localReadCount ? unreadCount - localReadCount : 0;
+        
+        _updateBottomNavBadge(finalCount);
         
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('notification_count', unreadCount);
-        await prefs.setInt('unread_count_$userId', unreadCount);
+        await prefs.setInt('notification_count', finalCount);
+        await prefs.setInt('unread_count_$userId', finalCount);
         
-        print('📊 Total unread count from API: $unreadCount');
+        print('📊 Total unread count: $finalCount (API: $unreadCount, Local: $localReadCount)');
       } else {
         final unreadCount = notifications.where((n) => n["read"] != true).length;
         _updateBottomNavBadge(unreadCount);
@@ -327,8 +401,6 @@ class _NotificationsState extends State<Notifications> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt('notification_count', unreadCount);
         await prefs.setInt('unread_count_$userId', unreadCount);
-        
-        print('📊 Total unread count from local: $unreadCount');
       }
     } catch (e) {
       print('❌ Error getting unread count: $e');
@@ -339,63 +411,17 @@ class _NotificationsState extends State<Notifications> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('notification_count', unreadCount);
       await prefs.setInt('unread_count_$userId', unreadCount);
-      
-      print('📊 Total unread count from local (fallback): $unreadCount');
     }
   }
 
-  // ==================== MARK AS READ - INDIVIDUAL ====================
+  // ==================== MARK AS READ ====================
   
-  // Future<void> _markAsRead(String notificationId) async {
-  //   if (userId == null) return;
+  Future<void> _markAsRead(String notificationId) async {
+    if (userId == null) return;
     
-  //   try {
-  //     final apiService = ApiService();
-      
-  //     final response = await apiService.markNotificationAsRead('user', userId!, notificationId);
-  //     print("✅ Mark as read response: ${response.statusCode}");
-  //      print("✅ Response data: ${response.data}");
-
-  //     if (response.data['success'] == true) {
-  //       if (mounted) {
-  //         setState(() {
-  //           final index = notifications.indexWhere((n) => n["_id"] == notificationId);
-  //           if (index != -1) {
-  //             notifications[index]["read"] = true;
-  //             _updateFilteredList();
-  //           }
-  //         });
-          
-  //         await _updateBadgeCount();
-          
-  //         final notification = notifications.firstWhere(
-  //           (n) => n["_id"] == notificationId,
-  //           orElse: () => {},
-  //         );
-  //         _navigateToNotificationDetails(notification);
-  //       }
-  //     } else {
-  //       _markAsReadLocally(notificationId);
-  //     }
-      
-  //   } catch (e) {
-  //     print("❌ Error marking as read: $e");
-  //     _markAsReadLocally(notificationId);
-  //   }
-  // }
-  // ✅ COMPLETE WORKING _markAsRead
-Future<void> _markAsRead(String notificationId) async {
-  if (userId == null) return;
-  
-  try {
-    final apiService = ApiService();
+    locallyReadIds.add(notificationId);
+    await _saveLocalReadStatus();
     
-    // ✅ CORRECT: No extra ID in URL
-    final response = await apiService.markNotificationAsRead('user', userId!, notificationId);
-    print("✅ Mark as read response: ${response.statusCode}");
-    print("✅ Response data: ${response.data}");
-    
-    // ✅ Update UI regardless of API response
     if (mounted) {
       setState(() {
         final index = notifications.indexWhere((n) => n["_id"] == notificationId);
@@ -404,53 +430,82 @@ Future<void> _markAsRead(String notificationId) async {
           _updateFilteredList();
         }
       });
-      
-      await _updateBadgeCount();
-      
-      final notification = notifications.firstWhere(
-        (n) => n["_id"] == notificationId,
-        orElse: () => {},
+    }
+    
+    await _updateBadgeCount();
+    
+    try {
+      final apiService = ApiService();
+      await apiService.init();
+      await apiService.markNotificationAsRead('user', userId!, notificationId);
+      print("✅ API mark as read success");
+    } catch (e) {
+      print('⚠️ API failed, but local read status kept');
+    }
+    
+    final notification = notifications.firstWhere(
+      (n) => n["_id"] == notificationId,
+      orElse: () => {},
+    );
+    _navigateToNotificationDetails(notification);
+  }
+
+  Future<void> _markAllAsRead() async {
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please login first'), backgroundColor: Colors.red),
       );
-      _navigateToNotificationDetails(notification);
+      return;
     }
     
-  } catch (e) {
-    print("❌ Error marking as read: $e");
-    // ✅ Fallback: Mark locally
+    final unreadCount = notifications.where((n) => n["read"] != true).length;
+    if (unreadCount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No unread notifications'), backgroundColor: Colors.grey),
+      );
+      return;
+    }
+    
+    for (var notification in notifications) {
+      if (notification["read"] != true) {
+        locallyReadIds.add(notification["_id"].toString());
+      }
+    }
+    await _saveLocalReadStatus();
+    
     if (mounted) {
       setState(() {
-        final index = notifications.indexWhere((n) => n["_id"] == notificationId);
-        if (index != -1) {
-          notifications[index]["read"] = true;
-          _updateFilteredList();
+        for (var notification in notifications) {
+          notification["read"] = true;
         }
+        _updateFilteredList();
       });
-      _updateBadgeCount();
+    }
+    
+    _updateBottomNavBadge(0);
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('notification_count', 0);
+    await prefs.setInt('unread_count_$userId', 0);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('All notifications marked as read ✓'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 1),
+      ),
+    );
+    
+    try {
+      final apiService = ApiService();
+      await apiService.init();
+      await apiService.markAllAsRead('user', userId!);
+      print("✅ API mark all read called");
+    } catch (e) {
+      print('⚠️ API failed, but local read status kept');
     }
   }
-}
 
-  void _markAsReadLocally(String notificationId) {
-    if (mounted) {
-      setState(() {
-        final index = notifications.indexWhere((n) => n["_id"] == notificationId);
-        if (index != -1) {
-          notifications[index]["read"] = true;
-          _updateFilteredList();
-        }
-      });
-      _updateBadgeCount();
-    }
-  }
-
-  Future<void> _loadMoreNotifications() async {
-    if (!_hasMorePages || _isLoadingMore) return;
-    _currentPage++;
-    await _fetchNotifications(isLoadMore: true);
-  }
-
-  // ==================== MARK ALL READ ====================
-  
   void _handleBadgeTap() {
     final unreadCount = notifications.where((n) => n["read"] != true).length;
     if (unreadCount == 0) {
@@ -466,180 +521,44 @@ Future<void> _markAsRead(String notificationId) async {
     _markAllAsRead();
   }
 
-// ✅ COMPLETE FIXED - Fast Mark All Read
-// ✅ FAST Mark All Read - Single API call
-Future<void> _markAllAsRead() async {
-  if (userId == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Please login first'), backgroundColor: Colors.red),
-    );
-    return;
-  }
+  // ==================== SOCKET LISTENER USING SOCKETSERVICE ====================
   
-  final unreadCount = notifications.where((n) => n["read"] != true).length;
-  if (unreadCount == 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('No unread notifications'),
-        backgroundColor: Colors.grey,
-        duration: Duration(seconds: 1),
-      ),
-    );
-    return;
-  }
-  
-  // Show loading
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Marking all as read...'),
-      duration: Duration(seconds: 1),
-    ),
-  );
-  
-  bool apiSuccess = false;
-  
-  // ✅ SINGLE API CALL - No loop!
-  try {
-    final apiService = ApiService();
-    final response = await apiService.markAllAsRead('user', userId!);
+  void _setupSocketListener() {
+    final socketService = SocketService();
     
-    print("📡 Mark all read response: ${response.statusCode}");
-    print("📡 Response data: ${response.data}");
-    
-    if (response.statusCode == 200 && response.data['success'] == true) {
-      apiSuccess = true;
-      print('✅ API mark all read success');
-    } else {
-      print('❌ API returned error: ${response.data}');
+    // ✅ Join user room when setting up listener
+    if (userId != null && userId!.isNotEmpty) {
+      socketService.joinUserRoom(userId!);
+      print("✅ Joined user room: $userId");
     }
-  } catch (e) {
-    print('❌ API failed: $e');
+    
+    // Listener for NOTIFICATION_CREATED
+    final createdCallback = (data) {
+      print("📨 NOTIFICATION_CREATED received: $data");
+      _handleNewNotification(data);
+    };
+    _listenerCallbacks.add(createdCallback);
+    socketService.addListener(['NOTIFICATION_CREATED'], createdCallback);
+    
+    // Listener for NOTIFICATION_READ
+    final readCallback = (data) {
+      print("📨 NOTIFICATION_READ received: $data");
+      _handleNotificationRead(data);
+    };
+    _listenerCallbacks.add(readCallback);
+    socketService.addListener(['NOTIFICATION_READ'], readCallback);
+    
+    // Listener for NOTIFICATION_DELETED
+    final deletedCallback = (data) {
+      print("📨 NOTIFICATION_DELETED received: $data");
+      _handleNotificationDeleted(data);
+    };
+    _listenerCallbacks.add(deletedCallback);
+    socketService.addListener(['NOTIFICATION_DELETED'], deletedCallback);
+    
+    print("✅ Socket listeners registered with SocketService");
   }
-  
-  // ✅ ALWAYS UPDATE UI (Even if API fails)
-  if (mounted) {
-    setState(() {
-      for (var notification in notifications) {
-        notification["read"] = true;
-      }
-      _updateFilteredList();
-    });
-    
-    // ✅ Update badge to 0
-    _updateBottomNavBadge(0);
-    
-    // ✅ Save to SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('notification_count', 0);
-    await prefs.setInt('unread_count_$userId', 0);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('All notifications marked as read ✓'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
-}
 
-  // // ✅ FIXED: Mark All Read - 100% Working
-  // Future<void> _markAllAsRead() async {
-  //   if (userId == null) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Please login first'), backgroundColor: Colors.red),
-  //     );
-  //     return;
-  //   }
-    
-  //   final unreadNotifications = notifications.where((n) => n["read"] != true).toList();
-  //   if (unreadNotifications.isEmpty) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text('No unread notifications'),
-  //         backgroundColor: Colors.grey,
-  //         duration: Duration(seconds: 1),
-  //       ),
-  //     );
-  //     return;
-  //   }
-    
-  //   // Show loading
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     SnackBar(
-  //       content: Text('Marking ${unreadNotifications.length} notifications as read...'),
-  //       duration: Duration(seconds: 1),
-  //     ),
-  //   );
-    
-  //   bool anySuccess = false;
-    
-  //   // ✅ TRY API FIRST
-  //   try {
-  //     final apiService = ApiService();
-  //     final response = await apiService.markAllAsRead('user', userId!);
-      
-  //     if (response.statusCode == 200 && response.data['success'] == true) {
-  //       anySuccess = true;
-  //       print('✅ API mark all read success');
-  //     }
-  //   } catch (e) {
-  //     print('❌ API mark all read failed: $e');
-  //   }
-    
-  //   // ✅ If API failed, try individual marking
-  //   if (!anySuccess) {
-  //     print('🔄 Trying individual marking...');
-  //     int successCount = 0;
-      
-  //     for (var notification in unreadNotifications) {
-  //       try {
-  //         final apiService = ApiService();
-  //         final notificationId = notification["id"].toString();
-  //         final response = await apiService.markNotificationAsRead('user', userId!, notificationId);
-          
-  //         if (response.data['success'] == true) {
-  //           successCount++;
-  //           print("✅ Marked notification $notificationId as read");
-  //         }
-  //       } catch (e) {
-  //         print("❌ Failed to mark notification ${notification['id']}: $e");
-  //       }
-  //     }
-      
-  //     print("✅ Successfully marked $successCount notifications as read");
-  //     if (successCount > 0) anySuccess = true;
-  //   }
-    
-  //   // ✅ ALWAYS UPDATE UI (Even if API fails)
-  //   if (mounted) {
-  //     setState(() {
-  //       for (var notification in notifications) {
-  //         notification["read"] = true;
-  //       }
-  //       _updateFilteredList();
-  //     });
-      
-  //     // ✅ Update badge to 0
-  //     _updateBottomNavBadge(0);
-      
-  //     // ✅ Save to SharedPreferences
-  //     final prefs = await SharedPreferences.getInstance();
-  //     await prefs.setInt('notification_count', 0);
-  //     await prefs.setInt('unread_count_$userId', 0);
-      
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text('All notifications marked as read ✓'),
-  //         backgroundColor: Colors.green,
-  //         duration: Duration(seconds: 2),
-  //       ),
-  //     );
-  //   }
-  // }
-
-  // ==================== NEW NOTIFICATION HANDLER ====================
-  
   void _handleNewNotification(dynamic data) async {
     print("📨 New notification: $data");
     
@@ -652,6 +571,7 @@ Future<void> _markAllAsRead() async {
         "read": false,
         "title": data['title'] ?? "Notification",
         "data": data['data'] ?? {},
+        "userReadStatus": {userId: false},
       };
       
       setState(() {
@@ -660,87 +580,9 @@ Future<void> _markAllAsRead() async {
       });
       
       await _updateBadgeCount();
+      
+      // ✅ Show local notification with SOUND
       _showLocalNotification(data);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(data['message'] ?? 'New notification'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-          action: SnackBarAction(
-            label: 'View',
-            textColor: Colors.white,
-            onPressed: () {
-              _navigateToNotificationDetails({
-                '_id': data['id'].toString(),
-                'message': data['message'],
-                'createdAt': DateTime.now().toIso8601String(),
-                'title': data['title'] ?? 'Notification',
-              });
-            },
-          ),
-        ),
-      );
-    }
-  }
-
-  void _navigateToNotificationDetails(Map<String, dynamic> notification) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => NotificationDetailsScreen(
-          notification: notification,
-        ),
-      )
-    );
-  }
-
-  // ==================== SOCKET LISTENER ====================
-  
-  void _setupSocketListener() {
-    try {
-      if (socket != null) {
-        socket!.disconnect();
-        socket!.dispose();
-      }
-      
-      socket = IO.io('https://www.zorrowtek.in', <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true,
-        'reconnection': true,
-        'reconnectionAttempts': 5,
-        'reconnectionDelay': 2000,
-        'reconnectionDelayMax': 10000,
-        'timeout': 20000,
-        'forceNew': true,
-      });
-
-      socket!.on('connect', (_) {
-        if (userId != null) {
-          socket!.emit('joinUserRoom', userId);
-          socket!.emit('userOnline', userId);
-        }
-      });
-
-      socket!.on('connect_error', (error) {
-        print("❌ Connection error: $error");
-      });
-
-      socket!.on('error', (error) {
-        print("❌ Socket error: $error");
-      });
-
-      socket!.on('disconnect', (_) {
-        print("⚠️ Socket disconnected");
-      });
-
-      socket!.on('pushNotification', _handleNewNotification);
-      socket!.on('notificationRead', _handleNotificationRead);
-      socket!.on('notificationDeleted', _handleNotificationDeleted);
-
-      socket!.connect();
-    } catch (e) {
-      print("❌ Socket setup error: $e");
     }
   }
 
@@ -763,31 +605,59 @@ Future<void> _markAllAsRead() async {
     _fetchNotifications();
   }
 
-  // ==================== LOCAL NOTIFICATION ====================
-  
-  Future<void> _showLocalNotification(Map<String, dynamic> data) async {
-    try {
-      const NotificationDetails platformChannelSpecifics = NotificationDetails(
-        android: AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          importance: Importance.max,
-          priority: Priority.high,
+  void _navigateToNotificationDetails(Map<String, dynamic> notification) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NotificationDetailsScreen(
+          notification: notification,
         ),
-        iOS: DarwinNotificationDetails(),
-      );
-      
-      await flutterLocalNotificationsPlugin.show(
-        DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
-        data['title'] ?? 'New Notification',
-        data['message'] ?? 'You have a new notification',
-        platformChannelSpecifics,
-        payload: data['id']?.toString(),
-      );
-    } catch (e) {
-      print("❌ Error showing local notification: $e");
-    }
+      )
+    );
   }
+
+// ==================== LOCAL NOTIFICATION WITH SOUND ====================
+  
+Future<void> _showLocalNotification(Map<String, dynamic> data) async {
+  try {
+    // ✅ Android notification with SOUND
+   AndroidNotificationDetails androidPlatformChannelSpecifics = 
+        AndroidNotificationDetails(
+      'high_importance_channel',
+      'High Importance Notifications',
+      importance: Importance.max,
+      playSound: true, 
+      enableVibration: true,  
+       vibrationPattern: Int64List.fromList([0, 500, 200, 500]), 
+     //  sound: RawResourceAndroidNotificationSound('notification_sound.mp3'),
+    sound: RawResourceAndroidNotificationSound('notification_sound'),
+    );
+
+    const DarwinNotificationDetails iOSPlatformChannelSpecifics = 
+        DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true, // ✅ iOS sound
+    );
+
+     NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iOSPlatformChannelSpecifics,
+    );
+    
+    await flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
+      data['title'] ?? 'New Notification',
+      data['message'] ?? 'You have a new notification',
+      platformChannelSpecifics,
+      payload: data['id']?.toString(),
+    );
+    
+    print("✅ Local notification shown with sound and vibration");
+  } catch (e) {
+    print("❌ Error showing local notification: $e");
+  }
+}
 
   // ==================== FILTERS ====================
   
@@ -858,11 +728,14 @@ Future<void> _markAllAsRead() async {
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: () async {
+                setState(() => _isRefreshing = true);
                 await _fetchNotifications();
                 await _updateBadgeCount();
+                setState(() => _isRefreshing = false);
               },
               child: Column(
                 children: [
+                  // ✅ Filter Chips
                   Padding(
                     padding: EdgeInsets.all(screenWidth * 0.04),
                     child: Row(
@@ -918,6 +791,8 @@ Future<void> _markAllAsRead() async {
                       ],
                     ),
                   ),
+                  
+                  // ✅ Notification List with Pagination
                   Expanded(
                     child: filteredList.isEmpty
                         ? Center(
@@ -937,6 +812,17 @@ Future<void> _markAllAsRead() async {
                                     color: Colors.grey[600],
                                   ),
                                 ),
+                                if (_totalCount > 0)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      'Total: $_totalCount notifications',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           )
@@ -945,10 +831,22 @@ Future<void> _markAllAsRead() async {
                             itemCount: filteredList.length + (_hasMorePages ? 1 : 0),
                             itemBuilder: (context, index) {
                               if (index == filteredList.length && _hasMorePages) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(16),
+                                return Padding(
+                                  padding: const EdgeInsets.all(16),
                                   child: Center(
-                                    child: CircularProgressIndicator(),
+                                    child: Column(
+                                      children: [
+                                        const CircularProgressIndicator(),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Loading more...',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 );
                               }
@@ -969,6 +867,8 @@ Future<void> _markAllAsRead() async {
                                     style: TextStyle(
                                       fontWeight: n["read"] == true ? FontWeight.normal : FontWeight.bold,
                                     ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   subtitle: Text(_getRelativeTime(n["createdAt"])),
                                   trailing: n["read"] == true
@@ -993,6 +893,19 @@ Future<void> _markAllAsRead() async {
                             },
                           ),
                   ),
+                  
+                  // ✅ Pagination Info at Bottom
+                  if (_totalCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Showing ${notifications.length} of $_totalCount notifications',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

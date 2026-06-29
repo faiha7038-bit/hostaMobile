@@ -694,15 +694,15 @@ class _LabReportState extends State<LabReport> {
             size: screenWidth * 0.055,
           ),
         ),
-        actions: [
-          IconButton(
-            onPressed: _fetchLabReports,
-            icon: Icon(
-              Icons.refresh,
-              color: Colors.white,
-            ),
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     onPressed: _fetchLabReports,
+        //     icon: Icon(
+        //       Icons.refresh,
+        //       color: Colors.white,
+        //     ),
+        //   ),
+        // ],
       ),
       body: Padding(
         padding: EdgeInsets.all(screenWidth * 0.02),
@@ -808,76 +808,124 @@ class _LabReportState extends State<LabReport> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Filter UI
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.03,
-                                vertical: screenHeight * 0.0125,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                                border: Border.all(color: Colors.grey, width: screenWidth * 0.0025),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.calendar_today,
-                                    color: Colors.green,
-                                    size: screenWidth * 0.05,
-                                  ),
-                                  SizedBox(width: screenWidth * 0.025),
-                                  Expanded(
-                                    child: Text(
-                                      selectedDate == null
-                                          ? "All reports"
-                                          : "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}",
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.035,
-                                        color: selectedDate == null
-                                            ? Colors.grey
-                                            : Colors.black87,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                  if (selectedDate != null)
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          selectedDate = null;
-                                        });
-                                        _fetchLabReports();
-                                      },
-                                      child: Icon(
-                                        Icons.close,
-                                        size: screenWidth * 0.045,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  SizedBox(width: screenWidth * 0.02),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: screenWidth * 0.03,
-                                        vertical: screenHeight * 0.01,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                                      ),
-                                    ),
-                                    onPressed: pickDate,
-                                    child: Text(
-                                      "Filter",
-                                      style: TextStyle(
-                                        fontSize: screenWidth * 0.0325,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            
+                            // Container(
+                            //   padding: EdgeInsets.symmetric(
+                            //     horizontal: screenWidth * 0.03,
+                            //     vertical: screenHeight * 0.0125,
+                            //   ),
+                            //   decoration: BoxDecoration(
+                            //     borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                            //     border: Border.all(color: Colors.grey, width: screenWidth * 0.0025),
+                            //   ),
+                            //   child: Row(
+                            //     children: [
+                            //       Icon(
+                            //         Icons.calendar_today,
+                            //         color: Colors.green,
+                            //         size: screenWidth * 0.05,
+                            //       ),
+                            //       SizedBox(width: screenWidth * 0.025),
+                            //       Expanded(
+                            //         child: Text(
+                            //           selectedDate == null
+                            //               ? "All reports"
+                            //               : "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}",
+                            //           style: TextStyle(
+                            //             fontSize: screenWidth * 0.035,
+                            //             color: selectedDate == null
+                            //                 ? Colors.grey
+                            //                 : Colors.black87,
+                            //             fontWeight: FontWeight.w500,
+                            //           ),
+                            //         ),
+                            //       ),
+                            //       if (selectedDate != null)
+                            //         GestureDetector(
+                            //           onTap: () {
+                            //             setState(() {
+                            //               selectedDate = null;
+                            //             });
+                            //             _fetchLabReports();
+                            //           },
+                            //           child: Icon(
+                            //             Icons.close,
+                            //             size: screenWidth * 0.045,
+                            //             color: Colors.grey,
+                            //           ),
+                            //         ),
+                            //       SizedBox(width: screenWidth * 0.02),
+                            //       ElevatedButton(
+                            //         style: ElevatedButton.styleFrom(
+                            //           backgroundColor: Colors.green,
+                            //           padding: EdgeInsets.symmetric(
+                            //             horizontal: screenWidth * 0.03,
+                            //             vertical: screenHeight * 0.01,
+                            //           ),
+                            //           shape: RoundedRectangleBorder(
+                            //             borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                            //           ),
+                            //         ),
+                            //         onPressed: pickDate,
+                            //         child: Text(
+                            //           "Filter",
+                            //           style: TextStyle(
+                            //             fontSize: screenWidth * 0.0325,
+                            //             color: Colors.white,
+                            //           ),
+                            //         ),
+                            //       ),
+                            //     ],
+                            //   ),
+                            // ),
+                            GestureDetector(
+  onTap: pickDate, // Calendar icon click cheyumbo filter date select cheyyam
+  child: Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: screenWidth * 0.03,
+      vertical: screenHeight * 0.0125,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+      border: Border.all(color: Colors.grey, width: screenWidth * 0.0025),
+    ),
+    child: Row(
+      children: [
+        Icon(
+          Icons.calendar_today,
+          color: Colors.green,
+          size: screenWidth * 0.05,
+        ),
+        SizedBox(width: screenWidth * 0.025),
+        Expanded(
+          child: Text(
+            selectedDate == null
+                ? "All reports"
+                : "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}",
+            style: TextStyle(
+              fontSize: screenWidth * 0.035,
+              color: selectedDate == null ? Colors.grey : Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        if (selectedDate != null)
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                selectedDate = null;
+              });
+              _fetchLabReports();
+            },
+            child: Icon(
+              Icons.close,
+              size: screenWidth * 0.045,
+              color: Colors.grey,
+            ),
+          ),
+      ],
+    ),
+  ),
+),
                             // Report counter and navigation
                             if (labReports.length > 1) ...[
                               SizedBox(height: screenHeight * 0.0125),
@@ -1190,49 +1238,49 @@ class _LabReportState extends State<LabReport> {
                             
                             SizedBox(height: screenHeight * 0.02),
                             
-                            // Download button
-                            if (selectedReport != null) ...[
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(screenWidth * 0.025),
-                                  ),
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: screenWidth * 0.08,
-                                    vertical: screenHeight * 0.0125,
-                                  ),
-                                  minimumSize: Size(double.infinity, screenHeight * 0.06),
-                                ),
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text("Download functionality coming soon"),
-                                      backgroundColor: Colors.blue,
-                                    ),
-                                  );
-                                },
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "Download Report",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: screenWidth * 0.04,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    SizedBox(width: screenWidth * 0.02),
-                                    Icon(
-                                      Icons.download,
-                                      color: Colors.white,
-                                      size: screenWidth * 0.05,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                            // // Download button
+                            // if (selectedReport != null) ...[
+                            //   ElevatedButton(
+                            //     style: ElevatedButton.styleFrom(
+                            //       backgroundColor: Colors.green,
+                            //       shape: RoundedRectangleBorder(
+                            //         borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                            //       ),
+                            //       padding: EdgeInsets.symmetric(
+                            //         horizontal: screenWidth * 0.08,
+                            //         vertical: screenHeight * 0.0125,
+                            //       ),
+                            //       minimumSize: Size(double.infinity, screenHeight * 0.06),
+                            //     ),
+                            //     onPressed: () {
+                            //       ScaffoldMessenger.of(context).showSnackBar(
+                            //         SnackBar(
+                            //           content: Text("Download functionality coming soon"),
+                            //           backgroundColor: Colors.blue,
+                            //         ),
+                            //       );
+                            //     },
+                            //     child: Row(
+                            //       mainAxisAlignment: MainAxisAlignment.center,
+                            //       children: [
+                            //         Text(
+                            //           "Download Report",
+                            //           style: TextStyle(
+                            //             color: Colors.white,
+                            //             fontSize: screenWidth * 0.04,
+                            //             fontWeight: FontWeight.w500,
+                            //           ),
+                            //         ),
+                            //         SizedBox(width: screenWidth * 0.02),
+                            //         Icon(
+                            //           Icons.download,
+                            //           color: Colors.white,
+                            //           size: screenWidth * 0.05,
+                            //         ),
+                            //       ],
+                            //     ),
+                            //   ),
+                            // ],
                           ],
                         ),
                       ),
