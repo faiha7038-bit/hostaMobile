@@ -166,53 +166,53 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
       }
     }
   }
-    void _showSoundSelectionDialog() {
-    final alarmSounds = ref.read(alarmSoundsProvider);
-    final currentSoundId = ref.read(reminderStateProvider).selectedSoundId;
+    // void _showSoundSelectionDialog() {
+    // final alarmSounds = ref.read(alarmSoundsProvider);
+    // final currentSoundId = ref.read(reminderStateProvider).selectedSoundId;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Alarm Sound'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: alarmSounds.length,
-            itemBuilder: (context, index) {
-              final sound = alarmSounds[index];
-              final isSelected = sound.id == currentSoundId;
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: const Text('Select Alarm Sound'),
+  //       content: SizedBox(
+  //         width: double.maxFinite,
+  //         child: ListView.builder(
+  //           shrinkWrap: true,
+  //           itemCount: alarmSounds.length,
+  //           itemBuilder: (context, index) {
+  //             final sound = alarmSounds[index];
+  //             final isSelected = sound.id == currentSoundId;
               
-              return ListTile(
-                leading: Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: isSelected ? Colors.green : Colors.grey,
-                ),
-                title: Text(sound.name),
-                trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
-                onTap: () {
-                  ref.read(reminderStateProvider.notifier).setSelectedSound(sound.id,sound.path);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Selected: ${sound.name}'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
+  //             return ListTile(
+  //               leading: Icon(
+  //                 isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+  //                 color: isSelected ? Colors.green : Colors.grey,
+  //               ),
+  //               title: Text(sound.name),
+  //               trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+  //               onTap: () {
+  //                 ref.read(reminderStateProvider.notifier).setSelectedSound(sound.id,sound.path);
+  //                 Navigator.pop(context);
+  //                 ScaffoldMessenger.of(context).showSnackBar(
+  //                   SnackBar(
+  //                     content: Text('Selected: ${sound.name}'),
+  //                     duration: const Duration(seconds: 2),
+  //                   ),
+  //                 );
+  //               },
+  //             );
+  //           },
+  //         ),
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           child: const Text('Cancel'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -364,64 +364,92 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
                   );
                 }).toList(),
               ),
-               _card(
-                padding: cardPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Alarm Sound',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: fontSizeBody,
-                      ),
-                    ),
-                      SizedBox(height: spacingSmall),
-                    GestureDetector(
-                      onTap: _showSoundSelectionDialog,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03,
-                          vertical: screenHeight * 0.015,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.music_note,
-                                  color: Colors.green,
-                                  size: fontSizeBody * 1.2,
-                                ),
-                                  SizedBox(width: screenWidth * 0.02),
-                                Text(
-                                  currentSound.name,
-                                  style: TextStyle(
-                                    fontSize: fontSizeBody,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Icon(
-                              Icons.arrow_drop_down,
-                              color: Colors.grey,
-                              size: fontSizeBody * 1.5,
-                            ),
-                          ],
-                        ),
-                         ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: spacingMedium),
+//               Container(
+//   padding: EdgeInsets.symmetric(
+//     horizontal: screenWidth * 0.03,
+//     vertical: screenHeight * 0.015,
+//   ),
+//   decoration: BoxDecoration(
+//     color: Colors.grey.shade50,
+//     borderRadius: BorderRadius.circular(10),
+//     border: Border.all(color: Colors.grey.shade300),
+//   ),
+//   child: Row(
+//     children: [
+//       Icon(
+//         Icons.music_note,
+//         color: Colors.green,
+//         size: fontSizeBody * 1.2,
+//       ),
+//       SizedBox(width: screenWidth * 0.02),
+//       Text(
+//         'Alarm Sound: Default',
+//         style: TextStyle(
+//           fontSize: fontSizeBody,
+//           fontWeight: FontWeight.w500,
+//         ),
+//       ),
+//     ],
+//   ),
+// ),
+              //  _card(
+              //   padding: cardPadding,
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       Text(
+              //         'Alarm Sound',
+              //         style: TextStyle(
+              //           fontWeight: FontWeight.w500,
+              //           fontSize: fontSizeBody,
+              //         ),
+              //       ),
+              //         SizedBox(height: spacingSmall),
+              //       GestureDetector(
+              //         onTap: _showSoundSelectionDialog,
+              //         child: Container(
+              //           padding: EdgeInsets.symmetric(
+              //             horizontal: screenWidth * 0.03,
+              //             vertical: screenHeight * 0.015,
+              //           ),
+              //           decoration: BoxDecoration(
+              //             color: Colors.grey.shade50,
+              //             borderRadius: BorderRadius.circular(10),
+              //             border: Border.all(color: Colors.grey.shade300),
+              //           ),
+              //           child: Row(
+              //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //             children: [
+              //               Row(
+              //                 children: [
+              //                   Icon(
+              //                     Icons.music_note,
+              //                     color: Colors.green,
+              //                     size: fontSizeBody * 1.2,
+              //                   ),
+              //                     SizedBox(width: screenWidth * 0.02),
+              //                   Text(
+              //                     currentSound.name,
+              //                     style: TextStyle(
+              //                       fontSize: fontSizeBody,
+              //                       fontWeight: FontWeight.w500,
+              //                     ),
+              //                   ),
+              //                 ],
+              //               ),
+              //               Icon(
+              //                 Icons.arrow_drop_down,
+              //                 color: Colors.grey,
+              //                 size: fontSizeBody * 1.5,
+              //               ),
+              //             ],
+              //           ),
+              //            ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
+           /////   SizedBox(height: spacingMedium),
               // ── Days of week ──
               _card(
                 padding: cardPadding,

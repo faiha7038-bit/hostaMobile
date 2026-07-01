@@ -13,6 +13,7 @@ import 'package:hosta/presentation/screens/privacy/privacy.dart';
 import 'package:hosta/presentation/screens/about/about.dart';
 import 'package:hosta/presentation/screens/settings/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../document_screen.dart';
 //import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../../../services/api_service.dart';
 
@@ -672,8 +673,8 @@ if (result == true) {
                                     const Divider(height: 0),
                                        
                                      _buildProfileOption(
-                                      icon: Icons.person_add,
-                                      title: ' My Documents',
+                                      icon: Icons.folder,
+                                      title: 'Documents',
                                       subtitle: ' ',
                                       screenWidth: screenWidth,
                                       screenHeight: screenHeight,
@@ -716,13 +717,14 @@ if (result == true) {
                                           );
                                           return;
                                         }
-
-                                        // Navigator.push(
-                                        //   context,
-                                        //   MaterialPageRoute(
-                                        //     builder: (context) => const PatientDetailsScreen(),
-                                        //   ),
-                                        // );
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                                        builder: (context) => DocumentScreen( 
+                                                           patientId: userData['id'] ?? 0,
+                                                        ),
+                                                                                     ),
+                                        );
                                       },
                                     ),
                                       const Divider(height: 0),

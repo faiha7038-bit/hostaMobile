@@ -1040,11 +1040,20 @@ Future<Response> getPatients({
   );
 }
 //..........Documents...................
+  // Future<Response> getDocuments(int patientId) {
+  //   return dio.get('/api/documents', queryParameters: {
+  //     'patientId': patientId,
+  //   });
+  // }
+
   Future<Response> getDocuments(int patientId) {
-    return dio.get('/api/documents', queryParameters: {
-      'patientId': patientId,
-    });
-  }
+  return dio.get(
+    '/api/documents',
+    queryParameters: {
+      'patientId': patientId,  
+    },
+  );
+}
   Future<Response> createDocument(Map data) {
     return dio.post('/api/documents', data: data);
   }
@@ -1057,6 +1066,51 @@ Future<Response> getPatients({
     return dio.delete('/api/documents/$id');
   }
 
+
+Future<Response> uploadDocumentWithImage({
+  required int patientId,
+  required String name,
+  required String date,
+  required File imageFile,
+}) async {
+  try {
+    // ✅ Token check
+    final token = await TokenManager.getAccessToken();
+    print('📤 Token: $token');
+    
+    if (token == null) {
+      throw Exception('No token found! Please login first.');
+    }
+
+    final formData = FormData.fromMap({
+      'patientId': patientId,
+      'name': name,
+      'date': date,
+      'image': await MultipartFile.fromFile(
+        imageFile.path,
+        filename: imageFile.path.split('/').last,
+      ),
+    });
+
+    final response = await dio.post(
+      '/api/documents',
+      data: formData,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token', // ✅ Token add ചെയ്യുക
+          'Content-Type': 'multipart/form-data',
+        },
+      ),
+    );
+
+    return response;
+  } catch (e) {
+    print('❌ Error: $e');
+    rethrow;
+  }
+}
+
+//============================================
 Future<Response> getCategories({
   String? searchQuery,
   int page = 1,
