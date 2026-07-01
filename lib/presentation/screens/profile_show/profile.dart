@@ -5,6 +5,7 @@ import 'package:hosta/presentation/screens/ambulance/ambulance_details.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/blood_details.dart';
 import 'package:hosta/presentation/screens/contact/contact.dart';
+import 'package:hosta/presentation/screens/document/documents.dart';
 import 'package:hosta/presentation/screens/lab/lab.dart';
 import 'package:hosta/presentation/screens/patient.dart';
 import 'package:hosta/presentation/screens/prescription.dart';
@@ -672,7 +673,7 @@ if (result == true) {
                                     const Divider(height: 0),
                                        
                                      _buildProfileOption(
-                                      icon: Icons.person_add,
+                                      icon: Icons.edit_document,
                                       title: ' My Documents',
                                       subtitle: ' ',
                                       screenWidth: screenWidth,
@@ -705,7 +706,8 @@ if (result == true) {
                                                       context,
                                                       MaterialPageRoute(
                                                         builder: (context) =>
-                                                            Signin(),
+                                                        
+                                                           Signin(),
                                                       ),
                                                     );
                                                   },
@@ -717,12 +719,12 @@ if (result == true) {
                                           return;
                                         }
 
-                                        // Navigator.push(
-                                        //   context,
-                                        //   MaterialPageRoute(
-                                        //     builder: (context) => const PatientDetailsScreen(),
-                                        //   ),
-                                        // );
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => DocumentsTab()
+                                          ),
+                                        );
                                       },
                                     ),
                                       const Divider(height: 0),

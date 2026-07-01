@@ -467,9 +467,9 @@ Future<void> _makePhoneCall(String phone) async {
       );
     }
   } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Phone permission denied')),
-    );
+    // ScaffoldMessenger.of(context).showSnackBar(
+    //   const SnackBar(content: Text('Phone permission denied')),
+    // );
   }
 }
 
