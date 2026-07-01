@@ -538,6 +538,7 @@ Widget _buildProfileImage(UserDataState userState, double screenWidth, double sc
   String? profileImageUrl = userState.userData?['imageUrl']?.toString();
 
   if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+    log("profike${profileImageUrl}");  
     return ClipOval(
       child: Image.network(
         profileImageUrl,
