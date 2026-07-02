@@ -133,14 +133,14 @@ class _LabReportState extends State<LabReport> {
         }
       } else {
         setState(() {
-          error = response.data['message'] ?? "Failed to fetch reports";
-          isLoading = false;
+          // error = response.data['message'] ?? "Failed to fetch reports";
+          // isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        error = "Error loading reports: ${e.toString()}";
-        isLoading = false;
+        // error = "Error loading reports: ${e.toString()}";
+        // isLoading = false;
       });
     }
   }
@@ -737,14 +737,20 @@ class _LabReportState extends State<LabReport> {
                         SizedBox(height: 10),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: Text(
-                            error!,
-                            textAlign: TextAlign.center,
+                          child:
+                          Text("LabReport Not Found", textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.red,
                               fontSize: 16,
-                            ),
-                          ),
+                            ),)
+                          //  Text(
+                          //  // error!,
+                          //   textAlign: TextAlign.center,
+                          //   style: TextStyle(
+                          //     color: Colors.red,
+                          //     fontSize: 16,
+                          //   ),
+                          // ),
                         ),
                         SizedBox(height: 20),
                         ElevatedButton(

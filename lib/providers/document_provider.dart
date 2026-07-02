@@ -211,43 +211,21 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
  
 
 // ---------- DELETE DOCUMENT ----------
-Future<void> deleteDocument({
-  required int id,
-  required String role,
-  required String key,
-}) async {
+Future<void> deleteDocument({required int id}) async {
   // 1️⃣ Optimistic removal
   final previousDocs = List<Document>.from(state.documents);
   final updatedDocs = state.documents.where((d) => d.id != id).toList();
   state = state.copyWith(documents: updatedDocs);
-  log("🗑️ Optimistic delete: ${state.documents.length} docs remain");
 
   try {
-    // 2️⃣ Delete from S3 and DB
-    if (key.isEmpty) {
-      await _api.deleteDocument(id, {});
-    } else {
-      final fileKey = key.contains('amazonaws.com/')
-          ? key.split('.amazonaws.com/').last
-          : key;
-          log("ID   : $id");
-log("ROLE : $role");
-log("KEY  : $key");
-      await _api.deleteDocument(
-        id,
-        {
-          "role": role,
-          "key": fileKey,
-        },
-      );
-    }
+    // 2️⃣ Delete from DB only – backend will delete S3 file automatically
+    await _api.deleteDocument(id, {}); // or just await _api.deleteDocument(id);
     log("✅ Server delete successful for doc $id");
 
-    // 3️⃣ Re-apply the removal (in case state was altered during the async call)
-    final currentDocs = state.documents.where((d) => d.id != id).toList();
-    state = state.copyWith(documents: currentDocs);
-    log("🔄 Re-applied deletion, docs: ${state.documents.length}");
-
+    // 3️⃣ Re-apply removal (state already updated)
+    // No need to re-apply; optimistic update is kept.
+    // But if you want to be safe, you can refetch.
+    await fetchDocuments(); // optional: refresh from server
   } catch (e) {
     // 4️⃣ Rollback on error
     state = state.copyWith(documents: previousDocs);

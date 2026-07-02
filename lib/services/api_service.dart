@@ -7,8 +7,6 @@ import 'package:hosta/data/models/document_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:mailer/mailer.dart';
-import 'package:mailer/smtp_server/gmail.dart';
 import 'token_manager.dart';
 
 class ApiService {
@@ -26,7 +24,7 @@ class ApiService {
   Future<String?>? _refreshFuture;
      
   final String baseUrl =
-  // "http://35.174.10.32";
+  
   "https://zorrowtek.in";
 
 
@@ -469,7 +467,7 @@ Future<Response> getUnreadNotifications(
     }
 
     return await dio.get(
-      '/api/ads/nearby',
+      '/api/ads',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
   }

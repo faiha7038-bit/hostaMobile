@@ -7,7 +7,6 @@ import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/screens/profile_show/profile.dart';
 import 'package:hosta/services/socket-service.dart';
-import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../screens/home/home.dart';
@@ -322,7 +321,7 @@ Future<void> initSocket() async {
       print('👤 User data loaded successfully');
     } catch (e) {
       print("❌ Error loading user data: $e");
-      showTopSnackBar(context, "Error loading user data", isError: true);
+    //  showTopSnackBar(context, "Error loading user data", isError: true);
     } finally {
       if (mounted) {
         setState(() => isLoadingUser = false);
