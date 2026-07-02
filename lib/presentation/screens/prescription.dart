@@ -153,12 +153,14 @@ void _setupSocketListeners() {
     } catch (e) {
       print("❌ Error: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading prescriptions: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        print("Error loading prescriptions: $e");
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+       
+        //    // content: Text('Error loading prescriptions: $e'),
+        //     backgroundColor: Colors.red,
+        //   ),
+        // );
       }
     } finally {
       setState(() {

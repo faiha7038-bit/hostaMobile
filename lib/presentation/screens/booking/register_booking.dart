@@ -280,13 +280,14 @@ print("WIDGET HOSPITAL ID => ${widget.doctor.hospitalId}");
   'patient_phone': phoneController.text,
 
   'hospitalId': int.parse(widget.doctor.hospitalId.toString()),
+    'hospitalName': widget.doctor.hospitalName ?? '', 
   'doctorId': int.parse(widget.doctor.id.toString()),
   'booking_date': DateFormat('yyyy-MM-dd').format(appointmentDate!),
   'department': widget.doctor.specialty,
   'displayName': widget.doctor.name,
   'booking_status': 'user booking',
 };
-
+print("DOCTOR HOSPITAL NAME => ${widget.doctor.hospitalName}");
       print("BOOKING DATA = $bookingData");
     showDialog(
       context: context,
@@ -444,6 +445,8 @@ print("WIDGET HOSPITAL ID => ${widget.doctor.hospitalId}");
                           widget.doctor.specialty,
                           style: TextStyle(color: Colors.grey[600]),
                         ),
+                       
+Text('🏥 ${widget.doctor.hospitalName ?? "Hospital"}')
                       ],
                     ),
                   ),
