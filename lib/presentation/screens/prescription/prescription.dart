@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../../services/api_service.dart';
-import '../../data/models/prescription_model.dart';
+import '../../../services/api_service.dart';
+import '../../../data/models/prescription_model.dart';
 
 class PrescriptionListScreen extends StatefulWidget {
   final String? userId;
