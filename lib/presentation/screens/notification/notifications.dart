@@ -30,7 +30,7 @@
 //   bool showUnread = false;
 //   bool showRead = false;
 //   String? errorMessage;
-  
+
 //   // ✅ Pagination Variables
 //   int _currentPage = 1;
 //   int _totalPages = 1;
@@ -38,18 +38,18 @@
 //   bool _isLoadingMore = false;
 //   bool _hasMorePages = true;
 //   bool _isRefreshing = false;
-  
+
 //   // ✅ Local read status
 //   Set<String> locallyReadIds = {};
-  
+
 //   late ScrollController _scrollController;
-  
+
 //   // ✅ Store callback references for removal
 //   final List<Function(dynamic)> _listenerCallbacks = [];
-  
+
 //   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 //       FlutterLocalNotificationsPlugin();
-      
+
 //   void _testNotification() {
 //     _showLocalNotification({
 //       'title': '🔔 Test Notification',
@@ -76,7 +76,7 @@
 //       _loadMoreNotifications();
 //     }
 //   }
-  
+
 //   Future<void> _setup() async {
 //     await _getUserId();
 //     await _requestNotificationPermission();
@@ -89,7 +89,7 @@
 //       await _initializeNotifications();
 //       await _fetchNotifications();
 //       await _loadSavedBadgeCount();
-      
+
 //       _setupSocketListener();
 //         Future.delayed(Duration(seconds: 2), () {
 //       _testNotification();
@@ -115,17 +115,17 @@
 //       print('❌ Error requesting notification permission: $e');
 //     }
 //   }
-  
+
 //   @override
 //   void dispose() {
 //     // ✅ Remove all socket listeners
 //     final socketService = SocketService();
 //     for (final callback in _listenerCallbacks) {
-//       // Since SocketService doesn't have removeListener, 
+//       // Since SocketService doesn't have removeListener,
 //       // we need to clear the listeners manually or just let them be
 //       // The listeners will be cleared when the socket disconnects
 //     }
-    
+
 //     if (userId != null) {
 //       FCMService.unsubscribeFromTopic('user_$userId');
 //     }
@@ -172,7 +172,7 @@
 //   //     iOS: DarwinInitializationSettings(
 //   //       requestAlertPermission: true,
 //   //       requestBadgePermission: true,
-//   //       requestSoundPermission: true, 
+//   //       requestSoundPermission: true,
 //   //     ),
 //   //   );
 
@@ -185,10 +185,10 @@
 //   // }
 // Future<void> _initializeNotifications() async {
 //   try {
-//     const AndroidInitializationSettings androidSettings = 
+//     const AndroidInitializationSettings androidSettings =
 //         AndroidInitializationSettings('@mipmap/ic_launcher');
-    
-//     const DarwinInitializationSettings iosSettings = 
+
+//     const DarwinInitializationSettings iosSettings =
 //         DarwinInitializationSettings(
 //       requestAlertPermission: true,
 //       requestBadgePermission: true,
@@ -218,12 +218,12 @@
 //         vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
 //         sound: RawResourceAndroidNotificationSound('notification_sound.mp3'),
 //       );
-      
+
 //       await flutterLocalNotificationsPlugin
 //           .resolvePlatformSpecificImplementation<
 //               AndroidFlutterLocalNotificationsPlugin>()
 //           ?.createNotificationChannel(channel);
-      
+
 //       print('✅ Android notification channel created with sound');
 //     }
 
@@ -234,7 +234,7 @@
 // }
 
 //   // ==================== LOCAL READ STATUS ====================
-  
+
 //   Future<void> _loadLocalReadStatus() async {
 //     try {
 //       final prefs = await SharedPreferences.getInstance();
@@ -257,10 +257,10 @@
 //   }
 
 //   // ==================== BADGE UPDATE ====================
-  
+
 //   void _updateBottomNavBadge(int count) {
 //     print('📊 _updateBottomNavBadge called with: $count');
-    
+
 //     try {
 //       final bottomNavState = BottomNavState.navigatorKey.currentState;
 //       if (bottomNavState != null) {
@@ -271,7 +271,7 @@
 //     } catch (e) {
 //       print('❌ GlobalKey error: $e');
 //     }
-    
+
 //     try {
 //       final bottomNavState = context.findAncestorStateOfType<BottomNavState>();
 //       if (bottomNavState != null) {
@@ -282,7 +282,7 @@
 //     } catch (e) {
 //       print('❌ Ancestor error: $e');
 //     }
-    
+
 //     _updateBadgeViaSharedPreferences(count);
 //   }
 
@@ -298,7 +298,7 @@
 //   }
 
 //   // ==================== FETCH NOTIFICATIONS WITH PAGINATION ====================
-  
+
 //   Future<void> _fetchNotifications({bool isLoadMore = false}) async {
 //     if (userId == null || userId!.isEmpty) {
 //       setState(() => isLoading = false);
@@ -325,7 +325,7 @@
 //     try {
 //       final apiService = ApiService();
 //       await apiService.init();
-      
+
 //       final response = await apiService.getNotificationsByRole(
 //         'user',
 //         userId!,
@@ -335,24 +335,24 @@
 
 //       print("📡 Response Status: ${response.statusCode}");
 //       print("📡 Page: $_currentPage");
-      
+
 //       if (response.data['success'] == true) {
 //         final notificationList = response.data['data'];
 //         _totalCount = response.data['count'] ?? 0;
-        
+
 //         final limit = 10;
 //         _totalPages = _totalCount > 0 ? (_totalCount / limit).ceil() : 1;
 //         _hasMorePages = _currentPage < _totalPages;
-        
+
 //         print("📦 Total notifications: $_totalCount");
 //         print("📄 Page $_currentPage of $_totalPages");
 //         print("📊 Has more pages: $_hasMorePages");
-        
+
 //         List<Map<String, dynamic>> myNotifications = [];
-        
+
 //         if (notificationList is List) {
 //           print("📦 Received ${notificationList.length} notifications");
-          
+
 //           for (var item in notificationList) {
 //             try {
 //               Map<String, dynamic> notification;
@@ -361,14 +361,14 @@
 //               } else {
 //                 notification = Map<String, dynamic>.from(item);
 //               }
-              
+
 //               final notificationId = notification['id']?.toString() ?? '';
-              
+
 //               final userReadStatus = notification['userReadStatus'] as Map? ?? {};
 //               final isReadFromServer = userReadStatus[userId] == true;
 //               final isReadLocally = locallyReadIds.contains(notificationId);
 //               final isRead = isReadFromServer || isReadLocally;
-              
+
 //               myNotifications.add({
 //                 "_id": notificationId,
 //                 "id": notification['id'],
@@ -393,11 +393,11 @@
 //             }
 //           }
 //         }
-        
+
 //         final totalUnread = myNotifications.where((n) => n["read"] != true).length;
 //         print("✅ Processed ${myNotifications.length} notifications");
 //         print("📊 Unread in this page: $totalUnread");
-        
+
 //         if (mounted) {
 //           setState(() {
 //             if (isLoadMore) {
@@ -405,23 +405,23 @@
 //             } else {
 //               notifications = myNotifications;
 //             }
-            
-//             notifications.sort((a, b) => 
+
+//             notifications.sort((a, b) =>
 //               DateTime.parse(b["createdAt"]).compareTo(DateTime.parse(a["createdAt"]))
 //             );
-            
+
 //             _updateFilteredList();
 //             errorMessage = notifications.isEmpty ? "No notifications found" : null;
 //             _isLoadingMore = false;
 //             isLoading = false;
 //           });
-          
+
 //           await _updateBadgeCount();
 //         }
 //       } else {
 //         throw Exception(response.data['message'] ?? 'Failed to load notifications');
 //       }
-      
+
 //     } catch (e, stacktrace) {
 //       print("❌ Error fetching notifications: $e");
 //       print("📚 Stacktrace: $stacktrace");
@@ -440,17 +440,17 @@
 //       print("⏭️ Skipping load more: hasMore=$_hasMorePages, loading=$_isLoadingMore");
 //       return;
 //     }
-    
+
 //     print("📥 Loading more notifications...");
 //     _currentPage++;
 //     await _fetchNotifications(isLoadMore: true);
 //   }
 
 //   // ==================== BADGE COUNT ====================
-  
+
 //   Future<void> _loadSavedBadgeCount() async {
 //     if (userId == null || userId!.isEmpty) return;
-    
+
 //     try {
 //       final prefs = await SharedPreferences.getInstance();
 //       var savedCount = prefs.getInt('unread_count_$userId') ?? 0;
@@ -466,41 +466,41 @@
 
 //   Future<void> _updateBadgeCount() async {
 //     if (userId == null || userId!.isEmpty) return;
-    
+
 //     try {
 //       final apiService = ApiService();
 //       await apiService.init();
-      
+
 //       final response = await apiService.getUnreadCount('user', userId!);
 //       print('📊 Unread count response: ${response.data}');
-      
+
 //       if (response.data['success'] == true) {
 //         var unreadCount = response.data['count'] ?? 0;
-        
+
 //         final localReadCount = locallyReadIds.length;
 //         final finalCount = unreadCount > localReadCount ? unreadCount - localReadCount : 0;
-        
+
 //         _updateBottomNavBadge(finalCount);
-        
+
 //         final prefs = await SharedPreferences.getInstance();
 //         await prefs.setInt('notification_count', finalCount);
 //         await prefs.setInt('unread_count_$userId', finalCount);
-        
+
 //         print('📊 Total unread count: $finalCount (API: $unreadCount, Local: $localReadCount)');
 //       } else {
 //         final unreadCount = notifications.where((n) => n["read"] != true).length;
 //         _updateBottomNavBadge(unreadCount);
-        
+
 //         final prefs = await SharedPreferences.getInstance();
 //         await prefs.setInt('notification_count', unreadCount);
 //         await prefs.setInt('unread_count_$userId', unreadCount);
 //       }
 //     } catch (e) {
 //       print('❌ Error getting unread count: $e');
-      
+
 //       final unreadCount = notifications.where((n) => n["read"] != true).length;
 //       _updateBottomNavBadge(unreadCount);
-      
+
 //       final prefs = await SharedPreferences.getInstance();
 //       await prefs.setInt('notification_count', unreadCount);
 //       await prefs.setInt('unread_count_$userId', unreadCount);
@@ -508,13 +508,13 @@
 //   }
 
 //   // ==================== MARK AS READ ====================
-  
+
 //   Future<void> _markAsRead(String notificationId) async {
 //     if (userId == null) return;
-    
+
 //     locallyReadIds.add(notificationId);
 //     await _saveLocalReadStatus();
-    
+
 //     if (mounted) {
 //       setState(() {
 //         final index = notifications.indexWhere((n) => n["_id"] == notificationId);
@@ -524,9 +524,9 @@
 //         }
 //       });
 //     }
-    
+
 //     await _updateBadgeCount();
-    
+
 //     try {
 //       final apiService = ApiService();
 //       await apiService.init();
@@ -535,7 +535,7 @@
 //     } catch (e) {
 //       print('⚠️ API failed, but local read status kept');
 //     }
-    
+
 //     final notification = notifications.firstWhere(
 //       (n) => n["_id"] == notificationId,
 //       orElse: () => {},
@@ -559,14 +559,14 @@
 //       );
 //       return;
 //     }
-    
+
 //     for (var notification in notifications) {
 //       if (notification["read"] != true) {
 //         locallyReadIds.add(notification["_id"].toString());
 //       }
 //     }
 //     await _saveLocalReadStatus();
-    
+
 //     if (mounted) {
 //       setState(() {
 //         for (var notification in notifications) {
@@ -575,13 +575,13 @@
 //         _updateFilteredList();
 //       });
 //     }
-    
+
 //     _updateBottomNavBadge(0);
-    
+
 //     final prefs = await SharedPreferences.getInstance();
 //     await prefs.setInt('notification_count', 0);
 //     await prefs.setInt('unread_count_$userId', 0);
-    
+
 //     ScaffoldMessenger.of(context).showSnackBar(
 //       SnackBar(
 //         content: Text('All notifications marked as read ✓'),
@@ -589,7 +589,7 @@
 //         duration: Duration(seconds: 1),
 //       ),
 //     );
-    
+
 //     try {
 //       final apiService = ApiService();
 //       await apiService.init();
@@ -616,16 +616,16 @@
 //   }
 
 //   // ==================== SOCKET LISTENER USING SOCKETSERVICE ====================
-  
+
 //   void _setupSocketListener() {
 //     final socketService = SocketService();
-    
+
 //     // ✅ Join user room when setting up listener
 //     if (userId != null && userId!.isNotEmpty) {
 //       socketService.joinUserRoom(userId!);
 //       print("✅ Joined user room: $userId");
 //     }
-    
+
 //     // Listener for NOTIFICATION_CREATED
 //     final createdCallback = (data) {
 //       print("📨 NOTIFICATION_CREATED received: $data");
@@ -633,7 +633,7 @@
 //     };
 //     _listenerCallbacks.add(createdCallback);
 //     socketService.addListener(['NOTIFICATION_CREATED'], createdCallback);
-    
+
 //     // Listener for NOTIFICATION_READ
 //     final readCallback = (data) {
 //       print("📨 NOTIFICATION_READ received: $data");
@@ -641,7 +641,7 @@
 //     };
 //     _listenerCallbacks.add(readCallback);
 //     socketService.addListener(['NOTIFICATION_READ'], readCallback);
-    
+
 //     // Listener for NOTIFICATION_DELETED
 //     final deletedCallback = (data) {
 //       print("📨 NOTIFICATION_DELETED received: $data");
@@ -649,13 +649,13 @@
 //     };
 //     _listenerCallbacks.add(deletedCallback);
 //     socketService.addListener(['NOTIFICATION_DELETED'], deletedCallback);
-    
+
 //     print("✅ Socket listeners registered with SocketService");
 //   }
 
 //   void _handleNewNotification(dynamic data) async {
 //     print("📨 New notification: $data");
-    
+
 //     if (mounted) {
 //       final newNotification = {
 //         "_id": data['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -667,14 +667,14 @@
 //         "data": data['data'] ?? {},
 //         "userReadStatus": {userId: false},
 //       };
-      
+
 //       setState(() {
 //         notifications.insert(0, newNotification);
 //         _updateFilteredList();
 //       });
-      
+
 //       await _updateBadgeCount();
-      
+
 //       // ✅ Show local notification with SOUND
 //       _showLocalNotification(data);
 //     }
@@ -709,22 +709,21 @@
 //       )
 //     );
 //   }
-  
 
 // // ==================== LOCAL NOTIFICATION WITH SOUND ====================
-  
+
 // // Future<void> _showLocalNotification(Map<String, dynamic> data) async {
 // //   try {
 // //     // ✅ Android notification with SOUND
-// //    AndroidNotificationDetails androidPlatformChannelSpecifics = 
+// //    AndroidNotificationDetails androidPlatformChannelSpecifics =
 // //         AndroidNotificationDetails(
 // //       'high_importance_channel',
 // //       'High Importance Notifications',
 // //       importance: Importance.max,
 // //        priority: Priority.high,
-// //       playSound: true, 
-// //       enableVibration: true,  
-// //        vibrationPattern: Int64List.fromList([0, 500, 200, 500]), 
+// //       playSound: true,
+// //       enableVibration: true,
+// //        vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
 // //       sound: RawResourceAndroidNotificationSound('notification_sound.mp3'),
 // //     //sound: RawResourceAndroidNotificationSound('notification_sound.mp3'),
 // //     styleInformation: BigTextStyleInformation(
@@ -732,11 +731,11 @@
 // //       ),
 // //     );
 
-// //     const DarwinNotificationDetails iOSPlatformChannelSpecifics = 
+// //     const DarwinNotificationDetails iOSPlatformChannelSpecifics =
 // //         DarwinNotificationDetails(
 // //       presentAlert: true,
 // //       presentBadge: true,
-// //       presentSound: true, 
+// //       presentSound: true,
 // //     );
 
 // //      NotificationDetails platformChannelSpecifics = NotificationDetails(
@@ -744,7 +743,7 @@
 // //       iOS: iOSPlatformChannelSpecifics,
 // //     );
 // //     final id = DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt();
-    
+
 // //     await flutterLocalNotificationsPlugin.show(
 // //       DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt(),
 // //       data['title'] ?? 'New Notification',
@@ -752,7 +751,7 @@
 // //       platformChannelSpecifics,
 // //       payload: data['id']?.toString(),
 // //     );
-    
+
 // //     print("✅ Local notification shown with sound and vibration");
 // //   } catch (e) {
 // //     print("❌ Error showing local notification: $e");
@@ -761,7 +760,7 @@
 // Future<void> _showLocalNotification(Map<String, dynamic> data) async {
 //   try {
 //     // ✅ Remove 'priority' parameter from here too
-//     const AndroidNotificationDetails androidPlatformChannelSpecifics = 
+//     const AndroidNotificationDetails androidPlatformChannelSpecifics =
 //         AndroidNotificationDetails(
 //       'high_importance_channel',
 //       'High Importance Notifications',
@@ -775,7 +774,7 @@
 //       ),
 //     );
 
-//     const DarwinNotificationDetails iOSPlatformChannelSpecifics = 
+//     const DarwinNotificationDetails iOSPlatformChannelSpecifics =
 //         DarwinNotificationDetails(
 //       presentAlert: true,
 //       presentBadge: true,
@@ -788,7 +787,7 @@
 //     );
 
 //     final id = DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt();
-    
+
 //     await flutterLocalNotificationsPlugin.show(
 //       id,
 //       data['title'] ?? 'New Notification',
@@ -796,7 +795,7 @@
 //       platformChannelSpecifics,
 //       payload: data['id']?.toString(),
 //     );
-    
+
 //     print("✅ Local notification shown with sound");
 //   } catch (e) {
 //     print("❌ Error showing local notification: $e");
@@ -804,7 +803,7 @@
 // }
 
 //   // ==================== FILTERS ====================
-  
+
 //   void _updateFilteredList() {
 //     filteredList = notifications.where((n) {
 //       bool matchesRead = (!showUnread && !showRead) ||
@@ -834,7 +833,7 @@
 //   }
 
 //   // ==================== BUILD ====================
-  
+
 //   @override
 //   Widget build(BuildContext context) {
 //     final screenWidth = MediaQuery.of(context).size.width;
@@ -948,7 +947,7 @@
 //                       ],
 //                     ),
 //                   ),
-                  
+
 //                   // ✅ Notification List with Pagination
 //                   Expanded(
 //                     child: filteredList.isEmpty
@@ -1061,7 +1060,7 @@
 //                             },
 //                           ),
 //                   ),
-                  
+
 //                   // ✅ Pagination Info at Bottom
 //                   if (_totalCount > 0)
 //                     Padding(
@@ -1102,12 +1101,10 @@
 //   }
 // }
 
-
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app_badger_plus/flutter_app_badger_plus.dart';
 import 'package:hosta/presentation/screens/notification/notification_details.dart';
 import 'package:hosta/services/fcm_service.dart';
 import 'package:hosta/services/socket-service.dart';
@@ -1115,7 +1112,6 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 
@@ -1135,22 +1131,22 @@ class _NotificationsState extends State<Notifications> {
   bool showUnread = false;
   bool showRead = false;
   String? errorMessage;
-  
+
   int _currentPage = 1;
   int _totalPages = 1;
   int _totalCount = 0;
   bool _isLoadingMore = false;
   bool _hasMorePages = true;
   bool _isRefreshing = false;
-  
+
   Set<String> locallyReadIds = {};
-  
+
   late ScrollController _scrollController;
   final List<Function(dynamic)> _listenerCallbacks = [];
-  
+
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
-      
+
   // void _testNotification() {
   //   _showLocalNotification({
   //     'title': '🔔 Test Notification',
@@ -1166,7 +1162,7 @@ class _NotificationsState extends State<Notifications> {
     _scrollController.addListener(_onScroll);
     _setup();
     Future.delayed(Duration(seconds: 3), () {
- //   //  _testNotification();
+      //   //  _testNotification();
     });
   }
 
@@ -1176,7 +1172,7 @@ class _NotificationsState extends State<Notifications> {
       _loadMoreNotifications();
     }
   }
-  
+
   Future<void> _setup() async {
     await _getUserId();
     await _requestNotificationPermission();
@@ -1189,10 +1185,10 @@ class _NotificationsState extends State<Notifications> {
       await FCMService.subscribeToTopic('user_$userId');
       await _fetchNotifications();
       await _loadSavedBadgeCount();
-      
+
       _setupSocketListener();
       Future.delayed(Duration(seconds: 2), () {
-      // // _testNotification();
+        // // _testNotification();
       });
     } else {
       setState(() => isLoading = false);
@@ -1215,14 +1211,14 @@ class _NotificationsState extends State<Notifications> {
       print('❌ Error requesting notification permission: $e');
     }
   }
-  
+
   @override
   void dispose() {
     final socketService = SocketService();
     for (final callback in _listenerCallbacks) {
       // Listeners will be cleared when socket disconnects
     }
-    
+
     if (userId != null) {
       FCMService.unsubscribeFromTopic('user_$userId');
     }
@@ -1241,10 +1237,10 @@ class _NotificationsState extends State<Notifications> {
   // ✅ FIXED: Initialize notifications with correct parameters
   Future<void> _initializeNotifications() async {
     try {
-      const AndroidInitializationSettings androidSettings = 
+      const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
-      
-      const DarwinInitializationSettings iosSettings = 
+
+      const DarwinInitializationSettings iosSettings =
           DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
@@ -1260,9 +1256,9 @@ class _NotificationsState extends State<Notifications> {
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
           print('Notification tapped: ${response.payload}');
-           if (response.payload != null) {
-          // Handle navigation
-        }
+          if (response.payload != null) {
+            // Handle navigation
+          }
         },
       );
 
@@ -1274,7 +1270,7 @@ class _NotificationsState extends State<Notifications> {
           ..[2] = 200
           ..[3] = 500
           ..[4] = 0;
-          
+
         final AndroidNotificationChannel channel = AndroidNotificationChannel(
           'high_importance_channel',
           'High Importance Notifications',
@@ -1282,14 +1278,15 @@ class _NotificationsState extends State<Notifications> {
           importance: Importance.max,
           enableVibration: true,
           vibrationPattern: vibrationPattern,
-          sound: const RawResourceAndroidNotificationSound('notification_sound'),
+          sound:
+              const RawResourceAndroidNotificationSound('notification_sound'),
         );
-        
+
         await flutterLocalNotificationsPlugin
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>()
             ?.createNotificationChannel(channel);
-        
+
         print('✅ Android notification channel created with sound');
       }
 
@@ -1309,8 +1306,8 @@ class _NotificationsState extends State<Notifications> {
         ..[2] = 200
         ..[3] = 500
         ..[4] = 0;
-      
-      final AndroidNotificationDetails androidPlatformChannelSpecifics = 
+
+      final AndroidNotificationDetails androidPlatformChannelSpecifics =
           AndroidNotificationDetails(
         'high_importance_channel',
         'High Importance Notifications',
@@ -1324,7 +1321,7 @@ class _NotificationsState extends State<Notifications> {
         ),
       );
 
-      const DarwinNotificationDetails iOSPlatformChannelSpecifics = 
+      const DarwinNotificationDetails iOSPlatformChannelSpecifics =
           DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
@@ -1336,8 +1333,9 @@ class _NotificationsState extends State<Notifications> {
         iOS: iOSPlatformChannelSpecifics,
       );
 
-      final id = DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt();
-      
+      final id =
+          DateTime.now().millisecondsSinceEpoch.remainder(100000).toInt();
+
       await flutterLocalNotificationsPlugin.show(
         id,
         data['title'] ?? 'New Notification',
@@ -1345,7 +1343,7 @@ class _NotificationsState extends State<Notifications> {
         platformChannelSpecifics,
         payload: data['id']?.toString(),
       );
-      
+
       print("✅ Local notification shown with sound");
     } catch (e) {
       print("❌ Error showing local notification: $e");
@@ -1353,7 +1351,7 @@ class _NotificationsState extends State<Notifications> {
   }
 
   // ==================== LOCAL READ STATUS ====================
-  
+
   Future<void> _loadLocalReadStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -1368,7 +1366,8 @@ class _NotificationsState extends State<Notifications> {
   Future<void> _saveLocalReadStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('locally_read_ids_$userId', locallyReadIds.toList());
+      await prefs.setStringList(
+          'locally_read_ids_$userId', locallyReadIds.toList());
       print('📊 Saved ${locallyReadIds.length} locally read notifications');
     } catch (e) {
       print('❌ Error saving local read status: $e');
@@ -1376,10 +1375,10 @@ class _NotificationsState extends State<Notifications> {
   }
 
   // ==================== BADGE UPDATE ====================
-  
+
   void _updateBottomNavBadge(int count) {
     print('📊 _updateBottomNavBadge called with: $count');
-    
+
     try {
       final bottomNavState = BottomNavState.navigatorKey.currentState;
       if (bottomNavState != null) {
@@ -1390,7 +1389,7 @@ class _NotificationsState extends State<Notifications> {
     } catch (e) {
       print('❌ GlobalKey error: $e');
     }
-    
+
     try {
       final bottomNavState = context.findAncestorStateOfType<BottomNavState>();
       if (bottomNavState != null) {
@@ -1401,7 +1400,7 @@ class _NotificationsState extends State<Notifications> {
     } catch (e) {
       print('❌ Ancestor error: $e');
     }
-    
+
     _updateBadgeViaSharedPreferences(count);
   }
 
@@ -1417,7 +1416,7 @@ class _NotificationsState extends State<Notifications> {
   }
 
   // ==================== FETCH NOTIFICATIONS WITH PAGINATION ====================
-  
+
   Future<void> _fetchNotifications({bool isLoadMore = false}) async {
     if (userId == null || userId!.isEmpty) {
       setState(() => isLoading = false);
@@ -1444,7 +1443,7 @@ class _NotificationsState extends State<Notifications> {
     try {
       final apiService = ApiService();
       await apiService.init();
-      
+
       final response = await apiService.getNotificationsByRole(
         'user',
         userId!,
@@ -1454,24 +1453,24 @@ class _NotificationsState extends State<Notifications> {
 
       print("📡 Response Status: ${response.statusCode}");
       print("📡 Page: $_currentPage");
-      
+
       if (response.data['success'] == true) {
         final notificationList = response.data['data'];
         _totalCount = response.data['count'] ?? 0;
-        
+
         final limit = 10;
         _totalPages = _totalCount > 0 ? (_totalCount / limit).ceil() : 1;
         _hasMorePages = _currentPage < _totalPages;
-        
+
         print("📦 Total notifications: $_totalCount");
         print("📄 Page $_currentPage of $_totalPages");
         print("📊 Has more pages: $_hasMorePages");
-        
+
         List<Map<String, dynamic>> myNotifications = [];
-        
+
         if (notificationList is List) {
           print("📦 Received ${notificationList.length} notifications");
-          
+
           for (var item in notificationList) {
             try {
               Map<String, dynamic> notification;
@@ -1480,19 +1479,21 @@ class _NotificationsState extends State<Notifications> {
               } else {
                 notification = Map<String, dynamic>.from(item);
               }
-              
+
               final notificationId = notification['id']?.toString() ?? '';
-              
-              final userReadStatus = notification['userReadStatus'] as Map? ?? {};
+
+              final userReadStatus =
+                  notification['userReadStatus'] as Map? ?? {};
               final isReadFromServer = userReadStatus[userId] == true;
               final isReadLocally = locallyReadIds.contains(notificationId);
               final isRead = isReadFromServer || isReadLocally;
-              
+
               myNotifications.add({
                 "_id": notificationId,
                 "id": notification['id'],
                 "message": notification['message'] ?? "No message",
-                "createdAt": notification['createdAt'] ?? DateTime.now().toIso8601String(),
+                "createdAt": notification['createdAt'] ??
+                    DateTime.now().toIso8601String(),
                 "read": isRead,
                 "title": notification['title'] ?? "Notification",
                 "data": notification['data'] ?? {},
@@ -1505,18 +1506,20 @@ class _NotificationsState extends State<Notifications> {
                 "staffReadStatus": notification['staffReadStatus'] ?? {},
                 "pharmacyReadStatus": notification['pharmacyReadStatus'] ?? {},
                 "labReadStatus": notification['labReadStatus'] ?? {},
-                "superAdminReadStatus": notification['superAdminReadStatus'] ?? {},
+                "superAdminReadStatus":
+                    notification['superAdminReadStatus'] ?? {},
               });
             } catch (e) {
               print("⚠️ Error processing notification item: $e");
             }
           }
         }
-        
-        final totalUnread = myNotifications.where((n) => n["read"] != true).length;
+
+        final totalUnread =
+            myNotifications.where((n) => n["read"] != true).length;
         print("✅ Processed ${myNotifications.length} notifications");
         print("📊 Unread in this page: $totalUnread");
-        
+
         if (mounted) {
           setState(() {
             if (isLoadMore) {
@@ -1524,23 +1527,23 @@ class _NotificationsState extends State<Notifications> {
             } else {
               notifications = myNotifications;
             }
-            
-            notifications.sort((a, b) => 
-              DateTime.parse(b["createdAt"]).compareTo(DateTime.parse(a["createdAt"]))
-            );
-            
+
+            notifications.sort((a, b) => DateTime.parse(b["createdAt"])
+                .compareTo(DateTime.parse(a["createdAt"])));
+
             _updateFilteredList();
-            errorMessage = notifications.isEmpty ? "No notifications found" : null;
+            errorMessage =
+                notifications.isEmpty ? "No notifications found" : null;
             _isLoadingMore = false;
             isLoading = false;
           });
-          
+
           await _updateBadgeCount();
         }
       } else {
-        throw Exception(response.data['message'] ?? 'Failed to load notifications');
+        throw Exception(
+            response.data['message'] ?? 'Failed to load notifications');
       }
-      
     } catch (e, stacktrace) {
       print("❌ Error fetching notifications: $e");
       print("📚 Stacktrace: $stacktrace");
@@ -1556,20 +1559,21 @@ class _NotificationsState extends State<Notifications> {
 
   Future<void> _loadMoreNotifications() async {
     if (!_hasMorePages || _isLoadingMore || _isRefreshing) {
-      print("⏭️ Skipping load more: hasMore=$_hasMorePages, loading=$_isLoadingMore");
+      print(
+          "⏭️ Skipping load more: hasMore=$_hasMorePages, loading=$_isLoadingMore");
       return;
     }
-    
+
     print("📥 Loading more notifications...");
     _currentPage++;
     await _fetchNotifications(isLoadMore: true);
   }
 
   // ==================== BADGE COUNT ====================
-  
+
   Future<void> _loadSavedBadgeCount() async {
     if (userId == null || userId!.isEmpty) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       var savedCount = prefs.getInt('unread_count_$userId') ?? 0;
@@ -1585,41 +1589,44 @@ class _NotificationsState extends State<Notifications> {
 
   Future<void> _updateBadgeCount() async {
     if (userId == null || userId!.isEmpty) return;
-    
+
     try {
       final apiService = ApiService();
       await apiService.init();
-      
+
       final response = await apiService.getUnreadCount('user', userId!);
       print('📊 Unread count response: ${response.data}');
-      
+
       if (response.data['success'] == true) {
         var unreadCount = response.data['count'] ?? 0;
-        
+
         final localReadCount = locallyReadIds.length;
-        final finalCount = unreadCount > localReadCount ? unreadCount - localReadCount : 0;
-        
+        final finalCount =
+            unreadCount > localReadCount ? unreadCount - localReadCount : 0;
+
         _updateBottomNavBadge(finalCount);
-        
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt('notification_count', finalCount);
         await prefs.setInt('unread_count_$userId', finalCount);
-        
-        print('📊 Total unread count: $finalCount (API: $unreadCount, Local: $localReadCount)');
+
+        print(
+            '📊 Total unread count: $finalCount (API: $unreadCount, Local: $localReadCount)');
       } else {
-        final unreadCount = notifications.where((n) => n["read"] != true).length;
+        final unreadCount =
+            notifications.where((n) => n["read"] != true).length;
         _updateBottomNavBadge(unreadCount);
-        
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt('notification_count', unreadCount);
         await prefs.setInt('unread_count_$userId', unreadCount);
       }
     } catch (e) {
       print('❌ Error getting unread count: $e');
-      
+
       final unreadCount = notifications.where((n) => n["read"] != true).length;
       _updateBottomNavBadge(unreadCount);
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('notification_count', unreadCount);
       await prefs.setInt('unread_count_$userId', unreadCount);
@@ -1627,25 +1634,26 @@ class _NotificationsState extends State<Notifications> {
   }
 
   // ==================== MARK AS READ ====================
-  
+
   Future<void> _markAsRead(String notificationId) async {
     if (userId == null) return;
-    
+
     locallyReadIds.add(notificationId);
     await _saveLocalReadStatus();
-    
+
     if (mounted) {
       setState(() {
-        final index = notifications.indexWhere((n) => n["_id"] == notificationId);
+        final index =
+            notifications.indexWhere((n) => n["_id"] == notificationId);
         if (index != -1) {
           notifications[index]["read"] = true;
           _updateFilteredList();
         }
       });
     }
-    
+
     await _updateBadgeCount();
-    
+
     try {
       final apiService = ApiService();
       await apiService.init();
@@ -1654,7 +1662,7 @@ class _NotificationsState extends State<Notifications> {
     } catch (e) {
       print('⚠️ API failed, but local read status kept');
     }
-    
+
     final notification = notifications.firstWhere(
       (n) => n["_id"] == notificationId,
       orElse: () => {},
@@ -1674,18 +1682,20 @@ class _NotificationsState extends State<Notifications> {
     final unreadCount = notifications.where((n) => n["read"] != true).length;
     if (unreadCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No unread notifications'), backgroundColor: Colors.grey),
+        SnackBar(
+            content: Text('No unread notifications'),
+            backgroundColor: Colors.grey),
       );
       return;
     }
-    
+
     for (var notification in notifications) {
       if (notification["read"] != true) {
         locallyReadIds.add(notification["_id"].toString());
       }
     }
     await _saveLocalReadStatus();
-    
+
     if (mounted) {
       setState(() {
         for (var notification in notifications) {
@@ -1694,13 +1704,13 @@ class _NotificationsState extends State<Notifications> {
         _updateFilteredList();
       });
     }
-    
+
     _updateBottomNavBadge(0);
-    
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('notification_count', 0);
     await prefs.setInt('unread_count_$userId', 0);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('All notifications marked as read ✓'),
@@ -1708,7 +1718,7 @@ class _NotificationsState extends State<Notifications> {
         duration: Duration(seconds: 1),
       ),
     );
-    
+
     try {
       final apiService = ApiService();
       await apiService.init();
@@ -1735,45 +1745,46 @@ class _NotificationsState extends State<Notifications> {
   }
 
   // ==================== SOCKET LISTENER ====================
-  
+
   void _setupSocketListener() {
     final socketService = SocketService();
-    
+
     if (userId != null && userId!.isNotEmpty) {
       socketService.joinUserRoom(userId!);
       print("✅ Joined user room: $userId");
     }
-    
+
     final createdCallback = (data) {
       print("📨 NOTIFICATION_CREATED received: $data");
       _handleNewNotification(data);
     };
     _listenerCallbacks.add(createdCallback);
     socketService.addListener(['NOTIFICATION_CREATED'], createdCallback);
-    
+
     final readCallback = (data) {
       print("📨 NOTIFICATION_READ received: $data");
       _handleNotificationRead(data);
     };
     _listenerCallbacks.add(readCallback);
     socketService.addListener(['NOTIFICATION_READ'], readCallback);
-    
+
     final deletedCallback = (data) {
       print("📨 NOTIFICATION_DELETED received: $data");
       _handleNotificationDeleted(data);
     };
     _listenerCallbacks.add(deletedCallback);
     socketService.addListener(['NOTIFICATION_DELETED'], deletedCallback);
-    
+
     print("✅ Socket listeners registered with SocketService");
   }
 
   void _handleNewNotification(dynamic data) async {
     print("📨 New notification: $data");
-    
+
     if (mounted) {
       final newNotification = {
-        "_id": data['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        "_id": data['id']?.toString() ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
         "id": data['id'],
         "message": data['message'] ?? "New notification",
         "createdAt": DateTime.now().toIso8601String(),
@@ -1782,12 +1793,12 @@ class _NotificationsState extends State<Notifications> {
         "data": data['data'] ?? {},
         "userReadStatus": {userId: false},
       };
-      
+
       setState(() {
         notifications.insert(0, newNotification);
         _updateFilteredList();
       });
-      
+
       await _updateBadgeCount();
       _showLocalNotification(data);
     }
@@ -1814,17 +1825,16 @@ class _NotificationsState extends State<Notifications> {
 
   void _navigateToNotificationDetails(Map<String, dynamic> notification) {
     Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => NotificationDetailsScreen(
-          notification: notification,
-        ),
-      )
-    );
+        context,
+        MaterialPageRoute(
+          builder: (context) => NotificationDetailsScreen(
+            notification: notification,
+          ),
+        ));
   }
 
   // ==================== FILTERS ====================
-  
+
   void _updateFilteredList() {
     filteredList = notifications.where((n) {
       bool matchesRead = (!showUnread && !showRead) ||
@@ -1854,7 +1864,7 @@ class _NotificationsState extends State<Notifications> {
   }
 
   // ==================== BUILD ====================
-  
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1866,13 +1876,18 @@ class _NotificationsState extends State<Notifications> {
         backgroundColor: const Color(0xFFECFDF5),
         appBar: AppBar(
           backgroundColor: Colors.green,
-          title: const Text("Notifications", style: TextStyle(color: Colors.white)),
+          title: Text("Notifications",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: screenWidth * 0.05,
+              )),
           centerTitle: true,
           actions: [
             IconButton(
               icon: const Icon(Icons.volume_up, color: Colors.white),
               onPressed: () {
-              // // _testNotification();
+                // // _testNotification();
               },
             ),
           ],
@@ -1894,7 +1909,8 @@ class _NotificationsState extends State<Notifications> {
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
         backgroundColor: Colors.green,
-        title: const Text("Notifications", style: TextStyle(color: Colors.white)),
+        title:
+             Text("Notifications", style: TextStyle(color: Colors.white,fontSize: screenWidth * 0.05,fontWeight: FontWeight.bold,)),
         centerTitle: true,
         // actions: [
         //   IconButton(
@@ -1975,7 +1991,6 @@ class _NotificationsState extends State<Notifications> {
                       ],
                     ),
                   ),
-                  
                   Expanded(
                     child: filteredList.isEmpty
                         ? Center(
@@ -2038,7 +2053,8 @@ class _NotificationsState extends State<Notifications> {
 
                               final n = filteredList[index];
                               return Card(
-                                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4),
                                 child: ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor: n["read"] == true
@@ -2087,7 +2103,6 @@ class _NotificationsState extends State<Notifications> {
                             },
                           ),
                   ),
-                  
                   if (_totalCount > 0)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
