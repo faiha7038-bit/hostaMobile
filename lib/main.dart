@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:alarm/alarm.dart';
 import 'package:firebase_messaging/firebase_messaging.dart' as firebase;
 import 'package:flutter/material.dart';

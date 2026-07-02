@@ -1,9 +1,11 @@
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
@@ -70,6 +72,46 @@ UserDataState copyWith({
 }
 
 class UserDataNotifier extends StateNotifier<UserDataState> {
+Future<File> _compressImage(File file) async {
+  try {
+    final originalSize = await file.length();
+
+    // ചെറിയ image ആണെങ്കിൽ compress വേണ്ട
+    if (originalSize < 150 * 1024) {
+      return file;
+    }
+
+    final dir = await getTemporaryDirectory();
+
+    final targetPath =
+        '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    final compressed = await FlutterImageCompress.compressAndGetFile(
+      file.path,
+      targetPath,
+      quality: 70,
+      minWidth: 800,
+      minHeight: 800,
+      format: CompressFormat.jpeg,
+    );
+
+    if (compressed == null) {
+      return file;
+    }
+
+    final compressedFile = File(compressed.path);
+
+    // Compress ചെയ്തിട്ട് size കൂടിയാൽ original തന്നെ ഉപയോഗിക്കുക
+    if (await compressedFile.length() >= originalSize) {
+      return file;
+    }
+
+    return compressedFile;
+  } catch (e) {
+    print("❌ Compression Error: $e");
+    return file;
+  }
+}
 Future<void> deleteProfileImage() async {
   try {
     final imageUrl = state.userData?['imageUrl'];
@@ -232,25 +274,28 @@ imageUrl = res["imageUrl"];
   }
 }
 
-  Future<void> pickImage() async {
-    //if (!state.isEditing) return;
+Future<void> pickImage() async {
+  try {
+    final pickedFile = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+    );
 
-    try {
-      final pickedFile = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 80,
-      );
+if (pickedFile != null) {
+  final originalFile = File(pickedFile.path);
 
-      if (pickedFile != null) {
-        state = state.copyWith(imageFile: File(pickedFile.path));
-        print("📸 Image selected: ${pickedFile.path}");
-      }
-    } catch (e) {
-      print("❌ Error picking image: $e");
-    }
+  final compressedFile = await _compressImage(originalFile);
+
+  state = state.copyWith(
+    imageFile: compressedFile,
+  );
+
+  print("Original Size: ${await originalFile.length()} bytes");
+  print("Upload Size: ${await compressedFile.length()} bytes");
+}
+  } catch (e) {
+    print("❌ Error picking image: $e");
   }
+}
 
   Future<void> deleteDonor(BuildContext context) async {
     try {

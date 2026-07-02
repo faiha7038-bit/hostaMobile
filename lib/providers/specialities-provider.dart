@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
@@ -8,8 +10,7 @@ final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService();
 });
   
-// Specialties list provider
-// Replace the old specialtiesProvider with this:
+
 final specialityRefreshProvider = StateProvider<int>((ref) => 0);
 final specialtiesProvider = FutureProvider.family<List<dynamic>, String>((ref, searchQuery) async {
    
@@ -18,7 +19,9 @@ final specialtiesProvider = FutureProvider.family<List<dynamic>, String>((ref, s
   print("♻️ REFRESH TRIGGER: $refresh");
    
   final apiService = ref.read(apiServiceProvider);
+  final start = DateTime.now();
   final response = await apiService.getAllSpecility(searchQuery: searchQuery);
+log("⏱️ Specialities API: ${DateTime.now().difference(start).inMilliseconds} ms");
 
   if (response.statusCode == 200 && response.data != null) {
     // Handle the response structure: { success, data: [...], count, error }

@@ -6,7 +6,6 @@ import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
 import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
 import 'package:hosta/services/socket-service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/api_service.dart';
 
@@ -155,87 +154,6 @@ if (!mounted) return;
     });
   }
 }
-// Future<void> _fetchHospitals({String query = '',  int page = 1,
-//   bool loadMore = false,}) async {
-//   try {
-//     if (query.isEmpty) {
-//       setState(() => isLoading = true);
-//     } else {
-//       setState(() => isSearching = true); // 👈 only small loading
-//     }
-
-//     final response = await ApiService().getAllHospitals(query);
-
-//     List allHospitals = [];
-
-//     if (response.data is Map && response.data['data'] is List) {
-//       allHospitals = response.data['data'];
-//     } else if (response.data is List) {
-//       allHospitals = response.data;
-//     }
-
-//     setState(() {
-//       hospitals = allHospitals.where((hospital) {
-//         final hospitalType =
-//             hospital['type']?.toString().toLowerCase() ?? '';
-//         return hospitalType == widget.type.toLowerCase();
-//       }).toList();
-
-//       isLoading = false;
-//       isSearching = false;
-//     });
-//   } catch (e) {
-//     setState(() {
-//       isLoading = false;
-//       isSearching = false;
-//     });
-//   }
-// }
-  // Future<void> _fetchHospitals() async {
-  //   try {
-  //     setState(() => isLoading = true);
-
-  //     // Fetch ALL hospitals (no type filter)
-  //     final response = await ApiService().getAllHospitals(query);
-
-  //     setState(() {
-  //       List allHospitals = [];
-  //       if (response.data is Map && response.data['data'] is List) {
-  //         allHospitals = response.data['data'];
-  //       } else if (response.data is List) {
-  //         allHospitals = response.data;
-  //       }
-
-  //       // Filter by type on client side
-  //       hospitals = allHospitals.where((hospital) {
-  //         final hospitalType = hospital['type']?.toString().toLowerCase() ?? '';
-  //         return hospitalType == widget.type.toLowerCase();
-  //       }).toList();
-
-  //       print(
-  //           "✅ Total: ${allHospitals.length}, Filtered (${widget.type}): ${hospitals.length}");
-  //       isLoading = false;
-  //     });
-  //   } catch (e) {
-  //     print("❌ Error: $e");
-  //     setState(() => isLoading = false);
-  //   }
-  // }
-
-  // 👇 Helper method (kept as is, not used now but harmless)
-  // String _mapTypeToBackend(String frontendType) {
-  //   if (frontendType.toLowerCase() == 'allopathy') {
-  //     return 'alopathy';
-  //   }
-  //   return frontendType;
-  // }
-
-  // Future<void> _makePhoneCall(String phoneNumber) async {
-  //   final Uri url = Uri.parse("tel:$phoneNumber");
-  //   if (await canLaunchUrl(url)) {
-  //     await launchUrl(url);
-  //   }
-  // }
 
   Future<void> _ensureLocationEnabled() async {
     final screenWidth = MediaQuery.of(context).size.width;

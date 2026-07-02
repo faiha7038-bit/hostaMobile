@@ -122,10 +122,10 @@ log("HEADERS => ${response.headers.map}");
 
       } else {
 
-        _showErrorDialog(
-          response.data["message"] ??
-              "Login failed",
-        );
+        // _showErrorDialog(
+        //   response.data["message"] ??
+        //       "Login failed",
+        // );
       }
 
     } else {
@@ -321,7 +321,7 @@ log("HEADERS => ${response.headers.map}");
         phoneError = message;
       });
     } else {
-      showTopSnackBar(context, message, isError: true);
+     // showTopSnackBar(context, message, isError: true);
     }
   }
 

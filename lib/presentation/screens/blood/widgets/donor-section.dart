@@ -50,22 +50,7 @@ class DonorSection extends StatelessWidget {
     );
   }
 
-  // ✅ Only search filter (since API already handled location & blood compatibility)
-// List<dynamic> _getFilteredDonors() {
-//   if (searchQuery.isEmpty) return donors;
-//   final query = searchQuery.toLowerCase().trim();
-//   return donors.where((donor) {
-//     final donorId = (donor['donorId'] ?? '').toString().toLowerCase();
-//     final phone = (donor['phone'] ?? '').toString().toLowerCase();
-    
-//     // Remove '#' from donorId for matching (optional)
-//     final cleanId = donorId.replaceAll('#', '');
-    
-//     return donorId.contains(query) ||
-//            cleanId.contains(query) ||
-//            phone.contains(query);
-//   }).toList();
-// }
+
 
   Widget _buildEmptyState(double screenWidth, double screenHeight) {
     return Center(

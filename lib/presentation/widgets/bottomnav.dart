@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app_badger_plus/flutter_app_badger_plus.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/screens/profile_show/profile.dart';
 import 'package:hosta/services/socket-service.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../screens/home/home.dart';
@@ -555,14 +555,20 @@ Future<void> initSocket() async {
   }
 
   // ==================== PHONE CALL ====================
-  Future<void> makePhoneCall(String phoneNumber) async {
+
+
+Future<void> makePhoneCall(String phoneNumber) async {
+  var status = await Permission.phone.request();
+
+  print("Permission: $status");
+
+  if (status.isGranted) {
     bool? res = await FlutterPhoneDirectCaller.callNumber(phoneNumber);
-    if (res == true) {
-      print("Call Started");
-    } else {
-      print("Call Failed");
-    }
+    print("Result: $res");
+  } else {
+    print("Phone permission denied");
   }
+}
 
   // ==================== OVERLAY METHODS ====================
   void _showCustomPushNotification(String title, String message) {
@@ -705,7 +711,7 @@ Future<void> initSocket() async {
     clipBehavior: Clip.none,
     children: [
       Icon(
-        currentTabIndex == 2
+        currentTabIndex == 3
             ? Icons.notifications
             : Icons.notifications_outlined,
         color: Colors.white,
@@ -847,13 +853,14 @@ Future<void> initSocket() async {
         ),
         child: BottomNavigationBar(
           currentIndex: currentTabIndex,
-          onTap: (index) {
-            if (index == 2) {
-              makePhoneCall("9567900329");
-              return;
-            }
-            _navigateToTab(index);
-          },
+        onTap: (index) {
+  if (index == 2) {
+    makePhoneCall("9567900329");
+    return;
+  }
+
+  _navigateToTab(index);
+},
           type: BottomNavigationBarType.fixed,
           backgroundColor: const Color(0xFF28A745),
           elevation: screenWidth * 0.025,
@@ -867,27 +874,32 @@ Future<void> initSocket() async {
             fontSize: screenWidth * 0.0275,
           ),
           items: [
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined, size: 24),
-              label: "Home",
-            ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined, size: 24),
-              label: "Bookings",
-            ),
-            BottomNavigationBarItem(
-              icon: IconButton(
-                onPressed: () {
-                  makePhoneCall("9567900329");
-                },
-                icon: const Icon(
-                  Icons.add_call,
-                  color: Colors.red,
-                  size: 28,
-                ),
-              ),
-              label: "",
-            ),
+          BottomNavigationBarItem(
+  icon: Icon(
+    currentTabIndex == 0
+        ? Icons.home
+        : Icons.home_outlined,
+    size: 24,
+  ),
+  label: "Home",
+),
+           BottomNavigationBarItem(
+  icon: Icon(
+    currentTabIndex == 1
+        ? Icons.calendar_month
+        : Icons.calendar_month_outlined,
+    size: 24,
+  ),
+  label: "Bookings",
+),
+           BottomNavigationBarItem(
+  icon: const Icon(
+    Icons.add_call,
+    color: Colors.red,
+    size: 28,
+  ),
+  label: "",
+),
             BottomNavigationBarItem(
               icon: _buildNotificationWithBadge(),
               label: "Notifications",

@@ -60,46 +60,33 @@ Future<void> logout(BuildContext context) async {
 
 // Future<void> _(BuildContext context) async {
   void _confirmLogout(BuildContext context) {
+    print("confirmLogout called");
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Logout',
-            style: TextStyle(fontSize: screenWidth * 0.05),
-          ),
-          content: Text(
-            'Are you sure you want to logout?',
-            style: TextStyle(fontSize: screenWidth * 0.04),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Cancel',
-                style: TextStyle(fontSize: screenWidth * 0.04,color: Colors.grey),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                logout(context);
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-              ),
-              child: Text(
-                'Logout',
-                style: TextStyle(fontSize: screenWidth * 0.04),
-              ),
-            ),
-          ],
-        );
-      },
+ showDialog(
+  context: context,
+  useRootNavigator: true,
+  builder: (context) {
+    return AlertDialog(
+      title: const Text("Logout"),
+      content: const Text("Are you sure you want to logout?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text("Cancel",style: TextStyle(color: Colors.grey),),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            logout(context);
+          },
+          child: const Text("Logout",style: TextStyle(color:Colors.red),),
+        ),
+      ],
     );
+  },
+);
   }
 
   @override
@@ -243,8 +230,11 @@ Future<void> logout(BuildContext context) async {
             SizedBox(height: screenHeight * 0.015),
 
             // Logout Button
-            GestureDetector(
-              onTap: () => _confirmLogout(context),
+           InkWell(
+  onTap: () {
+    debugPrint("Logout tapped");
+    _confirmLogout(context);
+  },
               child: Container(
                 width: double.infinity,
                 padding: EdgeInsets.symmetric(

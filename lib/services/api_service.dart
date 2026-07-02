@@ -231,7 +231,7 @@ Future<Response> getPatientDetails(String patientId) async {
       log('📡 API Call: getLabReports with params: $queryParams');
       
       final response = await dio.get(
-        '/api/lab-results', // Adjust endpoint as needed
+        '/api/lab-results', 
         queryParameters: queryParams,
          );
       
@@ -244,46 +244,7 @@ Future<Response> getPatientDetails(String patientId) async {
     }
   }
 
-//    Future<dynamic> deleteLabReport(String reportId) async {
-//     try {
-//       final response = await dio.delete(
-//         '/api/lab-reports/$reportId',
-//       );
-//       return response;
-//     } on DioException catch (e) {
-//       log('❌ Error deleting lab report: ${e.message}');
-//       rethrow;
-//     }
-//   }
-// }
-// Future<Response> getLabReports({
-//   String? patientId,
-//   String? hospitalId,
-//   String? doctorId,
-//   String? status,
-//   String? date, // Format: YYYY-MM-DD
-//   int page = 1,
-//   int limit = 10,
-// }) async {
-//   final queryParams = <String, dynamic>{};
-  
-//   if (patientId != null) queryParams['patientId'] = patientId;
-//   if (hospitalId != null) queryParams['hospitalId'] = hospitalId;
-//   if (doctorId != null) queryParams['doctorId'] = doctorId;
-//   if (status != null) queryParams['status'] = status;
-//   if (date != null) queryParams['date'] = date;
-  
-//   queryParams['page'] = page;
-//   queryParams['limit'] = limit;
-  
-//   log("📡 Fetching lab reports with params: $queryParams");
-//   return await dio.get('/api/lab-results', queryParameters: queryParams);
-// }
 
-// // Also add method to get a single lab report by ID
-// Future<Response> getLabReportById(String id) async {
-//   return await dio.get('/api/lab-results/$id');
-// }
   // ==================== NOTIFICATIONS ====================
 
 // ✅ GET NOTIFICATIONS BY ROLE (USER)
@@ -375,77 +336,7 @@ Future<Response> getUnreadNotifications(
     rethrow;
   }
 }
-// Future<Response> getNotifications({int page = 1, int limit = 10}) async {
-//   return await dio.get('/api/notification?page=$page&limit=$limit');
-// }
-// Future<Response> getNotificationsByRole(String role, String id, {int page = 1, int limit = 10}) async {
-//   return await dio.get('/api/notification/$role/$id?page=$page&limit=$limit');
-// }
-// //  Mark single notification as read
-//   Future<Response> markNotificationAsRead(String role, String userId, String notificationId) async {
-//     return await dio.patch('/api/notification/read/$role/$userId/$notificationId');
-//   }
-  // ✅ Get notifications by role
-//   Future<Response> getNotificationsByRole(
-//     String role, 
-//     String id, {
-//     int page = 1, 
-//     int limit = 10,
-//   }) async {
-//     return await dio.get(
-//       '/api/notification/$role/$id',
-//       queryParameters: {
-//         'page': page,
-//         'limit': limit,
-//       },
-//     );
-//   }
 
-//  Future<Response> markNotificationAsRead(
-//     String role, 
-//     String userId, 
-//     String notificationId,
-//   ) async {
-//     // Endpoint: /api/notification/read/user/3
-//     // Body: { "notificationId": "146" }
-//     return await dio.patch(
-//       '/api/notification/read/$role/$userId',
-//       data: {
-//         'notificationId': notificationId,
-//       },
-//     );
-//   }
-
-// // mark notification as unread  
-//   Future<Response> getUnreadCount(String role, String userId) async {
-//     return await dio.get('/api/notification/unread/$role/$userId');
-//   }
-
-// //  Mark all as read
-// Future<Response> markAllAsRead(String role, String userId) async {
-//     return await dio.patch(
-//       '/notification/read-all',
-//       data: {
-//         'role': role,
-//         'userId': userId,
-//       },
-//     );
-//   }
-// ✅ CORRECT - Mark All Read
-// Future<Response> markAllAsRead(String role, String userId) async {
-//   // Endpoint: /api/notification/read-all/user/4
-//   return await dio.patch(
-//     '/api/notification/read-all/$role/$userId',
-//   );
-// }
-// Future<Response> markAllAsRead(String role, String userId) async {
-//   return await dio.patch('/api/notification/read-all/$role/$userId');
-// }
-
-// //  DELETE - Delete notification
-//   Future<Response> deleteNotification(String notificationId) async {
-//     return await dio.delete('/api/notification/$notificationId');
-//   }
   //----------------------------------------------------------------------------------------------------------
   //Medicine Reminder CREATE
   Future<Response> createMedicineReminder(Map<String, dynamic> data) async {
@@ -690,6 +581,7 @@ for (final c in cookies) {
     if (searchQuery != null && searchQuery.isNotEmpty) {
       url += '?search_query=$searchQuery';
     }
+    log("GET => $url");
     return await dio.get(url);
   }
 
@@ -719,10 +611,7 @@ for (final c in cookies) {
     return await dio.get('/api/ambulance', queryParameters: queryParams);
   }
 
-  //  GET MY AMBULANCE
-  // Future<Response> getMyAmbulance(String id) async {
-  //   return await _dio.get('/api/ambulance/$id');
-  // }
+ 
 
   // DELETE ambulance
   Future<Response> deleteAmbulance(String id) async {
@@ -742,28 +631,7 @@ for (final c in cookies) {
     return await dio.post('/api/ambulance', data: data);
   }
 
-//   // GET Notifications
 
-// Future<Response> getAllNotifications(String id) async {
-//   return await dio.get('/api/notifications/user/all/$id');
-// }
-//   Future<Response> getAllNotificationRead(String id) async {
-//     return await dio.get('/api/notifications/user/read/$id');
-//   }
-
-//   Future<Response> getAllNotificationUnRead(String id) async {
-//     return await dio.get('/api/notifications/user/no-read/$id');
-//   }
-
-//   // PATCH read all notifications
-//   Future<Response> allReadNotifications(String id) async {
-//     return await dio.patch('/api/notifications/user/read-all/$id');
-//   }
-
-//   // PATCH single notification
-//   Future<Response> aReadNotification(String id) async {
-//     return await dio.patch('/api/notifications/user/$id');
-//   }
 
 
 
@@ -849,14 +717,7 @@ log("date=$date");
 
     return await dio.get('/api/doctor/$doctorId');
   }
-  // UPDATE booking
-  // Future<Response> getFilter(String filter) async {
-  //   return await _dio.get('/api/hospital/filter/$filter');
-  // }
-//=================== email============================================
-  // Future<Response> sendEmail(Map<String, dynamic> data) async {
-  //   return await dio.post('/api/email', data: data);
-  // }
+
 //-------------------------------------------------
  Future<Response> sendEmail(Map<String, dynamic> emailData) async {
     try {
@@ -900,19 +761,7 @@ log("date=$date");
   }
   //   // ================= PHARMACY =================
 
-  // // GET all pharmacies
-  // Future<Response> getPharmacies() async {
-  //   return await _dio.get('/api/pharmacy');
-  //   // 🔥 change if your backend route is different
-  // }
 
-  // // CREATE pharmacy order
-  // Future<Response> createPharmacyOrder(Map<String, dynamic> data) async {
-  //   return await _dio.post('/api/pharmacy/order', data: data);
-  // }
-  // Future<Response> getAmbulance(String userId) async {
-  //   return await _dio.get('/api/ambulance/user/$userId');
-  // }
 
   //s3 imge
   Future<Map<String, dynamic>> uploadProfileImage(
@@ -1072,16 +921,6 @@ Future<Map<String, dynamic>> uploadFileToS3({
     }
   }
 
- //------------------------patients------------------
-  // Future<Response> getPatients({
-  //   required int hospitalId,
-  //   required int userId,
-  // }) async {
-  //   return await dio.get(
-  //     '/api/patients',
-  //     queryParameters: {'hospitalId': hospitalId, 'userId': userId},
-  //   );
-  // }
 Future<Response> getPatients({
   required int userId,
   int? hospitalId,

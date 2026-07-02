@@ -813,76 +813,7 @@ class _LabReportState extends State<LabReport> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Filter UI
-                            // Container(
-                            //   padding: EdgeInsets.symmetric(
-                            //     horizontal: screenWidth * 0.03,
-                            //     vertical: screenHeight * 0.0125,
-                            //   ),
-                            //   decoration: BoxDecoration(
-                            //     borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                            //     border: Border.all(color: Colors.grey, width: screenWidth * 0.0025),
-                            //   ),
-                            //   child: Row(
-                            //     children: [
-                            //       Icon(
-                            //         Icons.calendar_today,
-                            //         color: Colors.green,
-                            //         size: screenWidth * 0.05,
-                            //       ),
-                            //       SizedBox(width: screenWidth * 0.025),
-                            //       Expanded(
-                            //         child: Text(
-                            //           selectedDate == null
-                            //               ? "All reports"
-                            //               : "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}",
-                            //           style: TextStyle(
-                            //             fontSize: screenWidth * 0.035,
-                            //             color: selectedDate == null
-                            //                 ? Colors.grey
-                            //                 : Colors.black87,
-                            //             fontWeight: FontWeight.w500,
-                            //           ),
-                            //         ),
-                            //       ),
-                            //       if (selectedDate != null)
-                            //         GestureDetector(
-                            //           onTap: () {
-                            //             setState(() {
-                            //               selectedDate = null;
-                            //             });
-                            //             _fetchLabReports();
-                            //           },
-                            //           child: Icon(
-                            //             Icons.close,
-                            //             size: screenWidth * 0.045,
-                            //             color: Colors.grey,
-                            //           ),
-                            //         ),
-                            //       SizedBox(width: screenWidth * 0.02),
-                            //       ElevatedButton(
-                            //         style: ElevatedButton.styleFrom(
-                            //           backgroundColor: Colors.green,
-                            //           padding: EdgeInsets.symmetric(
-                            //             horizontal: screenWidth * 0.03,
-                            //             vertical: screenHeight * 0.01,
-                            //           ),
-                            //           shape: RoundedRectangleBorder(
-                            //             borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                            //           ),
-                            //         ),
-                            //         onPressed: pickDate,
-                            //         child: Text(
-                            //           "Filter",
-                            //           style: TextStyle(
-                            //             fontSize: screenWidth * 0.0325,
-                            //             color: Colors.white,
-                            //           ),
-                            //         ),
-                            //       ),
-                            //     ],
-                            //   ),
-                            // ),
+                         
                             GestureDetector(
   onTap: pickDate, // Calendar icon click cheyumbo filter date select cheyyam
   child: Container(
