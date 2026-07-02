@@ -404,21 +404,7 @@ final payload = {
   "address": address,
   "userId": userId,
 };
-  // final payload = {
-  //   "name": name,
-  //   "phone": phone,
-  //   "dateOfBirth": formState.dateOfBirth,
-  //   "bloodGroup": formState.bloodGroup,
-  //   "address": {
-  //     "country":
-  //         formState.selectedCountry?['name'] ?? _countryController.text,
-  //     "state": formState.selectedState?['name'] ?? _stateController.text,
-  //     "district": districtValue,
-  //     "place": place,
-  //     "pincode": int.tryParse(pincode),
-  //   },
-  //   "userId": userId,
-  // };
+ 
 
   log("📦 Payload: $payload");
 

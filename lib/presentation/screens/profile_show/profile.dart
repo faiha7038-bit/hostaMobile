@@ -7,14 +7,13 @@ import 'package:hosta/presentation/screens/blood/blood_details.dart';
 import 'package:hosta/presentation/screens/contact/contact.dart';
 import 'package:hosta/presentation/screens/document/documents.dart';
 import 'package:hosta/presentation/screens/lab/lab.dart';
-import 'package:hosta/presentation/screens/patient.dart';
-import 'package:hosta/presentation/screens/prescription.dart';
+import 'package:hosta/presentation/screens/patient/patient.dart';
+import 'package:hosta/presentation/screens/prescription/prescription.dart';
 import 'package:hosta/presentation/screens/profile-edit/profile.dart';
 import 'package:hosta/presentation/screens/privacy/privacy.dart';
 import 'package:hosta/presentation/screens/about/about.dart';
 import 'package:hosta/presentation/screens/settings/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-//import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../../../services/api_service.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -84,39 +83,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
-  // void _setupSocketListener() {
-  //   try {
-  //     const String serverUrl = 'https://www.zorrowtek.in';
 
-  //     socket = IO.io(serverUrl, <String, dynamic>{
-  //       'transports': ['websocket', 'polling'],
-  //       'autoConnect': true,
-  //       'reconnection': true,
-  //       'reconnectionAttempts': 5,
-  //       'reconnectionDelay': 1000,
-  //     });
-
-  //     socket!.on('connect', (_) {
-  //       print("✅ Profile page connected to server");
-  //       if (userId != null && userId!.isNotEmpty) {
-  //         socket!.emit('joinUserRoom', {'userId': userId});
-  //       }
-  //     });
-
-  //     socket!.on('profile', (data) {
-  //       print('📡 Profile update received: $data');
-  //       final profileUserId = data['userId']?.toString();
-
-  //       if (profileUserId == userId) {
-  //         _refreshUserData();
-  //       }
-  //     });
-
-  //     socket!.connect();
-  //   } catch (e) {
-  //     print('❌ Error setting up socket: $e');
-  //   }
-  // }
 
   Future<void> _refreshUserData() async {
     if (userId == null || userId!.isEmpty) return;
@@ -127,7 +94,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         setState(() {
           userData = response.data['data'] ?? {};
         });
-        showTopSnackBar(context, "Profile updated successfully");
+       // showTopSnackBar(context, "Profile updated successfully");
       }
     } catch (e) {
       print('❌ Error refreshing user data: $e');
@@ -143,36 +110,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     return defaultValue;
   } 
 
-  // Helper method to safely extract profile image URL based on your structure
-  // picture: { imageUrl: { type: String }, public_id: { type: String } }
-  // String? _getProfileImage() {
-  //   final picture = userData['picture'];
 
-  //   if (picture == null) return null;
-
-  //   // Handle the case where picture is a Map with imageUrl field
-  //   if (picture is Map) {
-  //     // Check if imageUrl exists in the picture map
-  //     if (picture['imageUrl'] != null) {
-  //       final imageUrl = picture['imageUrl'];
-  //       if (imageUrl is String && imageUrl.isNotEmpty) {
-  //         return imageUrl;
-  //       }
-  //     }
-
-  //     // Also check if picture itself is a string (fallback)
-  //     if (picture['url'] is String) {
-  //       return picture['url'] as String;
-  //     }
-  //   }
-
-  //   // If picture is directly a string (fallback for backward compatibility)
-  //   if (picture is String && picture.isNotEmpty) {
-  //     return picture;
-  //   }
-
-  //   return null;
-  // }
   String? _getProfileImage() {
   final imageUrl = userData['imageUrl'];
 
@@ -786,60 +724,7 @@ if (result == true) {
                                         
                                    
 
-                                    //   _buildProfileOption(
-                                    //   icon: Icons.history_outlined,
-                                    //   title: 'My History',
-                                    //   subtitle: 'view details',
-                                    //   screenWidth: screenWidth,
-                                    //   screenHeight: screenHeight,
-                                    //   onTap: () async {
-                                    //     final prefs =
-                                    //         await SharedPreferences.getInstance();
-                                    //     String userId =
-                                    //         prefs.getString('userId') ?? '';
-
-                                    //     if (userId.isEmpty) {
-                                    //        showDialog(
-                                    //         context: context,
-                                    //         builder: (context) => AlertDialog(
-                                    //           title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
-                                    //           content: Text(
-                                    //             "Please login first",
-                                    //             style: TextStyle(fontSize: screenWidth * 0.04),
-                                    //           ),
-                                    //           actions: [
-                                    //             TextButton(
-                                    //               onPressed: () =>
-                                    //                   Navigator.pop(context),
-                                    //               child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
-                                    //             ),
-                                    //             TextButton(
-                                    //               onPressed: () {
-                                    //                 Navigator.pop(context);
-                                    //                 Navigator.push(
-                                    //                   context,
-                                    //                   MaterialPageRoute(
-                                    //                     builder: (context) =>
-                                    //                         Signin(),
-                                    //                   ),
-                                    //                 );
-                                    //               },
-                                    //               child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
-                                    //             ),
-                                    //           ],
-                                    //         ),
-                                    //       );
-                                    //       return;
-                                    //     }
-
-                                    //     Navigator.push(
-                                    //       context,
-                                    //       MaterialPageRoute(
-                                    //         builder: (context) => const HistoryScreen(),
-                                    //       ),
-                                    //     );
-                                    //   },
-                                    // ),
+                                
                                     if (userId != null && userId!.isNotEmpty) ...[
                                     const Divider(height: 0),
 

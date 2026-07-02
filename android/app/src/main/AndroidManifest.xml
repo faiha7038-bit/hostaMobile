@@ -6,6 +6,8 @@
     <!-- Permissions - duplicates നീക്കം ചെയ്തു -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -63,7 +65,14 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/ic_launcher" />
 
-        <!-- ✅ Main Activity -->
+        <!-- UCropActivity (for image_cropper) -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:screenOrientation="portrait"
+            android:exported="true" />
+
+        <!-- Main Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -90,25 +99,21 @@
 
     </application>
 
-   <queries>
-
-    <!-- Allow opening http/https links in browser -->
-    <intent>
-        <action android:name="android.intent.action.VIEW" />
-        <data android:scheme="https" />
-    </intent>
-
-    <intent>
-        <action android:name="android.intent.action.VIEW" />
-        <data android:scheme="http" />
-    </intent>
-
-    <!-- Keep your existing text share support -->
-    <intent>
-        <action android:name="android.intent.action.PROCESS_TEXT" />
-        <data android:mimeType="text/plain" />
-    </intent>
-
-</queries>
+    <queries>
+        <!-- Allow opening http/https links in browser -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <!-- Text share support -->
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
 
 </manifest>

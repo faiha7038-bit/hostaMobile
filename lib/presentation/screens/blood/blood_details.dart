@@ -222,9 +222,9 @@ final dateOfBirth = dobRaw != null
                         
                         child: Row(
                           children: [
-                            Icon(Icons.delete_rounded, color: Colors.red, size: 20),
+                            Icon(Icons.delete_rounded, color: Colors.black, size: 20),
                             SizedBox(width: 12),
-                            Text('Delete',style: TextStyle(color: Colors.red),),
+                            Text('Delete',style: TextStyle(color: Colors.black),),
                           ],
                         ),
                       ),

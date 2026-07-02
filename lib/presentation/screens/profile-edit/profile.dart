@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/providers/profile-provider.dart';
 import 'package:hosta/services/socket-service.dart';
-
+import 'dart:io';
 class Profile extends ConsumerStatefulWidget {
   const Profile({super.key});
 
@@ -44,10 +44,77 @@ void dispose() {
 
   super.dispose();
 }
-void _showProfileOptions(
-  BuildContext context,
-  WidgetRef ref,
-) {
+void _showFullScreenImage(BuildContext context, String imageUrl) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.broken_image, size: 100, color: Colors.white),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+void _showFullScreenImageFromFile(BuildContext context, File file) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.file(
+                file,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          ),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+void _showProfileOptions(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
@@ -58,13 +125,30 @@ void _showProfileOptions(
         builder: (context, ref, child) {
           final userState = ref.watch(userDataProvider);
 
+          // ✅ server image OR local file
           final hasImage =
-              userState.userData?['imageUrl'] != null &&
-              userState.userData!['imageUrl'].toString().isNotEmpty;
+              (userState.userData?['imageUrl']?.toString().isNotEmpty == true) ||
+              (userState.imageFile != null);
 
           return SafeArea(
             child: Wrap(
               children: [
+                // ✅ View Photo (first option if image exists)
+                if (hasImage)
+                  ListTile(
+                    leading: const Icon(Icons.visibility, color: Colors.black),
+                    title: const Text("View Photo"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (userState.imageFile != null) {
+                        _showFullScreenImageFromFile(context, userState.imageFile!);
+                      } else {
+                        final url = userState.userData!['imageUrl'].toString();
+                        _showFullScreenImage(context, url);
+                      }
+                    },
+                  ),
+
                 ListTile(
                   leading: const Icon(Icons.photo_library),
                   title: Text(
@@ -72,27 +156,21 @@ void _showProfileOptions(
                   ),
                   onTap: () async {
                     Navigator.pop(context);
-
-                    await ref
-                        .read(userDataProvider.notifier)
-                        .pickImage();
+                    await ref.read(userDataProvider.notifier).pickImage();
                   },
                 ),
 
-                if (hasImage)
+                // ✅ Delete only if server image exists
+                if (userState.userData?['imageUrl']?.toString().isNotEmpty == true)
                   ListTile(
-                    leading:
-                        const Icon(Icons.delete, color: Colors.red),
+                    leading: const Icon(Icons.delete, color: Colors.red),
                     title: const Text(
                       "Delete Photo",
                       style: TextStyle(color: Colors.red),
                     ),
                     onTap: () async {
                       Navigator.pop(context);
-
-                      await ref
-                          .read(userDataProvider.notifier)
-                          .deleteProfileImage();
+                      await ref.read(userDataProvider.notifier).deleteProfileImage();
                     },
                   ),
 
@@ -373,7 +451,11 @@ void _showProfileOptions(
               Stack(
                 children: [
                   GestureDetector(
-  onTap: () {
+onTap: () {
+  if (!userState.isEditing) {
+    ref.read(userDataProvider.notifier).enableEditing();
+  }
+
   _showProfileOptions(context, ref);
 },
                     // onTap: userState.isEditing
@@ -518,6 +600,7 @@ void _showProfileOptions(
     );
   }
 Widget _buildProfileImage(UserDataState userState, double screenWidth, double screenHeight) {
+  
   if (userState.userId == null || userState.userId!.isEmpty) {
     return Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey);
   }
@@ -536,7 +619,8 @@ Widget _buildProfileImage(UserDataState userState, double screenWidth, double sc
 
   // server image (FIXED)
   String? profileImageUrl = userState.userData?['imageUrl']?.toString();
-
+log("Current URL: $profileImageUrl");
+log("Selected file: ${userState.imageFile?.path}");
   if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
     log("profike${profileImageUrl}");  
     return ClipOval(
@@ -558,53 +642,6 @@ Widget _buildProfileImage(UserDataState userState, double screenWidth, double sc
 
   return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
 }
-  // Widget _buildProfileImage(UserDataState userState, double screenWidth, double screenHeight) {
-  //   if (userState.userId == null || userState.userId!.isEmpty) {
-  //     return Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey);
-  //   }
 
-  //   // Show selected image if available
-  //   if (userState.imageFile != null) {
-  //     return ClipOval(
-  //       child: Image.file(
-  //         userState.imageFile!,
-  //         width: screenWidth * 0.25,
-  //         height: screenWidth * 0.25,
-  //         fit: BoxFit.cover,
-  //       ),
-  //     );
-  //   }
-
-  //   // Show existing profile image from server
-  //   //final pictureData = userState.userData?['picture'];
-  //   final profileImageUrl = userState.userData?['imageUrl']?.toString();
-  //   String? profileImageUrl;
-
-  //   if (profileImageUrl is Map<String, dynamic>) {
-  //     profileImageUrl = profileImageUrl['imageUrl']?.toString();
-  //   }
-
-  //   if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-  //     return ClipOval(
-  //       child: Image.network(
-  //         profileImageUrl,
-  //         width: screenWidth * 0.25,
-  //         height: screenWidth * 0.25,
-  //         fit: BoxFit.cover,
-  //         errorBuilder: (context, error, stackTrace) {
-  //           print("❌ Error loading network image: $error");
-  //           return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
-  //         },
-  //         loadingBuilder: (context, child, loadingProgress) {
-  //           if (loadingProgress == null) return child;
-  //           return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
-  //         },
-  //       ),
-  //     );
-  //   }
-
-  //   // Default avatar
-  //   return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
-  // }
 
 }
