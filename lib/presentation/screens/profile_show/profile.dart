@@ -94,7 +94,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         setState(() {
           userData = response.data['data'] ?? {};
         });
-        showTopSnackBar(context, "Profile updated successfully");
+       // showTopSnackBar(context, "Profile updated successfully");
       }
     } catch (e) {
       print('❌ Error refreshing user data: $e');

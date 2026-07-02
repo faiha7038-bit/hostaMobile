@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/providers/profile-provider.dart';
 import 'package:hosta/services/socket-service.dart';
-
+import 'dart:io';
 class Profile extends ConsumerStatefulWidget {
   const Profile({super.key});
 
@@ -44,10 +44,77 @@ void dispose() {
 
   super.dispose();
 }
-void _showProfileOptions(
-  BuildContext context,
-  WidgetRef ref,
-) {
+void _showFullScreenImage(BuildContext context, String imageUrl) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.broken_image, size: 100, color: Colors.white),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+void _showFullScreenImageFromFile(BuildContext context, File file) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.zero,
+      child: Stack(
+        children: [
+          InteractiveViewer(
+            panEnabled: true,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Image.file(
+                file,
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          ),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 30),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+void _showProfileOptions(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
     shape: const RoundedRectangleBorder(
@@ -58,13 +125,30 @@ void _showProfileOptions(
         builder: (context, ref, child) {
           final userState = ref.watch(userDataProvider);
 
+          // ✅ server image OR local file
           final hasImage =
-              userState.userData?['imageUrl'] != null &&
-              userState.userData!['imageUrl'].toString().isNotEmpty;
+              (userState.userData?['imageUrl']?.toString().isNotEmpty == true) ||
+              (userState.imageFile != null);
 
           return SafeArea(
             child: Wrap(
               children: [
+                // ✅ View Photo (first option if image exists)
+                if (hasImage)
+                  ListTile(
+                    leading: const Icon(Icons.visibility, color: Colors.black),
+                    title: const Text("View Photo"),
+                    onTap: () {
+                      Navigator.pop(context);
+                      if (userState.imageFile != null) {
+                        _showFullScreenImageFromFile(context, userState.imageFile!);
+                      } else {
+                        final url = userState.userData!['imageUrl'].toString();
+                        _showFullScreenImage(context, url);
+                      }
+                    },
+                  ),
+
                 ListTile(
                   leading: const Icon(Icons.photo_library),
                   title: Text(
@@ -72,27 +156,21 @@ void _showProfileOptions(
                   ),
                   onTap: () async {
                     Navigator.pop(context);
-
-                    await ref
-                        .read(userDataProvider.notifier)
-                        .pickImage();
+                    await ref.read(userDataProvider.notifier).pickImage();
                   },
                 ),
 
-                if (hasImage)
+                // ✅ Delete only if server image exists
+                if (userState.userData?['imageUrl']?.toString().isNotEmpty == true)
                   ListTile(
-                    leading:
-                        const Icon(Icons.delete, color: Colors.red),
+                    leading: const Icon(Icons.delete, color: Colors.red),
                     title: const Text(
                       "Delete Photo",
                       style: TextStyle(color: Colors.red),
                     ),
                     onTap: () async {
                       Navigator.pop(context);
-
-                      await ref
-                          .read(userDataProvider.notifier)
-                          .deleteProfileImage();
+                      await ref.read(userDataProvider.notifier).deleteProfileImage();
                     },
                   ),
 

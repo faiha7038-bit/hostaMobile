@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -279,21 +280,33 @@ Future<void> pickImage() async {
     final pickedFile = await ImagePicker().pickImage(
       source: ImageSource.gallery,
     );
+    if (pickedFile == null) return;
 
-if (pickedFile != null) {
-  final originalFile = File(pickedFile.path);
+    // Crop
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: pickedFile.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Image',
+          toolbarColor: Colors.green,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+        ),
+        IOSUiSettings(
+          title: 'Crop Image',
+          aspectRatioLockEnabled: true,
+        ),
+      ],
+    );
 
-  final compressedFile = await _compressImage(originalFile);
+    if (croppedFile == null) return;
 
-  state = state.copyWith(
-    imageFile: compressedFile,
-  );
-
-  print("Original Size: ${await originalFile.length()} bytes");
-  print("Upload Size: ${await compressedFile.length()} bytes");
-}
+    final compressedFile = await _compressImage(File(croppedFile.path));
+    state = state.copyWith(imageFile: compressedFile);
   } catch (e) {
-    print("❌ Error picking image: $e");
+    print("❌ Error picking/cropping image: $e");
   }
 }
 
