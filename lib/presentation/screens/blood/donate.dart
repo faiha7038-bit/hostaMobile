@@ -477,7 +477,7 @@ final payload = {
     // FAIL
     // ----------------------------
     else {
-      showTopSnackBar(context, "Something went wrong", isError: true);
+     // showTopSnackBar(context, "Something went wrong", isError: true);
     }
   } catch (e) {
    // showTopSnackBar(context, e.toString(), isError: true);

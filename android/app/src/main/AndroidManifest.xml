@@ -90,11 +90,25 @@
 
     </application>
 
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT" />
-            <data android:mimeType="text/plain" />
-        </intent>
-    </queries>
+   <queries>
+
+    <!-- Allow opening http/https links in browser -->
+    <intent>
+        <action android:name="android.intent.action.VIEW" />
+        <data android:scheme="https" />
+    </intent>
+
+    <intent>
+        <action android:name="android.intent.action.VIEW" />
+        <data android:scheme="http" />
+    </intent>
+
+    <!-- Keep your existing text share support -->
+    <intent>
+        <action android:name="android.intent.action.PROCESS_TEXT" />
+        <data android:mimeType="text/plain" />
+    </intent>
+
+</queries>
 
 </manifest>

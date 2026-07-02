@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:hosta/data/models/document_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
 import 'token_manager.dart';
+import '../data/models/prescription_model.dart'; 
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -162,20 +164,65 @@ log("COOKIE COUNT => ${cookies.length}");
 
 
   // ---------------- PRESCRIPTION ----------------
-  Future<Response> getPrescriptions({
+  // Future<Response> getPrescriptions({
+  //   String? userId,
+  //   int page = 1,
+  //   int limit = 10,
+  // }) async {
+  //   return await dio.get(
+  //     '/api/prescription',
+  //     queryParameters: {
+  //       if (userId != null) "userId": userId,
+  //       "page": page,
+  //       "limit": limit,
+  //     },
+  //   );
+  // }
+  Future<PrescriptionResponse> getPrescriptions({
     String? userId,
     int page = 1,
     int limit = 10,
   }) async {
-    return await dio.get(
-      '/api/prescription',
-      queryParameters: {
-        if (userId != null) "userId": userId,
-        "page": page,
-        "limit": limit,
-      },
-    );
+    try {
+      final response = await dio.get(
+        '/api/prescription',
+        queryParameters: {
+          if (userId != null) "userId": userId,
+          "page": page,
+          "limit": limit,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return PrescriptionResponse.fromJson(response.data);
+      } else {
+        throw Exception('Failed to load prescriptions: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } catch (e) {
+      throw Exception('Unexpected error: $e');
+    }
   }
+
+  Future<Prescription> getPrescriptionById(int id) async {
+    try {
+      final response = await dio.get('/api/prescription/$id');
+
+      if (response.statusCode == 200) {
+        final data = response.data as Map<String, dynamic>;
+        return Prescription.fromJson(data['data'] ?? {});
+      } else {
+        throw Exception('Failed to load prescription: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } catch (e) {
+      throw Exception('Unexpected error: $e');
+    }
+  }
+
+  
 
 Future<Response> getDoctorDetails(int doctorId) async {
   log("📡 Fetching doctor details for ID: $doctorId");
@@ -986,7 +1033,63 @@ log("date=$date");
       rethrow;
     }
   }
+Future<Map<String, dynamic>> uploadFileToS3({
+  required File file,
+  required String id,
+  required String role,
+}) async {
+  final fileName = file.path.split('/').last;
+  final fileSize = await file.length();
 
+  String contentType = "application/octet-stream";
+
+  if (fileName.endsWith(".pdf")) {
+    contentType = "application/pdf";
+  } else if (fileName.endsWith(".png")) {
+    contentType = "image/png";
+  } else if (fileName.endsWith(".jpg") ||
+      fileName.endsWith(".jpeg")) {
+    contentType = "image/jpeg";
+  }
+
+  // 1. GET PRESIGNED URL
+  final res = await dio.post(
+   '/api/presignurl',
+    data: {
+      "filename": fileName,
+      "contentType": contentType,
+      "size": fileSize,
+      "role": role,
+      "id": int.parse(id),
+    },
+  );
+
+  final presignedUrl =
+      res.data["presignedUrl"] ?? res.data["data"]["presignedUrl"];
+
+  final key = res.data["key"] ?? res.data["data"]["key"];
+
+  // 2. UPLOAD TO S3
+  final bytes = await file.readAsBytes();
+
+  final uploadRes = await http.put(
+    Uri.parse(presignedUrl),
+    headers: {"Content-Type": contentType},
+    body: bytes,
+  );
+
+  if (uploadRes.statusCode != 200 &&
+      uploadRes.statusCode != 201) {
+    throw Exception("S3 Upload Failed");
+  }
+
+  // 3. RETURN
+  return {
+    "key": key,
+    "url":
+        "https://hostahealthcare.s3.eu-north-1.amazonaws.com/$key",
+  };
+}
   Future<bool> deleteProfileImage(String key, String userId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('authToken');
@@ -1039,78 +1142,37 @@ Future<Response> getPatients({
     },
   );
 }
-//..........Documents...................
-  // Future<Response> getDocuments(int patientId) {
-  //   return dio.get('/api/documents', queryParameters: {
-  //     'patientId': patientId,
-  //   });
-  // }
 
-  Future<Response> getDocuments(int patientId) {
-  return dio.get(
+//..........Documents...................
+Future<List<Document>> getDocuments({required int patientId}) async {
+  final response = await dio.get(
     '/api/documents',
     queryParameters: {
-      'patientId': patientId,  
+      'patientId': patientId,
     },
   );
+
+  log("DOCUMENT RESPONSE => ${response.data}");
+
+  final data = response.data['data'];
+
+if (data is! List) return [];
+
+return data.map((e) => Document.fromJson(e)).toList();
 }
-  Future<Response> createDocument(Map data) {
-    return dio.post('/api/documents', data: data);
-  }
-
-  Future<Response> updateDocument(String id, Map data) {
-    return dio.put('/api/documents/$id', data: data);
-  }
-
-  Future<Response> deleteDocument(String id) {
-    return dio.delete('/api/documents/$id');
-  }
-
-
-Future<Response> uploadDocumentWithImage({
-  required int patientId,
-  required String name,
-  required String date,
-  required File imageFile,
-}) async {
-  try {
-    // ✅ Token check
-    final token = await TokenManager.getAccessToken();
-    print('📤 Token: $token');
-    
-    if (token == null) {
-      throw Exception('No token found! Please login first.');
-    }
-
-    final formData = FormData.fromMap({
-      'patientId': patientId,
-      'name': name,
-      'date': date,
-      'image': await MultipartFile.fromFile(
-        imageFile.path,
-        filename: imageFile.path.split('/').last,
-      ),
-    });
-
-    final response = await dio.post(
-      '/api/documents',
-      data: formData,
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token', // ✅ Token add ചെയ്യുക
-          'Content-Type': 'multipart/form-data',
-        },
-      ),
-    );
-
-    return response;
-  } catch (e) {
-    print('❌ Error: $e');
-    rethrow;
-  }
+Future<Response> createDocument(Map<String, dynamic> data) async {
+  return await dio.post('/api/documents', data: data);
 }
 
-//============================================
+  Future<Response> updateDocument(String id, Map<String, dynamic> data) {
+  return dio.put('/api/documents/$id', data: data);
+}
+
+Future deleteDocument(int id, Map data) async {
+  return dio.delete('/api/documents/$id', data: data);
+}
+
+
 Future<Response> getCategories({
   String? searchQuery,
   int page = 1,

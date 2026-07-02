@@ -5,6 +5,7 @@ import 'package:hosta/presentation/screens/ambulance/ambulance_details.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/blood_details.dart';
 import 'package:hosta/presentation/screens/contact/contact.dart';
+import 'package:hosta/presentation/screens/document/documents.dart';
 import 'package:hosta/presentation/screens/lab/lab.dart';
 import 'package:hosta/presentation/screens/patient.dart';
 import 'package:hosta/presentation/screens/prescription.dart';
@@ -13,7 +14,6 @@ import 'package:hosta/presentation/screens/privacy/privacy.dart';
 import 'package:hosta/presentation/screens/about/about.dart';
 import 'package:hosta/presentation/screens/settings/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../document_screen.dart';
 //import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../../../services/api_service.dart';
 
@@ -607,7 +607,7 @@ if (result == true) {
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            PrescriptionDetailsScreen(
+                                            PrescriptionListScreen(
                                               userId: userId,
                                               // userId: userId,
                                             ),
@@ -673,8 +673,8 @@ if (result == true) {
                                     const Divider(height: 0),
                                        
                                      _buildProfileOption(
-                                      icon: Icons.folder,
-                                      title: 'Documents',
+                                      icon: Icons.edit_document,
+                                      title: ' My Documents',
                                       subtitle: ' ',
                                       screenWidth: screenWidth,
                                       screenHeight: screenHeight,
@@ -706,7 +706,8 @@ if (result == true) {
                                                       context,
                                                       MaterialPageRoute(
                                                         builder: (context) =>
-                                                            Signin(),
+                                                        
+                                                           Signin(),
                                                       ),
                                                     );
                                                   },
@@ -717,13 +718,12 @@ if (result == true) {
                                           );
                                           return;
                                         }
+
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                                        builder: (context) => DocumentScreen( 
-                                                           patientId: userData['id'] ?? 0,
-                                                        ),
-                                                                                     ),
+                                            builder: (context) => DocumentsTab()
+                                          ),
                                         );
                                       },
                                     ),
