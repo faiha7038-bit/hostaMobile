@@ -8,12 +8,16 @@ import 'package:hosta/firebase_options.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:permission_handler/permission_handler.dart'; // ✅ Added missing import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
     print('ℹ️ Starting app initialization...');
+    
+    //  // ✅ Request permissions first
+    //  await _requestPermissions();
     
     // ✅ Firebase initialization
     try {
@@ -35,31 +39,22 @@ void main() async {
     await Hive.openBox('blood_cache');
     await Hive.openBox('ambulance_cache');
     print('✅ Hive initialized');
-    final messaging = firebase.FirebaseMessaging.instance;
+    
     // Initialize Alarm
     await Alarm.init();
     print('✅ Alarm initialized');
+    
+    // Initialize API Service
     await ApiService().init();
-    // Request notification permissions (using prefix)
-    firebase.NotificationSettings settings = await firebase.FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    print("✅ Permission: ${settings.authorizationStatus}");
+    print('✅ API Service initialized');
     
-    // Wait for iOS APNS token
-  await Future.delayed(const Duration(seconds: 2));
-    
-//    String? apnsToken = await messaging.getAPNSToken();
-// print("🍏 APNS TOKEN: $apnsToken");
-
-
-
     // Initialize FCM
     final firebaseMsg = FirebaseMsg();
     await firebaseMsg.initFCM();
     print('✅ FCM initialized');
+    
+    // ✅ Request notification permissions
+    await _requestNotificationPermissions();
    
     runApp(const ProviderScope(child: MyApp()));
     
@@ -91,9 +86,10 @@ void main() async {
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
+                    // Try again
                     runApp(const ProviderScope(child: MyApp()));
                   },
-                  child: const Text('Continue Anyway'),
+                  child: const Text('Retry'),
                 ),
               ],
             ),
@@ -101,6 +97,55 @@ void main() async {
         ),
       ),
     ));
+  }
+}
+
+// ✅ Moved these functions outside the main function
+
+// Future<void> _requestPermissions() async {
+//   try {
+//     final statuses = await [
+//       Permission.storage,
+//     //  Permission.camera,
+//     ].request();
+    
+//     print('✅ Storage permission: ${statuses[Permission.storage]}');
+//     print('✅ Camera permission: ${statuses[Permission.camera]}');
+//   } catch (e) {
+//     print('❌ Error requesting permissions: $e');
+//   }
+// }
+
+Future<void> requestPermissions() async {
+  if (await Permission.notification.isDenied) {
+    await Permission.notification.request();
+  }
+  
+  if (await Permission.scheduleExactAlarm.isDenied) {
+    await Permission.scheduleExactAlarm.request();
+  }
+}
+
+Future<void> _requestNotificationPermissions() async {
+  try {
+    // Request notification permissions using Firebase Messaging
+    firebase.NotificationSettings settings = await firebase.FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    print("✅ Notification permission status: ${settings.authorizationStatus}");
+    
+    // Wait for iOS APNS token
+    await Future.delayed(const Duration(seconds: 2));
+    
+    // Get APNS token (iOS)
+    String? apnsToken = await firebase.FirebaseMessaging.instance.getAPNSToken();
+    if (apnsToken != null) {
+      print("🍏 APNS TOKEN: $apnsToken");
+    }
+  } catch (e) {
+    print('❌ Error requesting notification permissions: $e');
   }
 }
 
@@ -131,4 +176,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

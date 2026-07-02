@@ -13,8 +13,7 @@ class DocumentState {
   final File? selectedFile;
   final String? error;
   final String? userId;
-  final int? currentPatientId; // 👈 React-ലെ പോലെ ഏത് patient-ന് വേണ്ടി document എന്ന് അറിയാൻ
-
+  final int? currentPatientId;
   DocumentState({
     this.documents = const [],
     this.isLoading = false,

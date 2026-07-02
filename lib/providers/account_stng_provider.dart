@@ -83,7 +83,7 @@ class AccountNotifier extends StateNotifier<AccountState> {
       state = state.copyWith(
         isDeleting: false,
         errorMessage: error.toString(),
-      );
+      ); 
       return false;
     }
   }

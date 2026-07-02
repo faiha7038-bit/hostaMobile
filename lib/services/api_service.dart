@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'token_manager.dart';
+import '../data/models/prescription_model.dart'; 
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -161,20 +162,65 @@ log("COOKIE COUNT => ${cookies.length}");
 
 
   // ---------------- PRESCRIPTION ----------------
-  Future<Response> getPrescriptions({
+  // Future<Response> getPrescriptions({
+  //   String? userId,
+  //   int page = 1,
+  //   int limit = 10,
+  // }) async {
+  //   return await dio.get(
+  //     '/api/prescription',
+  //     queryParameters: {
+  //       if (userId != null) "userId": userId,
+  //       "page": page,
+  //       "limit": limit,
+  //     },
+  //   );
+  // }
+  Future<PrescriptionResponse> getPrescriptions({
     String? userId,
     int page = 1,
     int limit = 10,
   }) async {
-    return await dio.get(
-      '/api/prescription',
-      queryParameters: {
-        if (userId != null) "userId": userId,
-        "page": page,
-        "limit": limit,
-      },
-    );
+    try {
+      final response = await dio.get(
+        '/api/prescription',
+        queryParameters: {
+          if (userId != null) "userId": userId,
+          "page": page,
+          "limit": limit,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return PrescriptionResponse.fromJson(response.data);
+      } else {
+        throw Exception('Failed to load prescriptions: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } catch (e) {
+      throw Exception('Unexpected error: $e');
+    }
   }
+
+  Future<Prescription> getPrescriptionById(int id) async {
+    try {
+      final response = await dio.get('/api/prescription/$id');
+
+      if (response.statusCode == 200) {
+        final data = response.data as Map<String, dynamic>;
+        return Prescription.fromJson(data['data'] ?? {});
+      } else {
+        throw Exception('Failed to load prescription: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } catch (e) {
+      throw Exception('Unexpected error: $e');
+    }
+  }
+
+  
 
 Future<Response> getDoctorDetails(int doctorId) async {
   log("📡 Fetching doctor details for ID: $doctorId");
@@ -933,6 +979,7 @@ Future<Response> getPatients({
     },
   );
 }
+
 //..........Documents...................
 Future<List<Document>> getDocuments({required int patientId}) async {
   final response = await dio.get(
@@ -961,6 +1008,7 @@ Future<Response> createDocument(Map<String, dynamic> data) async {
 Future deleteDocument(int id, Map data) async {
   return dio.delete('/api/documents/$id', data: data);
 }
+
 
 Future<Response> getCategories({
   String? searchQuery,

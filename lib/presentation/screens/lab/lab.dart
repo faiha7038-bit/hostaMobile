@@ -694,18 +694,15 @@ class _LabReportState extends State<LabReport> {
             size: screenWidth * 0.055,
           ),
         ),
-        // actions: [
-        //   IconButton(
-        //     onPressed: _fetchLabReports,
-        //     icon: Icon(
-        //       Icons.refresh,
-        //       color: Colors.white,
-        //     ),
-        //   ),
-        // ],
+     
       ),
       body: Padding(
-        padding: EdgeInsets.all(screenWidth * 0.02),
+        padding: EdgeInsets.only(
+   left: screenWidth * 0.04,
+        right: screenWidth * 0.04,
+        top: screenHeight * 0.02,
+        bottom: screenHeight * 0.02,   
+        ),
         child: isLoading
             ? Center(
                 child: Column(
@@ -1256,3 +1253,9 @@ class _LabReportState extends State<LabReport> {
     );
   }
 }
+
+
+
+
+
+

@@ -325,16 +325,16 @@ class About extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.green,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "About",
           style: TextStyle(
-            color: Colors.black87,
+            color: Colors.white,
             fontWeight: FontWeight.w600,
             fontSize: 20,
           ),
@@ -467,18 +467,18 @@ class About extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.green[50],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green[200]!),
+                    border: Border.all(color: Colors.green),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.email_outlined, color: Colors.green[700], size: 24),
+                      Icon(Icons.email_outlined, color: Colors.green, size: 24),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          "Contact us at support@hospitalfinder.com to learn more about listing your hospital.",
+                          "Contact us at hosta@gmail.com to learn more about listing your hospital.",
                           style: TextStyle(
                             fontSize: screenWidth * 0.04,
-                            color: Colors.green[800],
+                            color: Colors.green,
                             height: 1.4,
                           ),
                         ),
@@ -521,7 +521,7 @@ class About extends StatelessWidget {
                     ),
                     child: Icon(
                       Icons.local_hospital,
-                      color: Colors.green[700],
+                      color: Colors.green,
                       size: 30,
                     ),
                   ),
@@ -531,7 +531,7 @@ class About extends StatelessWidget {
                     style: TextStyle(
                       fontSize: screenWidth * 0.04,
                       fontWeight: FontWeight.w600,
-                      color: Colors.green[700],
+                      color: Colors.green,
                     ),
                   ),
                   SizedBox(height: screenHeight * 0.005),

@@ -154,6 +154,11 @@ flutter:
     - assets/ambulance.jpg
     - assets/doctor.jpg
     - assets/alarm.mp3.wav
+    # - assets/sounds/alarm_music.mp3
+    # - assets/sounds/melody.mp3
+    # - assets/sounds/urgent_beep.mp3
+    # - assets/sounds/medicine_sound.mp3
+    
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

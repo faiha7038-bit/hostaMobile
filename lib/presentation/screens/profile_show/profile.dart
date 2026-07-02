@@ -545,7 +545,7 @@ if (result == true) {
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            PrescriptionDetailsScreen(
+                                            PrescriptionListScreen(
                                               userId: userId,
                                               // userId: userId,
                                             ),
