@@ -101,19 +101,19 @@ void _refreshSpecialties() {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.refresh,
-              color: Colors.white,
-              size: screenWidth * 0.06,
-            ),
-            onPressed: () {
-              ref.invalidate(specialtiesProvider(searchQuery));
-            },
-            tooltip: 'Refresh',
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: Icon(
+        //       Icons.refresh,
+        //       color: Colors.white,
+        //       size: screenWidth * 0.06,
+        //     ),
+        //     onPressed: () {
+        //       ref.invalidate(specialtiesProvider(searchQuery));
+        //     },
+        //     tooltip: 'Refresh',
+        //   ),
+        // ],
         elevation: 0,
       ),
       body: SafeArea(

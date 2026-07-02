@@ -433,19 +433,51 @@ Future<void> deleteReview(
   }),
 ),
           const SizedBox(height: 12),
-          GestureDetector(
-           onTap: () {
-  _showReviewDialog(initialRating: selectedRating);
-},
-            child: Text(
-              "Write a review",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.green.shade700,
-              ),
+      GestureDetector(
+  onTap: () async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+
+    if (userId == null || userId.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Login Required"),
+          content: const Text("Please login to write a review."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
             ),
-          ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const Signin(),
+                  ),
+                );
+              },
+              child: const Text("Login"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    _showReviewDialog(initialRating: selectedRating);
+  },
+  child: Text(
+    "Write a review",
+    style: TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+      color: Colors.green.shade700,
+    ),
+  ),
+),
         ],
       ),
     );
