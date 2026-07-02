@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:hosta/data/models/document_model.dart';
 import 'package:hosta/presentation/screens/document/widgets/toast.dart';
 import 'package:hosta/providers/document_provider.dart';
@@ -124,7 +123,6 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
   // ---------- VIEW ----------
   void _openViewModal(Document doc) {
-  
     // setState(() {
     //   _viewingDocument = doc;
     // });
@@ -142,7 +140,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
     final fileName = doc.fileName ?? '';
     const imageExts = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
-    if (imageExts.any((ext) => fileName.toLowerCase().endsWith(ext))) return true;
+    if (imageExts.any((ext) => fileName.toLowerCase().endsWith(ext)))
+      return true;
 
     final url = doc.imageUrl ?? '';
     if (url.isNotEmpty) {
@@ -281,7 +280,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                               const SizedBox(height: 4),
                               const Text(
                                 'Allowed: PNG, JPG, JPEG, WEBP, PDF (Max 10MB)',
-                                style: TextStyle(fontSize: 11, color: Colors.grey),
+                                style:
+                                    TextStyle(fontSize: 11, color: Colors.grey),
                               ),
                             ],
                           ),
@@ -297,7 +297,10 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: (docName.isEmpty || docDate.isEmpty || selectedFile == null || isLoading)
+                  onPressed: (docName.isEmpty ||
+                          docDate.isEmpty ||
+                          selectedFile == null ||
+                          isLoading)
                       ? null
                       : () async {
                           setModalState(() => isLoading = true);
@@ -326,17 +329,20 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
                           // 3️⃣ Upload file in the background and refresh list when done
                           if (docId != null && selectedFile != null) {
-                            notifier.uploadFileForDocument(
+                            notifier
+                                .uploadFileForDocument(
                               docId: docId,
                               file: selectedFile!,
-                            ).then((_) {
+                            )
+                                .then((_) {
                               // 🔄 Refresh the document list after upload completes
                               if (context.mounted) {
                                 ref.read(documentProvider.notifier).refresh();
                               }
                             }).catchError((e) {
                               if (context.mounted) {
-                                showToast("File upload failed: $e", isError: true);
+                                showToast("File upload failed: $e",
+                                    isError: true);
                               }
                             });
                           }
@@ -345,7 +351,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Create'),
                 ),
@@ -391,7 +398,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextField(
-                        decoration: const InputDecoration(labelText: 'Document Name *'),
+                        decoration:
+                            const InputDecoration(labelText: 'Document Name *'),
                         controller: TextEditingController(text: editName)
                           ..selection = TextSelection.fromPosition(
                             TextPosition(offset: editName.length),
@@ -453,7 +461,9 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                 editFile != null
                                     ? Icons.check_circle
                                     : Icons.cloud_upload,
-                                color: editFile != null ? Colors.green : Colors.grey,
+                                color: editFile != null
+                                    ? Colors.green
+                                    : Colors.grey,
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -497,10 +507,12 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
                           // 3️⃣ Upload new file in the background and refresh list when done
                           if (editFile != null) {
-                            notifier.uploadFileForDocument(
+                            notifier
+                                .uploadFileForDocument(
                               docId: int.parse(doc.id.toString()),
                               file: editFile!,
-                            ).then((_) {
+                            )
+                                .then((_) {
                               if (context.mounted) {
                                 ref.read(documentProvider.notifier).refresh();
                               }
@@ -515,7 +527,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Update'),
                 ),
@@ -572,8 +585,10 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
   @override
   Widget build(BuildContext context) {
     // 👇 Use select to watch only the needed parts
-    final documents = ref.watch(documentProvider.select((state) => state.documents));
-    final isLoading = ref.watch(documentProvider.select((state) => state.isLoading));
+    final documents =
+        ref.watch(documentProvider.select((state) => state.documents));
+    final isLoading =
+        ref.watch(documentProvider.select((state) => state.isLoading));
     final error = ref.watch(documentProvider.select((state) => state.error));
 
     return Scaffold(
@@ -609,7 +624,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(12),
@@ -645,7 +661,9 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                 if (isLoading) {
                   return const Padding(
                     padding: EdgeInsets.all(32.0),
-                    child: Center(child: SpinKitFadingCircle(color: Color(0xFF1C62A0))),
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
                   );
                 } else if (error != null) {
                   return Padding(
@@ -654,9 +672,16 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.edit_document, color: Colors.grey, size: 48),
+                          const Icon(Icons.edit_document,
+                              color: Colors.grey, size: 48),
                           const SizedBox(height: 8),
-                          Text('No Documents Found',style: TextStyle(fontWeight: FontWeight.bold,color: Colors.grey,fontSize: 18),),
+                          Text(
+                            'No Documents Found',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                                fontSize: 18),
+                          ),
                           // Text('Error: $error'),
                           // ElevatedButton(
                           //   onPressed: _fetchDocuments,
@@ -673,7 +698,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.file_present, size: 64, color: Colors.grey),
+                          Icon(Icons.file_present,
+                              size: 64, color: Colors.grey),
                           SizedBox(height: 8),
                           Text('No documents found'),
                           Text(
@@ -722,11 +748,14 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                IconButton(
-  icon: const Icon(Icons.visibility, size: 18),
-  color: Colors.grey,  
-  onPressed: hasFile ? () => _openViewModal(doc) : null,
-),
+                                  IconButton(
+                                    icon:
+                                        const Icon(Icons.visibility, size: 18),
+                                    color: Colors.grey,
+                                    onPressed: hasFile
+                                        ? () => _openViewModal(doc)
+                                        : null,
+                                  ),
                                   PopupMenuButton<String>(
                                     icon: const Icon(Icons.more_vert, size: 18),
                                     onSelected: (value) {
@@ -758,7 +787,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                             value: 'delete',
                                             child: Row(
                                               children: [
-                                                Icon(Icons.delete, size: 18,
+                                                Icon(Icons.delete,
+                                                    size: 18,
                                                     color: Colors.black),
                                                 SizedBox(width: 8),
                                                 Text('Delete'),
@@ -810,7 +840,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                 readOnly: true,
                 decoration: InputDecoration(
                   labelText: 'Date *',
-                  hintText: _documentDate.isEmpty ? 'Select Date' : _documentDate,
+                  hintText:
+                      _documentDate.isEmpty ? 'Select Date' : _documentDate,
                 ),
                 onTap: () async {
                   FocusScope.of(context).unfocus();
@@ -844,7 +875,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                         _selectedFile != null
                             ? Icons.check_circle
                             : Icons.cloud_upload,
-                        color: _selectedFile != null ? Colors.green : Colors.grey,
+                        color:
+                            _selectedFile != null ? Colors.green : Colors.grey,
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -951,8 +983,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                               const Icon(Icons.broken_image, size: 48),
                         )
                       else
-                        const Icon(Icons.insert_drive_file, size: 48,
-                            color: Colors.blue),
+                        const Icon(Icons.insert_drive_file,
+                            size: 48, color: Colors.blue),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
@@ -960,12 +992,13 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           children: [
                             Text(
                               _editingDocument?.fileName ?? 'File',
-                              style: const TextStyle(fontWeight: FontWeight.w500),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w500),
                             ),
                             Text(
                               '${_editingDocument?.fileSize ?? 'N/A'}',
-                              style: const TextStyle(fontSize: 12,
-                                  color: Colors.grey),
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.grey),
                             ),
                           ],
                         ),
@@ -995,7 +1028,9 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        _editFile != null ? Icons.check_circle : Icons.cloud_upload,
+                        _editFile != null
+                            ? Icons.check_circle
+                            : Icons.cloud_upload,
                         color: _editFile != null ? Colors.green : Colors.grey,
                       ),
                       const SizedBox(height: 4),
@@ -1084,7 +1119,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Date: ${doc.date.isNotEmpty ? DateFormat.yMMMd().format(DateTime.parse(doc.date)) : 'N/A'}'),
+                Text(
+                    'Date: ${doc.date.isNotEmpty ? DateFormat.yMMMd().format(DateTime.parse(doc.date)) : 'N/A'}'),
                 Row(
                   children: [
                     if (fileUrl.isNotEmpty && !isPdf)
