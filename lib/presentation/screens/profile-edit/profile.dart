@@ -373,7 +373,11 @@ void _showProfileOptions(
               Stack(
                 children: [
                   GestureDetector(
-  onTap: () {
+onTap: () {
+  if (!userState.isEditing) {
+    ref.read(userDataProvider.notifier).enableEditing();
+  }
+
   _showProfileOptions(context, ref);
 },
                     // onTap: userState.isEditing
@@ -518,6 +522,7 @@ void _showProfileOptions(
     );
   }
 Widget _buildProfileImage(UserDataState userState, double screenWidth, double screenHeight) {
+  
   if (userState.userId == null || userState.userId!.isEmpty) {
     return Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey);
   }
@@ -536,7 +541,8 @@ Widget _buildProfileImage(UserDataState userState, double screenWidth, double sc
 
   // server image (FIXED)
   String? profileImageUrl = userState.userData?['imageUrl']?.toString();
-
+log("Current URL: $profileImageUrl");
+log("Selected file: ${userState.imageFile?.path}");
   if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
     log("profike${profileImageUrl}");  
     return ClipOval(
@@ -558,53 +564,6 @@ Widget _buildProfileImage(UserDataState userState, double screenWidth, double sc
 
   return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
 }
-  // Widget _buildProfileImage(UserDataState userState, double screenWidth, double screenHeight) {
-  //   if (userState.userId == null || userState.userId!.isEmpty) {
-  //     return Icon(Icons.person_off, size: screenWidth * 0.15, color: Colors.grey);
-  //   }
 
-  //   // Show selected image if available
-  //   if (userState.imageFile != null) {
-  //     return ClipOval(
-  //       child: Image.file(
-  //         userState.imageFile!,
-  //         width: screenWidth * 0.25,
-  //         height: screenWidth * 0.25,
-  //         fit: BoxFit.cover,
-  //       ),
-  //     );
-  //   }
-
-  //   // Show existing profile image from server
-  //   //final pictureData = userState.userData?['picture'];
-  //   final profileImageUrl = userState.userData?['imageUrl']?.toString();
-  //   String? profileImageUrl;
-
-  //   if (profileImageUrl is Map<String, dynamic>) {
-  //     profileImageUrl = profileImageUrl['imageUrl']?.toString();
-  //   }
-
-  //   if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-  //     return ClipOval(
-  //       child: Image.network(
-  //         profileImageUrl,
-  //         width: screenWidth * 0.25,
-  //         height: screenWidth * 0.25,
-  //         fit: BoxFit.cover,
-  //         errorBuilder: (context, error, stackTrace) {
-  //           print("❌ Error loading network image: $error");
-  //           return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
-  //         },
-  //         loadingBuilder: (context, child, loadingProgress) {
-  //           if (loadingProgress == null) return child;
-  //           return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
-  //         },
-  //       ),
-  //     );
-  //   }
-
-  //   // Default avatar
-  //   return Icon(Icons.person, size: screenWidth * 0.15, color: Colors.grey);
-  // }
 
 }
