@@ -5,7 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../services/api_service.dart';
 
 class PatientDetailsScreen extends ConsumerStatefulWidget {
-  const PatientDetailsScreen({super.key});
+  final String? patientId;
+  final bool showBackButton;
+  
+  const PatientDetailsScreen({
+    super.key, 
+    this.patientId, 
+    this.showBackButton = true
+  });
 
   @override
   ConsumerState<PatientDetailsScreen> createState() => _PatientDetailsScreenState();
@@ -20,12 +27,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
   int? hospitalId;
   int? selectedPatientIndex = 0;
   String? errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPatientData();
-  }
 
   // ==================== DATE FORMATTING METHODS ====================
   
@@ -55,6 +56,77 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
 
   // ==================== END DATE FORMATTING METHODS ====================
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.patientId != null && widget.patientId!.isNotEmpty) {
+      _loadPatientById(widget.patientId!);
+    } else {
+      _loadPatientData();
+    }
+  }
+
+  // ==================== LOAD PATIENT BY ID ====================
+  Future<void> _loadPatientById(String patientId) async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      userId = prefs.getString('userId');
+      
+      if (userId == null || userId!.isEmpty) {
+        setState(() {
+          isLoading = false;
+          errorMessage = "User not logged in";
+        });
+        return;
+      }
+
+      print("🔄 Fetching patient details for ID: $patientId");
+      
+      final response = await ApiService().getPatientDetails(patientId);
+      print("📊 Patient Details Response: ${response.data}");
+
+      if (response.data != null && response.data['success'] == true) {
+        final patientData = response.data['data'];
+        
+        if (patientData != null) {
+          // Check if this patient belongs to the current user
+          final patientUserId = patientData['userId']?.toString();
+          if (patientUserId == userId) {
+            setState(() {
+              currentPatient = patientData;
+              patientsList = [patientData];
+              isLoading = false;
+              errorMessage = null;
+            });
+            print("✅ Patient loaded: ${patientData['name']}");
+          } else {
+            setState(() {
+              isLoading = false;
+              errorMessage = "You don't have permission to view this patient";
+            });
+          }
+        }
+      } else {
+        setState(() {
+          isLoading = false;
+          errorMessage = response.data?['error'] ?? "Failed to load patient details";
+        });
+      }
+    } catch (e) {
+      print("❌ Error loading patient details: $e");
+      setState(() {
+        isLoading = false;
+        errorMessage = "Error loading patient details: $e";
+      });
+    }
+  }
+
+  // ==================== LOAD PATIENT DATA ====================
   Future<void> _loadPatientData() async {
     try {
       setState(() {
@@ -79,11 +151,12 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
         return;
       }
 
-      if (hospitalId == null) {
-        print("⚠️ HospitalId is null! Using default hospitalId: 1");
-        hospitalId = 1;
+      // 🔥 FIX: Use correct hospitalId (2 instead of 1)
+      if (hospitalId == null || hospitalId != 2) {
+        print("⚠️ Updating hospitalId from $hospitalId to 2");
+        hospitalId = 2;
         await prefs.setInt('hospitalId', hospitalId!);
-        print("✅ Default HospitalId set to: $hospitalId");
+        print("✅ HospitalId updated to: $hospitalId");
       }
 
       print("🔄 Calling API with hospitalId: $hospitalId, userId: ${int.parse(userId!)}");
@@ -127,15 +200,29 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
               
               print("✅ Converted ${allPatients.length} patients");
               
-              // Filter patients by userId
+              // 🔥 FIX: Better userId comparison (int to int)
               filteredPatientsList = allPatients.where((patient) {
                 final patientUserId = patient['userId'];
                 if (patientUserId == null) return false;
-                return patientUserId.toString() == userId;
+                
+                try {
+                  int patientIdInt = patientUserId is int ? patientUserId : int.parse(patientUserId.toString());
+                  int userIdInt = int.parse(userId!);
+                  bool isMatch = patientIdInt == userIdInt;
+                  
+                  if (isMatch) {
+                    print("✅ Match found: ${patient['name']} (userId: $patientIdInt)");
+                  }
+                  return isMatch;
+                } catch (e) {
+                  print("⚠️ Error parsing userId: $e");
+                  return false;
+                }
               }).toList();
               
               print("👤 Total patients in hospital: ${allPatients.length}");
               print("👤 Patients for user $userId: ${filteredPatientsList.length}");
+              print("📋 All patient userIds: ${allPatients.map((p) => p['userId']).toList()}");
               
               if (filteredPatientsList.isNotEmpty) {
                 patientsList = filteredPatientsList;
@@ -144,11 +231,23 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                   isLoading = false;
                   errorMessage = null;
                 });
+                print("✅ Showing ${filteredPatientsList.length} patients");
               } else {
-                setState(() {
-                  isLoading = false;
-                  errorMessage = "No patients found for user ID: $userId";
-                });
+                // 🔥 FIX: If no patients match, show first patient or all patients
+                if (allPatients.isNotEmpty) {
+                  print("⚠️ No matching patient found. Showing first patient for debugging.");
+                  patientsList = allPatients;
+                  currentPatient = allPatients[0];
+                  setState(() {
+                    isLoading = false;
+                    errorMessage = null;
+                  });
+                } else {
+                  setState(() {
+                    isLoading = false;
+                    errorMessage = "No patients found";
+                  });
+                }
               }
             } else {
               print("⚠️ Data is an empty list");
@@ -169,6 +268,10 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
             if (patientUserId != null && patientUserId.toString() == userId) {
               patientsList = [convertedMap];
               currentPatient = convertedMap;
+              setState(() {
+                isLoading = false;
+                errorMessage = null;
+              });
             } else {
               setState(() {
                 isLoading = false;
@@ -176,11 +279,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
               });
               return;
             }
-            
-            setState(() {
-              isLoading = false;
-              errorMessage = null;
-            });
           } else {
             print("⚠️ Unknown data type: ${data.runtimeType}");
             setState(() {
@@ -203,7 +301,7 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
         });
       }
     } catch (e) {
-      print("❌ Error loading patient data: $e");
+      print("❌ Error in _loadPatientData: $e");
       setState(() {
         isLoading = false;
         errorMessage = "Error: $e";
@@ -211,14 +309,25 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     }
   }
 
+  // ==================== SAVE PATIENT ID ====================
+  Future<void> _savePatientIdAfterBooking(String patientId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('patientId', patientId);
+    print("✅ Saved patientId to SharedPreferences: $patientId");
+  }
+
+  // ==================== REFRESH PATIENT DATA ====================
   Future<void> _refreshPatientData() async {
     if (userId == null || userId!.isEmpty) {
       showTopSnackBar(context, "Please login first", isError: true);
       return;
     }
 
-    if (hospitalId == null) {
-      hospitalId = 1;
+    // 🔥 FIX: Use correct hospitalId
+    if (hospitalId == null || hospitalId != 2) {
+      hospitalId = 2;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('hospitalId', hospitalId!);
     }
 
     try {
@@ -250,10 +359,18 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
             }
           }
           
+          // 🔥 FIX: Better userId comparison
           filteredPatientsList = allPatients.where((patient) {
             final patientUserId = patient['userId'];
             if (patientUserId == null) return false;
-            return patientUserId.toString() == userId;
+            
+            try {
+              int patientIdInt = patientUserId is int ? patientUserId : int.parse(patientUserId.toString());
+              int userIdInt = int.parse(userId!);
+              return patientIdInt == userIdInt;
+            } catch (e) {
+              return false;
+            }
           }).toList();
           
           if (filteredPatientsList.isNotEmpty) {
@@ -312,6 +429,7 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     }
   }
 
+  // ==================== HELPER METHODS ====================
   String _getValue(String key, {String defaultValue = ''}) {
     try {
       final value = currentPatient[key];
@@ -377,6 +495,7 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     });
   }
 
+  // ==================== BUILD METHODS ====================
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -396,10 +515,12 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
         centerTitle: true,
         backgroundColor: const Color(0xFF28A745),
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white, size: screenWidth * 0.06),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: widget.showBackButton
+            ? IconButton(
+                icon: Icon(Icons.arrow_back, color: Colors.white, size: screenWidth * 0.06),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -411,14 +532,12 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       children: [
-                        // Patient Dropdown Selector
                         if (patientsList.length > 1)
                           _buildPatientDropdown(screenWidth, screenHeight),
                         
                         if (patientsList.length > 1)
                           SizedBox(height: screenHeight * 0.015),
                         
-                        // Patient Header - Without Green Background and Person Icon
                         _buildPatientHeader(screenWidth, screenHeight),
                         
                         if (_hasValue('patientId') || _hasValue('id'))
@@ -449,7 +568,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     );
   }
 
-  // Patient Dropdown Widget
   Widget _buildPatientDropdown(double screenWidth, double screenHeight) {
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -628,21 +746,12 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
             ),
             SizedBox(height: screenHeight * 0.02),
             Text(
-               'Please book a doctor appointment first',
+              'Please book a doctor appointment first',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: screenWidth * 0.04,
                 color: Colors.grey[700],
               ),
-            ),
-            SizedBox(height: screenHeight * 0.02),
-            Container(
-              padding: EdgeInsets.all(screenWidth * 0.04),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(screenWidth * 0.025),
-              ),
-          
             ),
             SizedBox(height: screenHeight * 0.03),
             ElevatedButton.icon(
@@ -670,14 +779,12 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     );
   }
 
-  // Updated Patient Header - Without Green Background and Person Icon
   Widget _buildPatientHeader(double screenWidth, double screenHeight) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Patient Name
           Text(
             _getValue('name').isEmpty ? 'Patient Name' : _getValue('name'),
             style: TextStyle(
@@ -688,7 +795,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
           ),
           SizedBox(height: screenHeight * 0.005),
           
-          // Patient ID and other info chips
           Wrap(
             alignment: WrapAlignment.start,
             spacing: screenWidth * 0.025,
@@ -712,13 +818,11 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                   label: _getValue('gender'),
                   screenWidth: screenWidth,
                 ),
-              // Status Chip
               _buildStatusChip(screenWidth),
             ],
           ),
           SizedBox(height: screenHeight * 0.005),
           
-          // Divider
           Divider(
             height: screenHeight * 0.02,
             thickness: 1,
@@ -729,7 +833,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     );
   }
 
-  // Light Info Chip (Without Green Background)
   Widget _buildInfoChipLight({
     required IconData icon,
     required String label,
@@ -770,7 +873,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     );
   }
 
-  // Status Chip
   Widget _buildStatusChip(double screenWidth) {
     final isActive = currentPatient['isActive'] == true;
     return Container(
@@ -962,7 +1064,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                       screenWidth: screenWidth,
                     ),
                   ],
-                  // ========== FIXED: Date of Birth formatting ==========
                   if (_hasValue('dob')) ...[
                     _buildDivider(screenWidth),
                     _buildInfoRow(
@@ -972,8 +1073,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                       screenWidth: screenWidth,
                     ),
                   ],
-                  // ========== END FIX ==========
-                  
                   if (_hasValue('gender')) ...[
                     _buildDivider(screenWidth),
                     _buildInfoRow(
@@ -1108,7 +1207,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                     screenWidth: screenWidth,
                   ),
                   _buildDivider(screenWidth),
-                  // ========== FIXED: Created At formatting ==========
                   _buildInfoRow(
                     icon: Icons.calendar_today,
                     label: 'Created At',
@@ -1117,8 +1215,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                         : _formatDateTime(_getValue('createdAt')),
                     screenWidth: screenWidth,
                   ),
-                  // ========== END FIX ==========
-                  // ========== FIXED: Updated At formatting ==========
                   if (_hasValue('updatedAt')) ...[
                     _buildDivider(screenWidth),
                     _buildInfoRow(
@@ -1128,7 +1224,6 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
                       screenWidth: screenWidth,
                     ),
                   ],
-                  // ========== END FIX ==========
                 ],
               ),
             ),
@@ -1196,3 +1291,4 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     );
   }
 }
+

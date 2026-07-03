@@ -244,52 +244,45 @@ Future<Response> getPatientDetails(String patientId) async {
 }
 // ---------------- LAB REPORT ----------------
 
- Future<String?> _getToken() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('token');
-    } catch (e) {
-      log('Error getting token: $e');
-      return null;
+Future<dynamic> getLabReports({
+  String? patientId,
+  String? date,
+  int page = 1,
+  int limit = 100,
+}) async {
+  try {
+    final queryParams = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    
+    if (patientId != null && patientId.isNotEmpty) {
+      queryParams['patientId'] = patientId;
     }
-  }
-  Future<String?> getToken() async {
-    return await _getToken();
-  }
- Future<dynamic> getLabReports({
-    String? patientId,
-    String? date,
-    int page = 1,
-    int limit = 100,
-  }) async {
-    try {
-      final queryParams = {
-        'page': page.toString(),
-        'limit': limit.toString(),
-      };
-       if (patientId != null && patientId.isNotEmpty) {
-        queryParams['patientId'] = patientId;
-      }
-      if (date != null && date.isNotEmpty) {
-        queryParams['date'] = date;
-      }
-      
-      log('📡 API Call: getLabReports with params: $queryParams');
-      
-      final response = await dio.get(
-        '/api/lab-results', 
-        queryParameters: queryParams,
-         );
-      
-      log('📊 API Response Status: ${response.statusCode}');
-      return response;
-    } on DioException catch (e) {
-      log('❌ Error fetching lab reports: ${e.message}');
-      log('❌ Response data: ${e.response?.data}');
-      rethrow;
+    if (date != null && date.isNotEmpty) {
+      queryParams['date'] = date;
     }
+    
+    log('📡 API Call: getLabReports');
+    log('📡 URL: /api/lab-results');
+    log('📡 Params: $queryParams');
+    
+    final response = await dio.get(
+      '/api/lab-results', 
+      queryParameters: queryParams,
+    );
+    
+    log('📡 Response Status: ${response.statusCode}');
+    log('📡 Response Body: ${response.data}');
+    
+    return response;
+  } on DioException catch (e) {
+    log('❌ Dio Error: ${e.message}');
+    log('❌ Response: ${e.response?.data}');
+    log('❌ Status: ${e.response?.statusCode}');
+    rethrow;
   }
-
+}
 
   // ==================== NOTIFICATIONS ====================
 

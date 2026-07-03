@@ -113,10 +113,9 @@ class Prescription {
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       
-      // ✅ ശരിയായ ഫീൽഡുകൾ മാപ്പ് ചെയ്യുക:
-      patientAge: json['age']?.toString(),        // ✅ 'age' എടുക്കുക
-      patientGender: json['gender']?.toString(),  // ✅ 'gender' എടുക്കുക
-      patientPhone: json['contact']?.toString(),  // ✅ 'contact' എടുക്കുക
+      patientAge: json['age']?.toString(),        
+      patientGender: json['gender']?.toString(), 
+      patientPhone: json['contact']?.toString(),  
     );
   }
 }
