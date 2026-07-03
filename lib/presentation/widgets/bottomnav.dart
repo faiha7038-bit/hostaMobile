@@ -31,7 +31,7 @@ class BottomNavState extends ConsumerState<Bottomnav> {
   Map<String, dynamic> userData = {};
   bool isLoadingUser = true;
   String? userId;
-  
+  static const double navIconSize = 24;
   OverlayEntry? _overlayEntry;
   Timer? _refreshTimer;
   late PageController _pageController;
@@ -706,6 +706,8 @@ Future<void> makePhoneCall(String phoneNumber) async {
   }
 
   Widget _buildNotificationWithBadge() {
+     const double navIconSize = 24;
+
   final screenWidth = MediaQuery.of(context).size.width;
   return Stack(
     clipBehavior: Clip.none,
@@ -715,7 +717,7 @@ Future<void> makePhoneCall(String phoneNumber) async {
             ? Icons.notifications
             : Icons.notifications_outlined,
         color: Colors.white,
-        size: screenWidth * 0.08,
+          size: navIconSize,
       ),
       if (notificationCount > 0)
         Positioned(
@@ -745,13 +747,14 @@ Future<void> makePhoneCall(String phoneNumber) async {
 }
 
   Widget _buildProfileIcon() {
+    const double navIconSize = 24;
     final screenWidth = MediaQuery.of(context).size.width;
     String? profileImageUrl = _getProfileImageUrl();
     
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
       return Container(
-        width: screenWidth * 0.09,
-        height: screenWidth * 0.09,
+         width: navIconSize,
+      height: navIconSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
@@ -779,7 +782,7 @@ Future<void> makePhoneCall(String phoneNumber) async {
                 child: Icon(
                   currentTabIndex == 4 ? Icons.person : Icons.person_outline,
                   color: Colors.green,
-                  size: screenWidth * 0.05,
+                  size: navIconSize,
                 ),
               );
             },
@@ -879,7 +882,7 @@ Future<void> makePhoneCall(String phoneNumber) async {
     currentTabIndex == 0
         ? Icons.home
         : Icons.home_outlined,
-    size: 24,
+    size: navIconSize,
   ),
   label: "Home",
 ),
@@ -888,7 +891,7 @@ Future<void> makePhoneCall(String phoneNumber) async {
     currentTabIndex == 1
         ? Icons.calendar_month
         : Icons.calendar_month_outlined,
-    size: 24,
+   size: navIconSize,
   ),
   label: "Bookings",
 ),

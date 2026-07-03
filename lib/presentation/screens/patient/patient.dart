@@ -1,6 +1,9 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../services/api_service.dart';
 
@@ -20,15 +23,98 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
   int? hospitalId;
   int? selectedPatientIndex = 0;
   String? errorMessage;
-
+bool _listenerAdded = false;
+late Function(dynamic) _onPatientEvent;
   @override
   void initState() {
     super.initState();
-    _loadPatientData();
+  _loadPatientData();
+    _setupSocketListener();
   }
+@override
+void dispose() {
+  SocketService().removeListener(
+    "PATIENT_REGISTERED",
+    _onPatientEvent,
+  );
 
+  SocketService().removeListener(
+    "PATIENT_UPDATED",
+    _onPatientEvent,
+  );
+
+  SocketService().removeListener(
+    "PATIENT_DELETED",
+    _onPatientEvent,
+  );
+
+  super.dispose();
+}
   // ==================== DATE FORMATTING METHODS ====================
-  
+  void _setupSocketListener() {
+  if (_listenerAdded) return;
+
+  _listenerAdded = true;
+
+ _onPatientEvent = (data) async {
+  log("PATIENT EVENT => $data");
+
+  await Future.delayed(const Duration(milliseconds: 500));
+
+  if (mounted) {
+    await _refreshPatientData();
+  }
+};
+  SocketService().addListener(
+    [
+      'PATIENT_REGISTERED',
+      'PATIENT_UPDATED',
+      'PATIENT_DELETED',
+    ],
+    _onPatientEvent,
+  );
+}
+
+
+Future<void> _loadPatientData() async {
+  try {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getString("userId");
+
+    if (userId == null || userId!.isEmpty) {
+      setState(() {
+        isLoading = false;
+        errorMessage = "Please login first";
+      });
+      return;
+    }
+
+    final response = await ApiService().getPatients(
+      userId: int.parse(userId!),
+    );
+
+    patientsList = List<Map<String, dynamic>>.from(
+      response.data['data'] ?? [],
+    );
+
+    currentPatient = patientsList.isNotEmpty ? patientsList.first : {};
+
+    setState(() {
+      isLoading = false;
+      errorMessage = patientsList.isEmpty ? "No patients found" : null;
+    });
+  } catch (e) {
+    setState(() {
+      isLoading = false;
+      errorMessage = e.toString();
+    });
+  }
+}
   String _formatDate(String dateString) {
     if (dateString.isEmpty) return 'Not Available';
     try {
@@ -53,264 +139,12 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
     return n.toString().padLeft(2, '0');
   }
 
-  // ==================== END DATE FORMATTING METHODS ====================
+ 
 
-  Future<void> _loadPatientData() async {
-    try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
 
-      final prefs = await SharedPreferences.getInstance();
-      userId = prefs.getString('userId');
-      hospitalId = prefs.getInt('hospitalId');
-
-      print("🔍 ===== PATIENT DETAILS DEBUG =====");
-      print("🔍 UserId from SharedPreferences: $userId");
-      print("🔍 HospitalId from SharedPreferences: $hospitalId");
-
-      if (userId == null || userId!.isEmpty) {
-        print("❌ UserId is null or empty!");
-        setState(() {
-          isLoading = false;
-          errorMessage = "User not logged in. Please login first.";
-        });
-        return;
-      }
-
-      if (hospitalId == null) {
-        print("⚠️ HospitalId is null! Using default hospitalId: 1");
-        hospitalId = 1;
-        await prefs.setInt('hospitalId', hospitalId!);
-        print("✅ Default HospitalId set to: $hospitalId");
-      }
-
-      print("🔄 Calling API with hospitalId: $hospitalId, userId: ${int.parse(userId!)}");
-      final response = await ApiService().getPatients(
-        hospitalId: hospitalId!,
-        userId: int.parse(userId!),
-      );
-
-      print("📊 API Response Data: ${response.data}");
-
-      if (response.data == null) {
-        print("❌ Response data is null!");
-        setState(() {
-          isLoading = false;
-          errorMessage = "No response from server";
-        });
-        return;
-      }
-
-      if (response.data['success'] == true) {
-        print("✅ API call successful");
-        
-        final data = response.data['data'];
-        
-        if (data != null) {
-          List<Map<String, dynamic>> allPatients = [];
-          
-          if (data is List) {
-            print("📋 Data is a List with ${data.length} items");
-            
-            if (data.isNotEmpty) {
-              for (var item in data) {
-                if (item is Map) {
-                  Map<String, dynamic> convertedMap = {};
-                  item.forEach((key, value) {
-                    convertedMap[key.toString()] = value;
-                  });
-                  allPatients.add(convertedMap);
-                }
-              }
-              
-              print("✅ Converted ${allPatients.length} patients");
-              
-              // Filter patients by userId
-              filteredPatientsList = allPatients.where((patient) {
-                final patientUserId = patient['userId'];
-                if (patientUserId == null) return false;
-                return patientUserId.toString() == userId;
-              }).toList();
-              
-              print("👤 Total patients in hospital: ${allPatients.length}");
-              print("👤 Patients for user $userId: ${filteredPatientsList.length}");
-              
-              if (filteredPatientsList.isNotEmpty) {
-                patientsList = filteredPatientsList;
-                currentPatient = patientsList[0];
-                setState(() {
-                  isLoading = false;
-                  errorMessage = null;
-                });
-              } else {
-                setState(() {
-                  isLoading = false;
-                  errorMessage = "No patients found for user ID: $userId";
-                });
-              }
-            } else {
-              print("⚠️ Data is an empty list");
-              setState(() {
-                isLoading = false;
-                errorMessage = "No patients found";
-              });
-            }
-          } else if (data is Map) {
-            print("📋 Data is a Map");
-            
-            Map<String, dynamic> convertedMap = {};
-            data.forEach((key, value) {
-              convertedMap[key.toString()] = value;
-            });
-            
-            final patientUserId = convertedMap['userId'];
-            if (patientUserId != null && patientUserId.toString() == userId) {
-              patientsList = [convertedMap];
-              currentPatient = convertedMap;
-            } else {
-              setState(() {
-                isLoading = false;
-                errorMessage = "This patient does not belong to you.";
-              });
-              return;
-            }
-            
-            setState(() {
-              isLoading = false;
-              errorMessage = null;
-            });
-          } else {
-            print("⚠️ Unknown data type: ${data.runtimeType}");
-            setState(() {
-              isLoading = false;
-              errorMessage = "Unexpected data format";
-            });
-          }
-        } else {
-          print("⚠️ 'data' field is null");
-          setState(() {
-            isLoading = false;
-            errorMessage = "No patient data found";
-          });
-        }
-      } else {
-        print("❌ API returned success: false");
-        setState(() {
-          isLoading = false;
-          errorMessage = response.data['error'] ?? "Failed to load patient details";
-        });
-      }
-    } catch (e) {
-      print("❌ Error loading patient data: $e");
-      setState(() {
-        isLoading = false;
-        errorMessage = "Error: $e";
-      });
-    }
-  }
-
-  Future<void> _refreshPatientData() async {
-    if (userId == null || userId!.isEmpty) {
-      showTopSnackBar(context, "Please login first", isError: true);
-      return;
-    }
-
-    if (hospitalId == null) {
-      hospitalId = 1;
-    }
-
-    try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
-      
-      final response = await ApiService().getPatients(
-        hospitalId: hospitalId!,
-        userId: int.parse(userId!),
-      );
-
-      if (response.data != null && 
-          response.data['success'] == true && 
-          response.data['data'] != null) {
-        
-        final data = response.data['data'];
-        List<Map<String, dynamic>> allPatients = [];
-        
-        if (data is List && data.isNotEmpty) {
-          for (var item in data) {
-            if (item is Map) {
-              Map<String, dynamic> convertedMap = {};
-              item.forEach((key, value) {
-                convertedMap[key.toString()] = value;
-              });
-              allPatients.add(convertedMap);
-            }
-          }
-          
-          filteredPatientsList = allPatients.where((patient) {
-            final patientUserId = patient['userId'];
-            if (patientUserId == null) return false;
-            return patientUserId.toString() == userId;
-          }).toList();
-          
-          if (filteredPatientsList.isNotEmpty) {
-            patientsList = filteredPatientsList;
-            currentPatient = patientsList[selectedPatientIndex ?? 0];
-            setState(() {
-              isLoading = false;
-              errorMessage = null;
-            });
-            showTopSnackBar(context, "Patient details updated successfully");
-          } else {
-            setState(() {
-              isLoading = false;
-              errorMessage = "No patients found for this user";
-            });
-          }
-        } else if (data is Map && data.isNotEmpty) {
-          Map<String, dynamic> convertedMap = {};
-          data.forEach((key, value) {
-            convertedMap[key.toString()] = value;
-          });
-          
-          final patientUserId = convertedMap['userId'];
-          if (patientUserId != null && patientUserId.toString() == userId) {
-            patientsList = [convertedMap];
-            currentPatient = convertedMap;
-            setState(() {
-              isLoading = false;
-              errorMessage = null;
-            });
-            showTopSnackBar(context, "Patient details updated successfully");
-          } else {
-            setState(() {
-              isLoading = false;
-              errorMessage = "This patient does not belong to you";
-            });
-          }
-        } else {
-          setState(() {
-            isLoading = false;
-            errorMessage = "No patients found";
-          });
-        }
-      } else {
-        setState(() {
-          isLoading = false;
-          errorMessage = "Failed to refresh patient data";
-        });
-      }
-    } catch (e) {
-      print('❌ Error refreshing patient data: $e');
-      setState(() {
-        isLoading = false;
-        errorMessage = "Error: $e";
-      });
-    }
-  }
+Future<void> _refreshPatientData() async {
+  await _loadPatientData();
+}
 
   String _getValue(String key, {String defaultValue = ''}) {
     try {

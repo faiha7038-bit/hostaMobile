@@ -55,6 +55,7 @@ class _OtpVerificationState extends ConsumerState<OtpVerification> {
 
           otpController.text = widget.backendOtp!;
 log("Backend OTP received: ${widget.backendOtp}");
+
           // Future.delayed(const Duration(milliseconds: 800), () {
           //   if (mounted && !isVerifying) {
           //     _verifyOtp();
@@ -77,6 +78,7 @@ log("Backend OTP received: ${widget.backendOtp}");
   }
 
 Future<void> _verifyOtp() async {
+   log("VERIFY CALLED AT: ${DateTime.now()}");
   if (isVerifying) return;
 
   String otp = otpController.text.trim();
@@ -123,7 +125,11 @@ log("🔵 _verifyOtp() CALLED with OTP: $otp");
       "otp": otp,
       "fcmToken": token,
     });
+log("REQUEST => Phone: $cleanPhone");
+log("REQUEST => OTP: $otp");
 
+log("STATUS => ${response.statusCode}");
+log("BODY => ${response.data}");
 log("🔥 SENDING FCM => $token");
 log("🔥 FCM TOKEN CHECK => ${token}");
     log("Response status: ${response.statusCode}");
@@ -186,6 +192,9 @@ log("🔐 Verified saved token: ${savedToken != null ? 'Exists' : 'NULL'}");
 
 
         if (mounted) {
+          setState(() {
+  isVerifying = false;
+});
           showTopSnackBar(context, "Login successful!");
           
           // Navigate to main screen (your bottom navigation)
@@ -211,8 +220,9 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
       });
     }
     } on DioException catch (e) {
-  log("❌ STATUS CODE: ${e.response?.statusCode}");
-  log("❌ RESPONSE DATA: ${e.response?.data}");
+  log("STATUS : ${e.response?.statusCode}");
+  log("BODY : ${e.response?.data}");
+  log("ERROR : ${e.message}");
 
   setState(() {
     otpError =
@@ -502,7 +512,7 @@ final ambulanceId = prefs.getString('ambulanceId') ?? '';
                       onTap: isVerifying
                           ? null
                           : () {
-                              Navigator.pop(context);
+                             
                               widget.onResendOtp();
                             },
                       child: const Text(

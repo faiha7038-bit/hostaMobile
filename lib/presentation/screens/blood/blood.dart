@@ -58,6 +58,7 @@ bool _hasDonated = false;
 bool _isLoading = true;      
   final ApiService _apiService = ApiService();
 late Box cacheBox;
+
 bool isOffline = false;
 Timer? _debounce;
 List<dynamic> allDonors = [];
