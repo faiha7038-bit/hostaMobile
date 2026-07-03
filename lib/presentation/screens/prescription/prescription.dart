@@ -96,9 +96,9 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(
-            Icons.arrow_back,
+            Icons.arrow_back_ios_new,
             color: Colors.white,
-            size: screenWidth * 0.06,
+          size: screenWidth * 0.055
           ),
           onPressed: () => Navigator.pop(context),
         ),
