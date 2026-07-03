@@ -270,7 +270,7 @@ void _refreshSpecialties() {
                         ),
                         child: Text(
                           "Retry",
-                          style: TextStyle(fontSize: screenWidth * 0.035),
+                          style: TextStyle(fontSize: screenWidth * 0.035,color: Colors.white),
                         ),
                       ),
                     ],
