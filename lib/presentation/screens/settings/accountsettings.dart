@@ -83,7 +83,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Account deleted successfully',
+          ' Your Account has been Blacklisted ',
           style: TextStyle(fontSize: MediaQuery.of(context).size.width * 0.04),
         ),
         backgroundColor: Colors.green,
@@ -180,7 +180,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                   ),
                   SizedBox(height: screenHeight * 0.005),
                   Text(
-                    'If you delete your account, it will be temporarily deleted. You can register again with the same email address later if you wish to rejoin.',
+                    'Your account has been blacklisted. You can rejoin within 30 days. If you do not rejoin within this period, your account will be permanently deleted.',
                     style: TextStyle(
                       fontSize: screenWidth * 0.035,
                       color: Colors.black87,
