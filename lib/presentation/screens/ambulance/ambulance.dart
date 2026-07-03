@@ -499,28 +499,62 @@ _debounce = Timer(const Duration(milliseconds: 500), () async {
                               borderRadius: BorderRadius.circular(screenWidth * 0.025),
                             ),
                           ),
-                          onPressed: () async {
+onPressed: () async {
   final prefs = await SharedPreferences.getInstance();
   final userId = prefs.getString('userId');
 
   if (userId == null) {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const Signin()),
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Login Required"),
+          content: const Text(
+            "You need to login to register an ambulance.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false); // Cancel
+              },
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context, true); // Login
+              },
+              child: const Text("Login"),
+            ),
+          ],
+        );
+      },
     );
+
+    if (shouldLogin == true) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const Signin(),
+        ),
+      );
+    }
+
     return;
   }
 
   final result = await Navigator.push(
     context,
-    MaterialPageRoute(builder: (_) => const AmbulanceRegister()),
+    MaterialPageRoute(
+      builder: (_) => const AmbulanceRegister(),
+    ),
   );
-if (result != null && result["refresh"] == true) {
-  ref.invalidate(ambulanceListProvider);
-  ref.invalidate(allAmbulancesProvider);
 
-  await _fetchAmbulances(showLoader: true);
-}
+  if (result != null && result["refresh"] == true) {
+    ref.invalidate(ambulanceListProvider);
+    ref.invalidate(allAmbulancesProvider);
+
+    await _fetchAmbulances(showLoader: true);
+  }
 },
                           child: Text("Register", style: TextStyle(color: Colors.white)),
                         ),

@@ -45,19 +45,21 @@ class HomeState {
 // ============= NOTIFIER =============
 class HomeNotifier extends StateNotifier<HomeState> {
   Timer? _refreshTimer;
+  bool _isInitialized = false;
 
   HomeNotifier() : super(HomeState());
 
-  void init() {
-    _checkLocationStatus();
-    _getLocationAndFetchData();
+  Future<void> init() async {
+    if (_isInitialized) return;
+    _isInitialized = true;
+    await _checkLocationStatus();
+    await _getLocationAndFetchData();
     _startAutoRefresh();
   }
 
+  // This method will be called via ref.onDispose
   void dispose() {
-    if (_refreshTimer != null) {
-      _refreshTimer!.cancel();
-    }
+    _refreshTimer?.cancel();
   }
 
   void _startAutoRefresh() {
@@ -94,16 +96,16 @@ class HomeNotifier extends StateNotifier<HomeState> {
       LocationPermission permission = await Geolocator.checkPermission();
 
       state = state.copyWith(
-        locationIssue: !serviceEnabled || 
-                        permission == LocationPermission.denied || 
-                        permission == LocationPermission.deniedForever,
-        hasLocationPermission: serviceEnabled && 
-                                permission != LocationPermission.denied && 
-                                permission != LocationPermission.deniedForever,
+        locationIssue: !serviceEnabled ||
+            permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever,
+        hasLocationPermission: serviceEnabled &&
+            permission != LocationPermission.denied &&
+            permission != LocationPermission.deniedForever,
       );
 
-      if (!serviceEnabled || 
-          permission == LocationPermission.denied || 
+      if (!serviceEnabled ||
+          permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         print("⚠️ Auto-refresh: Location not available - refreshing without location");
         await _fetchCarouselImages(null, null);
@@ -117,17 +119,15 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
       double newLat = position.latitude;
       double newLng = position.longitude;
-      
+
       print("📍 Auto-refresh: New location - lat=$newLat, lng=$newLng");
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble('last_lat', newLat);
       await prefs.setDouble('last_lng', newLng);
-      
+
       state = state.copyWith(lastLat: newLat, lastLng: newLng);
-      
       await _fetchCarouselImages(newLat, newLng);
-      
     } catch (e) {
       print("❌ Auto-refresh error: $e");
       await _fetchCarouselImages(null, null);
@@ -149,16 +149,16 @@ class HomeNotifier extends StateNotifier<HomeState> {
       LocationPermission permission = await Geolocator.checkPermission();
 
       state = state.copyWith(
-        locationIssue: !serviceEnabled || 
-                        permission == LocationPermission.denied || 
-                        permission == LocationPermission.deniedForever,
-        hasLocationPermission: serviceEnabled && 
-                                permission != LocationPermission.denied && 
-                                permission != LocationPermission.deniedForever,
+        locationIssue: !serviceEnabled ||
+            permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever,
+        hasLocationPermission: serviceEnabled &&
+            permission != LocationPermission.denied &&
+            permission != LocationPermission.deniedForever,
       );
 
-      if (!serviceEnabled || 
-          permission == LocationPermission.denied || 
+      if (!serviceEnabled ||
+          permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         print("⚠️ Initial load: Location not available - fetching without location");
         await _fetchCarouselImages(null, null);
@@ -168,15 +168,15 @@ class HomeNotifier extends StateNotifier<HomeState> {
       if (permission == LocationPermission.denied) {
         print("📍 Initial load: Requesting location permission...");
         permission = await Geolocator.requestPermission();
-        
+
         state = state.copyWith(
-          locationIssue: permission == LocationPermission.denied || 
-                          permission == LocationPermission.deniedForever,
-          hasLocationPermission: permission != LocationPermission.denied && 
-                                  permission != LocationPermission.deniedForever,
+          locationIssue: permission == LocationPermission.denied ||
+              permission == LocationPermission.deniedForever,
+          hasLocationPermission: permission != LocationPermission.denied &&
+              permission != LocationPermission.deniedForever,
         );
-        
-        if (permission == LocationPermission.denied || 
+
+        if (permission == LocationPermission.denied ||
             permission == LocationPermission.deniedForever) {
           print("⚠️ Initial load: Permission denied - fetching without location");
           await _fetchCarouselImages(null, null);
@@ -191,7 +191,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
       double lastLat = position.latitude;
       double lastLng = position.longitude;
-      
+
       print("📍 Initial load: Location obtained - lat=$lastLat, lng=$lastLng");
 
       final prefs = await SharedPreferences.getInstance();
@@ -200,7 +200,6 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
       state = state.copyWith(lastLat: lastLat, lastLng: lastLng);
       await _fetchCarouselImages(lastLat, lastLng);
-      
     } catch (e) {
       print("❌ Initial load error: $e - fetching without location");
       await _fetchCarouselImages(null, null);
@@ -214,51 +213,38 @@ class HomeNotifier extends StateNotifier<HomeState> {
       } else {
         print("🌐 Calling API WITHOUT location");
       }
-      
+
       final apiService = ApiService();
       final response = await apiService.getAllCarousel(
         latitude: lat,
         longitude: lng,
       );
-      
+
       print("📡 API Response Status Code: ${response.statusCode}");
-      
+
       if (response.statusCode == 200) {
         if (response.data != null && response.data["data"] != null) {
           final data = response.data["data"] as List;
           print("📸 Found ${data.length} carousel items");
-          
+
           final images = data
               .where((item) => item["isActive"] == true && item["imageUrl"] != null)
               .map<String>((item) => item["imageUrl"].toString())
               .toList();
-          
-          state = state.copyWith(
-            carouselImages: images,
-            isLoading: false,
-          );
-          
+
+          state = state.copyWith(carouselImages: images, isLoading: false);
           print("✅ Successfully loaded ${images.length} active carousel images");
         } else {
           print("⚠️ No data in response");
-          state = state.copyWith(
-            carouselImages: [],
-            isLoading: false,
-          );
+          state = state.copyWith(carouselImages: [], isLoading: false);
         }
       } else {
         print("❌ API returned error status: ${response.statusCode}");
-        state = state.copyWith(
-          carouselImages: [],
-          isLoading: false,
-        );
+        state = state.copyWith(carouselImages: [], isLoading: false);
       }
     } catch (e) {
       print("❌ ERROR fetching carousel images: $e");
-      state = state.copyWith(
-        carouselImages: [],
-        isLoading: false,
-      );
+      state = state.copyWith(carouselImages: [], isLoading: false);
     }
   }
 
@@ -269,10 +255,13 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
 // ============= PROVIDERS =============
 final homeProvider = StateNotifierProvider<HomeNotifier, HomeState>((ref) {
-  return HomeNotifier();
+  final notifier = HomeNotifier();
+  // Automatically dispose the notifier when the provider is removed
+  ref.onDispose(notifier.dispose);
+  return notifier;
 });
 
-// Products list provider (static)
+// Products list provider (static) – only one definition
 final productsProvider = Provider<List<Map<String, dynamic>>>((ref) => [
   {"name": "Hospitals", "icon": Icons.local_hospital, "page": null},
   {"name": "Doctors", "icon": Icons.medical_services_outlined, "page": null},
