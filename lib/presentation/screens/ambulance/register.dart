@@ -375,8 +375,20 @@ if (_countryController.text.trim().isEmpty) {
   showTopSnackBar(context, "Please select a country", isError: true);
   return;
 }
-if (_stateController.text.trim().isEmpty) {
+if (_countryController.text.trim().isEmpty) {
+  showTopSnackBar(context, "Please select a country", isError: true);
+  return;
+}
+
+// Only require state if this country actually has states
+if (states.isNotEmpty && _stateController.text.trim().isEmpty) {
   showTopSnackBar(context, "Please select a state", isError: true);
+  return;
+}
+
+// Only require district if selected state has districts
+if (districts.isNotEmpty && _districtController.text.trim().isEmpty) {
+  showTopSnackBar(context, "Please select a district", isError: true);
   return;
 }
 
@@ -402,19 +414,33 @@ if (districts.isNotEmpty && _districtController.text.trim().isEmpty) {
     final userId = prefs.getString('userId');
     if (userId == null) throw Exception("User not logged in");
 
-    final payload = {
-      "phone": _phoneController.text.trim(),
-      "serviceName": _serviceNameController.text.trim(),
-      "vehicleType": vehicleType,
-      "address": {
-        "country": selectedCountry?['name'] ?? _countryController.text,
-        "state": selectedState?['name'] ?? _stateController.text,
-        "district": selectedDistrict?['name'] ?? _districtController.text,
-        "place": _placeController.text.trim(),
-        "pincode": int.parse(pincode),
-      },
-      "userId": int.parse(userId),
-    };
+ final country = _countryController.text.trim();
+final state = _stateController.text.trim();
+final district = _districtController.text.trim();
+
+final address = {
+  "country": country,
+  "place": _placeController.text.trim(),
+  "pincode": int.parse(pincode),
+};
+
+// Add state only if selected
+if (state.isNotEmpty) {
+  address["state"] = state;
+}
+
+// Add district only if selected
+if (district.isNotEmpty) {
+  address["district"] = district;
+}
+
+final payload = {
+  "phone": _phoneController.text.trim(),
+  "serviceName": _serviceNameController.text.trim(),
+  "vehicleType": vehicleType,
+  "address": address,
+  "userId": int.parse(userId),
+};
 
     final notifier = ref.read(ambulanceListProvider.notifier);
     bool success;
@@ -665,7 +691,7 @@ if (districts.isNotEmpty && _districtController.text.trim().isEmpty) {
                 return "Pincode is required";
               }
               if (value.trim().length != 6) {
-                return "Pincode must be 6 digits";
+                return "Enter valid pincode";
               }
               return null;
             },

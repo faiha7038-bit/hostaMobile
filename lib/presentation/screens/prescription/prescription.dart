@@ -198,13 +198,7 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
               ),
             ),
             SizedBox(height: screenHeight * 0.01),
-            Text(
-              'Pull down to refresh',
-              style: TextStyle(
-                color: Colors.grey.shade500,
-                fontSize: screenWidth * 0.035,
-              ),
-            ),
+           
           ],
         ),
       );

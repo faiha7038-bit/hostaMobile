@@ -121,22 +121,58 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   return null;
 }
 
- Future<void> _navigateToViewProfile() async {
+Future<void> _navigateToViewProfile() async {
   final prefs = await SharedPreferences.getInstance();
   String userId = prefs.getString('userId') ?? '';
 
   if (userId.isEmpty) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const Signin()),
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Login Required"),
+        content: const Text(
+          "Please login to view your profile.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, false);
+            },
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+            child: const Text("Login"),
+          ),
+        ],
+      ),
     );
+
+    if (shouldLogin == true) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const Signin(),
+        ),
+      );
+
+      // Refresh user after login
+      await _loadUserId();
+    }
+
     return;
   }
 
-  Navigator.push(
+  await Navigator.push(
     context,
-    MaterialPageRoute(builder: (_) => Profile()),
+    MaterialPageRoute(
+      builder: (_) => Profile(),
+    ),
   );
+
+  await _refreshUserData();
 }
 
   void _navigateToSettings() {
