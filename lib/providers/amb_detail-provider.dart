@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,7 +31,7 @@ class AmbulanceListState {
 
 class AmbulanceListNotifier extends StateNotifier<AmbulanceListState> {
   final ApiService apiService;
-  //String? _currentUserId;  // Store userId for refresh
+ 
 
   AmbulanceListNotifier(this.apiService) : super(AmbulanceListState());
 
@@ -41,7 +40,7 @@ class AmbulanceListNotifier extends StateNotifier<AmbulanceListState> {
     state = state.copyWith(isLoading: true);
     try {
       final response = await apiService.getAllAmbulances(userId: userId);
-      log("FETCH RESPONSE => ${response.data}");
+    
       final data = response.data['data'] as List? ?? [];
       final List<Map<String, dynamic>> ambulances = data.map((e) => e as Map<String, dynamic>).toList();
       state = state.copyWith(ambulances: ambulances, isLoading: false);
@@ -61,7 +60,7 @@ class AmbulanceListNotifier extends StateNotifier<AmbulanceListState> {
       }
       return false;
     } on DioException catch (e) {
-      log("CREATE ERROR => $e");
+     
       return false;
     }
   }
@@ -69,14 +68,14 @@ class AmbulanceListNotifier extends StateNotifier<AmbulanceListState> {
   Future<bool> editAmbulance(String ambulanceId, Map<String, dynamic> updatedData) async {
     try {
       final response = await apiService.editAmbulance(ambulanceId, updatedData);
-      log("EDIT response status: ${response.statusCode}");
+    
       if (response.statusCode == 200) {
         //if (_currentUserId != null) await fetchAmbulances(userId: _currentUserId!);
         return true;
       }
       return false;
     } catch (e) {
-      log("EDIT ERROR: $e");
+      
       return false;
     }
   }
@@ -85,7 +84,7 @@ Future<bool> deleteAmbulance(String ambulanceId) async {
   try {
     final response = await apiService.deleteAmbulance(ambulanceId);
 
-    log("DELETE response status: ${response.statusCode}");
+   
 
     if (response.statusCode == 200) {
       // Update local state by removing the deleted ambulance
@@ -95,12 +94,12 @@ Future<bool> deleteAmbulance(String ambulanceId) async {
 
       state = state.copyWith(ambulances: updatedList);
 
-      // ✅ If the user has no ambulances left, clear the registration flag
+     
       if (updatedList.isEmpty) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('ambulanceRegistered');
         await prefs.remove('ambulanceId');
-        log("🔄 Cleared ambulance flag – user has no ambulances left");
+      
       }
 
       return true;
@@ -108,7 +107,7 @@ Future<bool> deleteAmbulance(String ambulanceId) async {
 
     return false;
   } catch (e) {
-    log("DELETE ERROR: $e");
+   
     return false;
   }
 }

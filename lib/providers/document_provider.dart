@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -61,7 +60,6 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final uid = prefs.getString("userId");
-    log("📌 Document Provider UserID => $uid");
     state = state.copyWith(userId: uid);
     if (uid != null && uid.isNotEmpty) {
       await fetchDocuments();
@@ -83,7 +81,8 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
       final List patients = patientResponse.data['data'];
 
       // 2. Save the first patient ID (for creating new documents)
-      int? firstPatientId = patients.isNotEmpty ? patients[0]['id'] as int : null;
+      int? firstPatientId =
+          patients.isNotEmpty ? patients[0]['id'] as int : null;
       state = state.copyWith(currentPatientId: firstPatientId);
 
       // 3. Fetch documents for all patients
@@ -98,9 +97,6 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
         documents: documents,
         isLoading: false,
       );
-
-      log("✅ FINAL DOCUMENT LIST SIZE => ${documents.length}");
-      
     } catch (e) {
       state = state.copyWith(
         error: e.toString(),
@@ -134,16 +130,12 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
         "date": date,
       });
 
-      // 2. Extract the new document ID from response
       final docId = response.data['data']?['id'] ?? response.data['id'];
-      log("✅ Document created with ID: $docId");
 
-      // 3. Refresh the list
       await fetchDocuments();
 
       return docId is int ? docId : int.tryParse(docId.toString());
     } catch (e) {
-      log("❌ createDocument error => $e");
       return null;
     } finally {
       state = state.copyWith(isSubmitting: false);
@@ -165,23 +157,16 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
         role: "documents",
       );
 
-      log("✅ S3 Upload Success: ${s3Result['key']}");
-
-      // 2. Update the document with the file details
       await _api.updateDocument(
         docId.toString(),
         {
-          "imageUrl": s3Result["key"], // S3 key (backend will construct full URL)
-          // Optionally also send: "fileKey": s3Result["key"],
+          "imageUrl": s3Result["key"],
         },
       );
-
-      log("✅ Document updated with file reference");
 
       // 3. Refresh list
       await fetchDocuments();
     } catch (e) {
-      log("❌ uploadFileForDocument error => $e");
     } finally {
       state = state.copyWith(isSubmitting: false);
     }
@@ -201,39 +186,28 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
       });
       await fetchDocuments();
     } catch (e) {
-      log("❌ updateDocument error => $e");
     } finally {
       state = state.copyWith(isSubmitting: false);
     }
   }
 
- 
+  Future<void> deleteDocument({required int id}) async {
+    final previousDocs = List<Document>.from(state.documents);
+    final updatedDocs = state.documents.where((d) => d.id != id).toList();
+    state = state.copyWith(documents: updatedDocs);
 
-// ---------- DELETE DOCUMENT ----------
-Future<void> deleteDocument({required int id}) async {
-  // 1️⃣ Optimistic removal
-  final previousDocs = List<Document>.from(state.documents);
-  final updatedDocs = state.documents.where((d) => d.id != id).toList();
-  state = state.copyWith(documents: updatedDocs);
+    try {
+      await _api
+          .deleteDocument(id, {}); // or just await _api.deleteDocument(id);
 
-  try {
-    // 2️⃣ Delete from DB only – backend will delete S3 file automatically
-    await _api.deleteDocument(id, {}); // or just await _api.deleteDocument(id);
-    log("✅ Server delete successful for doc $id");
+      await fetchDocuments(); // optional: refresh from server
+    } catch (e) {
+      state = state.copyWith(documents: previousDocs);
 
-    // 3️⃣ Re-apply removal (state already updated)
-    // No need to re-apply; optimistic update is kept.
-    // But if you want to be safe, you can refetch.
-    await fetchDocuments(); // optional: refresh from server
-  } catch (e) {
-    // 4️⃣ Rollback on error
-    state = state.copyWith(documents: previousDocs);
-    log("❌ Delete failed, rolled back: $e");
-    rethrow;
+      rethrow;
+    }
   }
-}
 
-  // ---------- REFRESH ----------
   Future<void> refresh() async {
     await fetchDocuments();
   }

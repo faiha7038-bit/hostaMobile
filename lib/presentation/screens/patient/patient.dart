@@ -231,7 +231,7 @@ Future<void> _refreshPatientData() async {
         backgroundColor: const Color(0xFF28A745),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white, size: screenWidth * 0.06),
+          icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: screenWidth * 0.06),
           onPressed: () => Navigator.pop(context),
         ),
       ),

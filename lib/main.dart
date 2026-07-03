@@ -12,56 +12,40 @@ import 'package:permission_handler/permission_handler.dart'; // ✅ Added missin
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
-    print('ℹ️ Starting app initialization...');
-    
-    //  // ✅ Request permissions first
-    //  await _requestPermissions();
-    
-    // ✅ Firebase initialization
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      print('✅ Firebase initialized successfully');
     } catch (e) {
       if (e.toString().contains('duplicate-app')) {
-        print('✅ Firebase already initialized, using existing instance');
       } else {
         throw e;
       }
     }
-    
+
     // Initialize Hive
     await Hive.initFlutter();
     await Hive.openBox('donorsBox');
     await Hive.openBox('blood_cache');
     await Hive.openBox('ambulance_cache');
-    print('✅ Hive initialized');
-    
+
     // Initialize Alarm
     await Alarm.init();
-    print('✅ Alarm initialized');
-    
+
     // Initialize API Service
     await ApiService().init();
-    print('✅ API Service initialized');
-    
+
     // Initialize FCM
     final firebaseMsg = FirebaseMsg();
     await firebaseMsg.initFCM();
-    print('✅ FCM initialized');
-    
+
     // ✅ Request notification permissions
     await _requestNotificationPermissions();
-   
-    runApp(const ProviderScope(child: MyApp()));
-    
-  } catch (e, stackTrace) {
-    print('❌ Error: $e');
-    print(stackTrace);
 
+    runApp(const ProviderScope(child: MyApp()));
+  } catch (e, stackTrace) {
     // Error screen
     runApp(MaterialApp(
       home: Scaffold(
@@ -100,27 +84,11 @@ void main() async {
   }
 }
 
-// ✅ Moved these functions outside the main function
-
-// Future<void> _requestPermissions() async {
-//   try {
-//     final statuses = await [
-//       Permission.storage,
-//     //  Permission.camera,
-//     ].request();
-    
-//     print('✅ Storage permission: ${statuses[Permission.storage]}');
-//     print('✅ Camera permission: ${statuses[Permission.camera]}');
-//   } catch (e) {
-//     print('❌ Error requesting permissions: $e');
-//   }
-// }
-
 Future<void> requestPermissions() async {
   if (await Permission.notification.isDenied) {
     await Permission.notification.request();
   }
-  
+
   if (await Permission.scheduleExactAlarm.isDenied) {
     await Permission.scheduleExactAlarm.request();
   }
@@ -128,25 +96,21 @@ Future<void> requestPermissions() async {
 
 Future<void> _requestNotificationPermissions() async {
   try {
-    // Request notification permissions using Firebase Messaging
-    firebase.NotificationSettings settings = await firebase.FirebaseMessaging.instance.requestPermission(
+    firebase.NotificationSettings settings =
+        await firebase.FirebaseMessaging.instance.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
-    print("✅ Notification permission status: ${settings.authorizationStatus}");
-    
+
     // Wait for iOS APNS token
     await Future.delayed(const Duration(seconds: 2));
-    
+
     // Get APNS token (iOS)
-    String? apnsToken = await firebase.FirebaseMessaging.instance.getAPNSToken();
-    if (apnsToken != null) {
-      print("🍏 APNS TOKEN: $apnsToken");
-    }
-  } catch (e) {
-    print('❌ Error requesting notification permissions: $e');
-  }
+    String? apnsToken =
+        await firebase.FirebaseMessaging.instance.getAPNSToken();
+    if (apnsToken != null) {}
+  } catch (e) {}
 }
 
 class MyApp extends StatelessWidget {

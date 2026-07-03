@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class SocketService {
@@ -13,11 +12,11 @@ class SocketService {
    String? _currentUserId;
 
  void connect(String token) {
-  log("connect() CALLED");
+ 
 
   if (socket != null) {
     if (socket!.connected) {
-      log("✅ Socket already connected");
+   
       return;
     }
 
@@ -37,7 +36,7 @@ class SocketService {
   );
 
    socket!.onConnect((_) {
-  log("✅ Socket Connected");
+ 
 
   if (_currentUserId != null) {
     _joinUserRoom(_currentUserId!);
@@ -45,19 +44,19 @@ class SocketService {
 });
 
 socket!.onDisconnect((reason) {
-  log("❌ Socket Disconnected: $reason");
+ 
 });
 
 socket!.onConnectError((err) {
-  log("❌ Connect Error: $err");
+ 
 });
 
 socket!.onReconnect((_) {
-  log("🔄 Reconnected");
+
 });
 
 socket!.onReconnectAttempt((attempt) {
-  log("🔄 Reconnect attempt: $attempt");
+  
 });
 
 // Direct events
@@ -81,7 +80,7 @@ socket!.on("system_event", (payload) {
 
   final event = match.group(1)!;
 
-  log("System Event => $event");
+
 
   final listeners = _listeners[event];
   if (listeners != null) {
@@ -106,7 +105,7 @@ socket!.on("system_event", (payload) {
    void _joinUserRoom(String userId) {
     socket!.emit('joinUserRoom', userId);
     socket!.emit('userOnline', userId);
-    log("✅ Joined user room: $userId");
+    
   }
 
   void addListener(

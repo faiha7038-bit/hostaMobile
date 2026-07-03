@@ -1,11 +1,13 @@
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:hosta/services/api_service.dart';
 
+// Helper to clamp responsive values between safe limits
+double _clamp(double value, double min, double max) =>
+    value.clamp(min, max) as double;
+
 class SpecialtiesTab extends StatefulWidget {
   final Map<String, dynamic> hospital;
-  final Function(String, String)
-  onSpecialtyTap; // now passes hospitalId + department
+  final Function(String, String) onSpecialtyTap; // now passes hospitalId + department
 
   const SpecialtiesTab({
     super.key,
@@ -23,71 +25,83 @@ class _SpecialtiesTabState extends State<SpecialtiesTab> {
 
   @override
   void initState() {
-
-  log("HOSPITAL ID: ${widget.hospital["id"]}");
     super.initState();
     _specialtiesFuture = _fetchDoctorsGroupedByDepartment();
   }
 
- Future<Map<String, List<dynamic>>> _fetchDoctorsGroupedByDepartment() async {
-  print('🔵 Fetching doctors...');
-  try {
-    // ✅ FIX: extract numeric ID only
-    final numericId = widget.hospital['id'] ?? widget.hospital['hospitalId'];
-    if (numericId == null) {
-      print('❌ No hospital ID field found');
+  Future<Map<String, List<dynamic>>> _fetchDoctorsGroupedByDepartment() async {
+    try {
+      // ✅ FIX: extract numeric ID only
+      final numericId = widget.hospital['id'] ?? widget.hospital['hospitalId'];
+      if (numericId == null) {
+        return {};
+      }
+      final hospitalId = numericId is int ? numericId.toString() :
+                         (numericId is String && int.tryParse(numericId) != null) ? numericId : null;
+      if (hospitalId == null) {
+        return {};
+      }
+
+      final response = await _apiService.getDoctors(hospitalId: hospitalId);
+
+      List<dynamic> doctors = [];
+      if (response.data is Map && response.data['data'] is List) {
+        doctors = response.data['data'];
+      } else if (response.data is List) {
+        doctors = response.data;
+      }
+
+      Map<String, List<dynamic>> grouped = {};
+
+      for (var doctor in doctors) {
+        String department =
+            (doctor['department'] ?? 'Other').toString().trim();
+        // case-insensitive key
+        String key = department.toLowerCase();
+        grouped.putIfAbsent(key, () => []).add(doctor);
+      }
+
+      return grouped;
+    } catch (e, stack) {
       return {};
     }
-    final hospitalId = numericId is int ? numericId.toString() : 
-                       (numericId is String && int.tryParse(numericId) != null) ? numericId : null;
-    if (hospitalId == null) {
-      print('❌ Hospital ID is not numeric: $numericId');
-      return {};
-    }
-    
-    print('🔵 hospitalId = $hospitalId');
-    
-    final response = await _apiService.getDoctors(hospitalId: hospitalId);
-    print('🔵 Status: ${response.statusCode}');
-    
-    List<dynamic> doctors = [];
-    if (response.data is Map && response.data['data'] is List) {
-      doctors = response.data['data'];
-    } else if (response.data is List) {
-      doctors = response.data;
-    }
-    print('🔵 Found ${doctors.length} doctors');
-    
-   Map<String, List<dynamic>> grouped = {};
-
-for (var doctor in doctors) {
-  String department =
-      (doctor['department'] ?? 'Other').toString().trim();
-
-  // case-insensitive key
-  String key = department.toLowerCase();
-
-  grouped.putIfAbsent(key, () => []).add(doctor);
-}
-    print('🔵 Grouped into ${grouped.length} departments');
-    return grouped;
-  } catch (e, stack) {
-    print('❌ Exception: $e\n$stack');
-    return {};
   }
-}
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    // Responsive clamped values
+    final double loadingStrokeWidth = _clamp(screenWidth * 0.008, 2, 6);
+    final double emptyIconSize = _clamp(screenWidth * 0.16, 50, 100);
+    final double emptyFontSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double listPadding = _clamp(screenWidth * 0.04, 12, 24);
+    final double cardElevation = _clamp(screenWidth * 0.0075, 2, 8);
+    final double cardMarginBottom = _clamp(screenHeight * 0.015, 8, 20);
+    final double cardRadius = _clamp(screenWidth * 0.03, 8, 18);
+    final double cardPadding = _clamp(screenWidth * 0.04, 12, 24);
+    final double departmentFontSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double arrowIconSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double medicalIconSize = _clamp(screenWidth * 0.035, 12, 20);
+    final double countFontSize = _clamp(screenWidth * 0.03, 10, 16);
+    final double viewDoctorsPaddingH = _clamp(screenWidth * 0.02, 6, 16);
+    final double viewDoctorsPaddingV = _clamp(screenHeight * 0.0025, 2, 6);
+    final double viewDoctorsRadius = _clamp(screenWidth * 0.03, 8, 18);
+    final double viewDoctorsFontSize = _clamp(screenWidth * 0.025, 8, 14);
+    final double spacing = _clamp(screenHeight * 0.02, 12, 24);
+    final double spacingSmall = _clamp(screenHeight * 0.01, 6, 16);
+    final double spacingTiny = _clamp(screenWidth * 0.01, 4, 12);
+
     return FutureBuilder<Map<String, List<dynamic>>>(
       future: _specialtiesFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
-            child: CircularProgressIndicator(strokeWidth: screenWidth * 0.008),
+            child: CircularProgressIndicator(
+              strokeWidth: loadingStrokeWidth,
+              color: Colors.green,
+            ),
           );
         }
 
@@ -98,14 +112,14 @@ for (var doctor in doctors) {
               children: [
                 Icon(
                   Icons.medical_services_outlined,
-                  size: screenWidth * 0.16,
+                  size: emptyIconSize,
                   color: Colors.grey,
                 ),
-                SizedBox(height: screenHeight * 0.02),
+                SizedBox(height: spacing),
                 Text(
                   "No specialties available",
                   style: TextStyle(
-                    fontSize: screenWidth * 0.04,
+                    fontSize: emptyFontSize,
                     color: Colors.grey,
                   ),
                 ),
@@ -118,7 +132,7 @@ for (var doctor in doctors) {
         final specialtiesList = specialtiesMap.keys.toList();
 
         return ListView.builder(
-          padding: EdgeInsets.all(screenWidth * 0.04),
+          padding: EdgeInsets.all(listPadding),
           itemCount: specialtiesList.length,
           itemBuilder: (context, index) {
             final department = specialtiesList[index].toUpperCase();
@@ -126,24 +140,23 @@ for (var doctor in doctors) {
             final doctorsCount = doctors.length;
 
             return Card(
-              elevation: screenWidth * 0.0075,
-              margin: EdgeInsets.only(bottom: screenHeight * 0.015),
+              elevation: cardElevation,
+              margin: EdgeInsets.only(bottom: cardMarginBottom),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                borderRadius: BorderRadius.circular(cardRadius),
               ),
               child: InkWell(
-             onTap: () {
-  // ✅ Always use numeric 'id' field
-  final hospitalId = widget.hospital['id'];
-  if (hospitalId == null) {
-    print('❌ No numeric id found');
-    return;
-  }
-  widget.onSpecialtyTap(hospitalId.toString(), department);
-},
-                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                onTap: () {
+                  // ✅ Always use numeric 'id' field
+                  final hospitalId = widget.hospital['id'];
+                  if (hospitalId == null) {
+                    return;
+                  }
+                  widget.onSpecialtyTap(hospitalId.toString(), department);
+                },
+                borderRadius: BorderRadius.circular(cardRadius),
                 child: Padding(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
+                  padding: EdgeInsets.all(cardPadding),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -155,53 +168,53 @@ for (var doctor in doctors) {
                               department,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: screenWidth * 0.04,
+                                fontSize: departmentFontSize,
                                 color: const Color.fromARGB(255, 12, 94, 15),
                               ),
                             ),
                           ),
                           Icon(
                             Icons.arrow_forward_ios,
-                            size: screenWidth * 0.04,
+                            size: arrowIconSize,
                             color: Colors.grey,
                           ),
                         ],
                       ),
                       Padding(
-                        padding: EdgeInsets.only(top: screenHeight * 0.01),
+                        padding: EdgeInsets.only(top: spacingSmall),
                         child: Row(
                           children: [
                             Icon(
                               Icons.medical_services,
-                              size: screenWidth * 0.035,
+                              size: medicalIconSize,
                               color: Colors.green,
                             ),
-                            SizedBox(width: screenWidth * 0.01),
+                            SizedBox(width: spacingTiny),
                             Text(
                               "$doctorsCount doctor${doctorsCount == 1 ? '' : 's'} available",
                               style: TextStyle(
                                 color: Colors.green,
                                 fontWeight: FontWeight.w500,
-                                fontSize: screenWidth * 0.03,
+                                fontSize: countFontSize,
                               ),
                             ),
                             const Spacer(),
                             Container(
                               padding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.02,
-                                vertical: screenHeight * 0.0025,
+                                horizontal: viewDoctorsPaddingH,
+                                vertical: viewDoctorsPaddingV,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.green[50],
                                 borderRadius: BorderRadius.circular(
-                                  screenWidth * 0.03,
+                                  viewDoctorsRadius,
                                 ),
                               ),
                               child: Text(
                                 "View Doctors",
                                 style: TextStyle(
                                   color: Colors.green,
-                                  fontSize: screenWidth * 0.025,
+                                  fontSize: viewDoctorsFontSize,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

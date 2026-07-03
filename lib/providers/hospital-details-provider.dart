@@ -60,31 +60,29 @@ class UserNotifier extends StateNotifier<UserState> {
 
 final hospitalDetailsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, hospitalId) async {
   final response = await ApiService().getAHospitals(hospitalId);
-  print("reeee:${response}");
+ 
   final rawData = response.data;
-  print("$rawData");
-  print("jjjj");
 
   Map<String, dynamic> extractHospital(dynamic data) {
     if (data == null) throw Exception('No data');
     
-    // Case 1: { success: true, data: [{...}] }
+   
     if (data is Map && data.containsKey('data')) {
       final inner = data['data'];
       if (inner is List && inner.isNotEmpty) {
-        // Convert first element to Map<String, dynamic>
+     
         return Map<String, dynamic>.from(inner[0] as Map);
       } else if (inner is Map) {
         return Map<String, dynamic>.from(inner);
       }
     }
     
-    // Case 2: Direct array [{...}]
+
     if (data is List && data.isNotEmpty) {
       return Map<String, dynamic>.from(data[0] as Map);
     }
     
-    // Case 3: Direct object {...}
+  
     if (data is Map) {
       return Map<String, dynamic>.from(data);
     }
@@ -96,11 +94,11 @@ final hospitalDetailsProvider = FutureProvider.family<Map<String, dynamic>, Stri
 });
 
 final hospitalReviewsProvider = FutureProvider.family<List<dynamic>, String>((ref, hospitalId) async {
-  print('🟢 Fetching reviews for hospital ID: $hospitalId');
+
   final apiService = ApiService();
   try {
     final response = await apiService.getReviews();
-    print('✅ Reviews API response: ${response.data}');
+   
     
     final rawData = response.data;
     List<dynamic> reviews = [];
@@ -114,18 +112,18 @@ final hospitalReviewsProvider = FutureProvider.family<List<dynamic>, String>((re
     } else if (rawData is List) {
       reviews = rawData;
     }
-    print('📋 Extracted reviews count: ${reviews.length}');
+   
     return reviews;
   } catch (e, stack) {
-    print('❌ Reviews error: $e');
+  
     return []; // UI crash avoid cheyyan
   }
 });
 
-// Review loading state provider
+
 final reviewLoadingProvider = StateProvider<bool>((ref) => false);
 
-// Review operations provider
+
 final reviewOperationsProvider = Provider((ref) {
   return ReviewOperations(ref);
 });
@@ -157,7 +155,7 @@ class ReviewOperations {
 
       await ApiService().createReview(reviewData);
       
-      // Refresh reviews
+   
       ref.invalidate(hospitalReviewsProvider(hospitalId));
       onSuccess();
     } catch (e) {
@@ -185,7 +183,7 @@ class ReviewOperations {
 
       await ApiService().updateReview(reviewId, reviewData);
       
-      // Refresh reviews
+   
       ref.invalidate(hospitalReviewsProvider(hospitalId));
       onSuccess();
     } catch (e) {
@@ -206,7 +204,7 @@ class ReviewOperations {
     try {
       await ApiService().deleteReview(reviewId);
       
-      // Refresh reviews
+  
       ref.invalidate(hospitalReviewsProvider(hospitalId));
       onSuccess();
     } catch (e) {

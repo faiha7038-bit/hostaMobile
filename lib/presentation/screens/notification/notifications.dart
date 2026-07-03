@@ -1883,14 +1883,7 @@ class _NotificationsState extends State<Notifications> {
                 fontSize: screenWidth * 0.05,
               )),
           centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.volume_up, color: Colors.white),
-              onPressed: () {
-                // // _testNotification();
-              },
-            ),
-          ],
+        
         ),
         body: const Center(
           child: Column(
@@ -1912,14 +1905,7 @@ class _NotificationsState extends State<Notifications> {
         title:
              Text("Notifications", style: TextStyle(color: Colors.white,fontSize: screenWidth * 0.05,fontWeight: FontWeight.bold,)),
         centerTitle: true,
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.volume_up, color: Colors.white),
-        //     onPressed: () {
-        //    ////   _testNotification();
-        //     },
-        //   ),
-        // ],
+      
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

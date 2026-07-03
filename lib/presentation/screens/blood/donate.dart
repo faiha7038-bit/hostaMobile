@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,10 +8,14 @@ import 'package:intl/intl.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class Donate extends ConsumerStatefulWidget {
-  final Map<String, dynamic>? editData; 
+// Helper to clamp responsive values between safe limits
+double _clamp(double value, double min, double max) =>
+    value.clamp(min, max) as double;
 
-  const Donate({super.key, this.editData}); 
+class Donate extends ConsumerStatefulWidget {
+  final Map<String, dynamic>? editData;
+
+  const Donate({super.key, this.editData});
 
   @override
   ConsumerState<Donate> createState() => _DonateState();
@@ -38,9 +41,9 @@ class _DonateState extends ConsumerState<Donate> {
     super.initState();
     _loadUserData();
     if (widget.editData != null) {
-        Future(() {
-    _fillEditData();
-  });
+      Future(() {
+        _fillEditData();
+      });
     }
   }
 
@@ -68,7 +71,6 @@ class _DonateState extends ConsumerState<Donate> {
       _dobController.text = formatted;
     }
 
-    // Hydrate country/state/district after JSON loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _hydrateSelectionsFromSavedData();
     });
@@ -90,7 +92,6 @@ class _DonateState extends ConsumerState<Donate> {
     );
     if (country.isEmpty) return;
 
-    // Update provider with selected country
     ref.read(donorFormProvider.notifier).updateSelectedCountry(country);
     final states = (country['states'] as List)
         .map((s) => {'id': s['state_code'], 'name': s['name'], 'cities': s['cities']})
@@ -111,53 +112,40 @@ class _DonateState extends ConsumerState<Donate> {
     }
   }
 
-Future<void> _loadUserData() async {
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getString('userId');
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
 
-  if (userId == null || userId.isEmpty) return;
+    if (userId == null || userId.isEmpty) return;
 
-  try {
-    final apiService = ApiService();
+    try {
+      final apiService = ApiService();
 
-    final response = await apiService.getAUser(userId);
+      final response = await apiService.getAUser(userId);
 
-    if (response.data != null) {
-      final user = response.data['data'] ?? response.data;
+      if (response.data != null) {
+        final user = response.data['data'] ?? response.data;
 
-      setState(() {
-        _nameController.text = user['name'] ?? '';
-
-        _phoneController.text =
-            user['mobileNumber']?.toString() ??
-            user['phone']?.toString() ??
-            '';
-
-        // backend address undenkil
-        if (user['address'] != null) {
-          final address = user['address'];
-
-          _placeController.text =
-              address['place']?.toString() ?? '';
-
-          _pincodeController.text =
-              address['pincode']?.toString() ?? '';
-
-          _countryController.text =
-              address['country']?.toString() ?? '';
-
-          _stateController.text =
-              address['state']?.toString() ?? '';
-
-          _districtController.text =
-              address['district']?.toString() ?? '';
-        }
-      });
+        setState(() {
+          _nameController.text = user['name'] ?? '';
+          _phoneController.text =
+              user['mobileNumber']?.toString() ??
+              user['phone']?.toString() ??
+              '';
+          if (user['address'] != null) {
+            final address = user['address'];
+            _placeController.text = address['place']?.toString() ?? '';
+            _pincodeController.text = address['pincode']?.toString() ?? '';
+            _countryController.text = address['country']?.toString() ?? '';
+            _stateController.text = address['state']?.toString() ?? '';
+            _districtController.text = address['district']?.toString() ?? '';
+          }
+        });
+      }
+    } catch (e) {
+      // ignore
     }
-  } catch (e) {
-    print("LOAD USER ERROR => $e");
   }
-}
 
   Future<void> _selectDate(BuildContext context) async {
     final dateOfBirth = ref.read(donorFormProvider).dateOfBirth;
@@ -185,6 +173,21 @@ Future<void> _loadUserData() async {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    // Clamped values for modal
+    final double modalWidth = _clamp(screenWidth * 0.9, 300, 600);
+    final double modalHeight = _clamp(screenHeight * 0.6, 400, 700);
+    final double modalPadding = _clamp(screenWidth * 0.04, 12, 24);
+    final double modalRadius = _clamp(screenWidth * 0.03, 8, 20);
+    final double titleFontSize = _clamp(screenWidth * 0.045, 16, 28);
+    final double closeIconSize = _clamp(screenWidth * 0.06, 24, 40);
+    final double searchIconSize = _clamp(screenWidth * 0.06, 20, 32);
+    final double hintFontSize = _clamp(screenWidth * 0.035, 12, 20);
+    final double searchRadius = _clamp(screenWidth * 0.025, 8, 16);
+    final double contentPaddingV = _clamp(screenHeight * 0.0125, 8, 20);
+    final double spacing = _clamp(screenHeight * 0.015, 8, 24);
+    final double emptyFontSize = _clamp(screenWidth * 0.04, 14, 24);
+    final double listTileFontSize = _clamp(screenWidth * 0.04, 14, 24);
+
     await showDialog(
       context: context,
       builder: (context) {
@@ -202,12 +205,12 @@ Future<void> _loadUserData() async {
               child: Material(
                 color: Colors.transparent,
                 child: Container(
-                  width: screenWidth * 0.9,
-                  height: screenHeight * 0.6,
-                  padding: EdgeInsets.all(screenWidth * 0.04),
+                  width: modalWidth,
+                  height: modalHeight,
+                  padding: EdgeInsets.all(modalPadding),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                    borderRadius: BorderRadius.circular(modalRadius),
                   ),
                   child: Column(
                     children: [
@@ -217,39 +220,39 @@ Future<void> _loadUserData() async {
                           Text(
                             title,
                             style: TextStyle(
-                              fontSize: screenWidth * 0.045,
+                              fontSize: titleFontSize,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           IconButton(
-                            icon: Icon(Icons.close, size: screenWidth * 0.06),
+                            icon: Icon(Icons.close, size: closeIconSize),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ],
                       ),
                       TextField(
                         decoration: InputDecoration(
-                          prefixIcon: Icon(Icons.search, size: screenWidth * 0.06),
+                          prefixIcon: Icon(Icons.search, size: searchIconSize),
                           hintText: "Search...",
-                          hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                          hintStyle: TextStyle(fontSize: hintFontSize),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                            borderRadius: BorderRadius.circular(searchRadius),
                           ),
                           contentPadding: EdgeInsets.symmetric(
-                            vertical: screenHeight * 0.0125,
+                            vertical: contentPaddingV,
                           ),
                         ),
                         onChanged: (val) {
                           setModalState(() => searchQuery = val);
                         },
                       ),
-                      SizedBox(height: screenHeight * 0.015),
+                      SizedBox(height: spacing),
                       Expanded(
                         child: filtered.isEmpty
                             ? Center(
                                 child: Text(
                                   "No results found",
-                                  style: TextStyle(fontSize: screenWidth * 0.04),
+                                  style: TextStyle(fontSize: emptyFontSize),
                                 ),
                               )
                             : ListView.builder(
@@ -259,7 +262,7 @@ Future<void> _loadUserData() async {
                                   return ListTile(
                                     title: Text(
                                       item['name'].toString(),
-                                      style: TextStyle(fontSize: screenWidth * 0.04),
+                                      style: TextStyle(fontSize: listTileFontSize),
                                     ),
                                     onTap: () {
                                       onSelected(item);
@@ -298,183 +301,155 @@ Future<void> _loadUserData() async {
     _districtController.text = district['name'].toString();
   }
 
+  Future<void> _submit() async {
+    final formState = ref.read(donorFormProvider);
 
-Future<void> _submit() async {
-  final formState = ref.read(donorFormProvider);
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final place = _placeController.text.trim();
+    final pincode = _pincodeController.text.trim();
 
-  final name = _nameController.text.trim();
-  final phone = _phoneController.text.trim();
-  final place = _placeController.text.trim();
-  final pincode = _pincodeController.text.trim();
+    final isEdit = widget.editData != null;
 
-  final isEdit = widget.editData != null;
-
-  // ----------------------------
-  // ✅ BASIC VALIDATION (always)
-  // ----------------------------
-  if (name.isEmpty || phone.isEmpty || place.isEmpty || pincode.isEmpty) {
-    showTopSnackBar(context, "Please fill all required fields", isError: true);
-    return;
-  }
-
-  // Phone validation (optional safety)
-  if (phone.length != 10) {
-    showTopSnackBar(context, "Enter valid 10 digit phone number", isError: true);
-    return;
-  }
-
-  // ----------------------------
-  // ✅ CREATE MODE VALIDATION ONLY
-  // ----------------------------
-  if (!isEdit) {
-    if (formState.dateOfBirth == null ||
-        formState.bloodGroup == null ||
-        formState.selectedCountry == null ) {
+    // ----------------------------
+    // ✅ BASIC VALIDATION (always)
+    // ----------------------------
+    if (name.isEmpty || phone.isEmpty || place.isEmpty || pincode.isEmpty) {
       showTopSnackBar(context, "Please fill all required fields", isError: true);
       return;
     }
- if (formState.states.isNotEmpty &&
-      formState.selectedState == null) {
-    showTopSnackBar(context, "Please select state", isError: true);
-    return;
-  }
-    if (formState.districts.isNotEmpty &&
-        formState.selectedDistrict == null) {
-      showTopSnackBar(context, "Please select district", isError: true);
+
+    // Phone validation (optional safety)
+    if (phone.length != 10) {
+      showTopSnackBar(context, "Enter valid 10 digit phone number", isError: true);
       return;
     }
-  }
-
-  // ----------------------------
-  // ✅ USER CHECK
-  // ----------------------------
-  final userId = await ref.read(userIdProvider.future);
-  if (userId == null) {
-    showTopSnackBar(context, "User not logged in", isError: true);
-    return;
-  }
-
-  // ----------------------------
-  // ✅ DISTRICT HANDLING (IMPORTANT FIX)
-  // ----------------------------
-  final districtValue = formState.districts.isEmpty
-      ? null
-      : (formState.selectedDistrict?['name'] ??
-          (_districtController.text.trim().isNotEmpty
-              ? _districtController.text.trim()
-              : null));
-
-  // ----------------------------
-  // ✅ PAYLOAD
-  // ----------------------------
-  final parsedPin = int.tryParse(pincode);
-if (parsedPin == null) {
-  showTopSnackBar(context, "Invalid pincode", isError: true);
-  return;
-}
-
-final country = _countryController.text.trim();
-final state = _stateController.text.trim();
-final district = _districtController.text.trim();
-
-if (country.isEmpty) {
-  showTopSnackBar(context, "Country is required", isError: true);
-  return;
-}
-
-final address = {
-  "place": place,
-  "country": country,
-  "pincode": parsedPin,
-};
-
-if (state.isNotEmpty) {
-  address["state"] = state;
-}
-
-if (district.isNotEmpty) {
-  address["district"] = district;
-}
-
-final payload = {
-  "name": name,
-  "phone": phone,
-  "dateOfBirth": formState.dateOfBirth,
-  "bloodGroup": formState.bloodGroup,
-  "address": address,
-  "userId": userId,
-};
- 
-
-  log("📦 Payload: $payload");
-
-  // ----------------------------
-  // ✅ LOADING START
-  // ----------------------------
-  ref.read(donorFormProvider.notifier).setLoading(true);
-
-  try {
-    bool success;
 
     // ----------------------------
-    // CREATE
+    // ✅ CREATE MODE VALIDATION ONLY
     // ----------------------------
     if (!isEdit) {
-      success =
-          await ref.read(donorCreationProvider(payload).future);
-    }
-
-    // ----------------------------
-    // UPDATE
-    // ----------------------------
-    else {
-      final donorId = widget.editData!['id']?.toString();
-
-      if (donorId == null) {
-        showTopSnackBar(context, "Donor ID missing", isError: true);
+      if (formState.dateOfBirth == null ||
+          formState.bloodGroup == null ||
+          formState.selectedCountry == null ) {
+        showTopSnackBar(context, "Please fill all required fields", isError: true);
         return;
       }
-
-      success = await ref
-          .read(bloodProvider.notifier)
-          .updateDonor(donorId, payload);
+      if (formState.states.isNotEmpty &&
+          formState.selectedState == null) {
+        showTopSnackBar(context, "Please select state", isError: true);
+        return;
+      }
+      if (formState.districts.isNotEmpty &&
+          formState.selectedDistrict == null) {
+        showTopSnackBar(context, "Please select district", isError: true);
+        return;
+      }
     }
 
     // ----------------------------
-    // SUCCESS
+    // ✅ USER CHECK
     // ----------------------------
-    if (success) {
+    final userId = await ref.read(userIdProvider.future);
+    if (userId == null) {
+      showTopSnackBar(context, "User not logged in", isError: true);
+      return;
+    }
+
+    // ----------------------------
+    // ✅ DISTRICT HANDLING (IMPORTANT FIX)
+    // ----------------------------
+    final districtValue = formState.districts.isEmpty
+        ? null
+        : (formState.selectedDistrict?['name'] ??
+            (_districtController.text.trim().isNotEmpty
+                ? _districtController.text.trim()
+                : null));
+
+    // ----------------------------
+    // ✅ PAYLOAD
+    // ----------------------------
+    final parsedPin = int.tryParse(pincode);
+    if (parsedPin == null) {
+      showTopSnackBar(context, "Invalid pincode", isError: true);
+      return;
+    }
+
+    final country = _countryController.text.trim();
+    final state = _stateController.text.trim();
+    final district = _districtController.text.trim();
+
+    if (country.isEmpty) {
+      showTopSnackBar(context, "Country is required", isError: true);
+      return;
+    }
+
+    final address = {
+      "place": place,
+      "country": country,
+      "pincode": parsedPin,
+    };
+
+    if (state.isNotEmpty) {
+      address["state"] = state;
+    }
+
+    if (district.isNotEmpty) {
+      address["district"] = district;
+    }
+
+    final payload = {
+      "name": name,
+      "phone": phone,
+      "dateOfBirth": formState.dateOfBirth,
+      "bloodGroup": formState.bloodGroup,
+      "address": address,
+      "userId": userId,
+    };
+
+    ref.read(donorFormProvider.notifier).setLoading(true);
+
+    try {
+      bool success;
+
+      if (!isEdit) {
+        success =
+            await ref.read(donorCreationProvider(payload).future);
+      } else {
+        final donorId = widget.editData!['id']?.toString();
+        if (donorId == null) {
+          showTopSnackBar(context, "Donor ID missing", isError: true);
+          return;
+        }
+        success = await ref
+            .read(bloodProvider.notifier)
+            .updateDonor(donorId, payload);
+      }
+
+      if (success) {
         final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('donorId', "true"); // or actual id
-      showTopSnackBar(
-        context,
-        isEdit
-            ? "Donor Updated Successfully"
-            : "Donor Registered Successfully",
-      );
-
-      final uid = userId.toString();
-      await ref.read(bloodProvider.notifier).fetchDonor(uid);
-
-      Navigator.pop(context, true);
+        await prefs.setString('donorId', "true");
+        showTopSnackBar(
+          context,
+          isEdit
+              ? "Donor Updated Successfully"
+              : "Donor Registered Successfully",
+        );
+        final uid = userId.toString();
+        await ref.read(bloodProvider.notifier).fetchDonor(uid);
+        Navigator.pop(context, true);
+      } else {
+        // showTopSnackBar(context, "Something went wrong", isError: true);
+      }
+    } catch (e) {
+      // showTopSnackBar(context, e.toString(), isError: true);
+    } finally {
+      ref.read(donorFormProvider.notifier).setLoading(false);
     }
-
-    // ----------------------------
-    // FAIL
-    // ----------------------------
-    else {
-     // showTopSnackBar(context, "Something went wrong", isError: true);
-    }
-  } catch (e) {
-   // showTopSnackBar(context, e.toString(), isError: true);
-  } finally {
-    ref.read(donorFormProvider.notifier).setLoading(false);
   }
-}
 
   @override
   Widget build(BuildContext context) {
-    // same as your existing build method (unchanged)
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final locationAsync = ref.watch(locationDataProvider);
@@ -485,6 +460,28 @@ final payload = {
     final states = formState.states;
     final districts = formState.districts;
 
+    // Responsive clamped values
+    final double appBarTitleSize = _clamp(screenWidth * 0.05, 16, 24);
+    final double leadingIconSize = _clamp(screenWidth * 0.055, 20, 32);
+    final double pagePadding = _clamp(screenWidth * 0.04, 12, 24);
+    final double fieldRadius = _clamp(screenWidth * 0.025, 8, 16);
+    final double labelFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double fieldIconSize = _clamp(screenWidth * 0.055, 20, 32);
+    final double fieldContentPadH = _clamp(screenWidth * 0.03, 8, 16);
+    final double fieldContentPadV = _clamp(screenHeight * 0.015, 8, 16);
+    final double spacingSmall = _clamp(screenHeight * 0.015, 8, 16);
+    final double spacingMedium = _clamp(screenHeight * 0.02, 12, 20);
+    final double spacingLarge = _clamp(screenHeight * 0.03, 16, 32);
+    final double dropdownItemFontSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double buttonPaddingH = _clamp(screenWidth * 0.08, 24, 64);
+    final double buttonPaddingV = _clamp(screenHeight * 0.015, 8, 20);
+    final double buttonFontSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double loaderSize = _clamp(screenWidth * 0.05, 20, 32);
+    final double loaderStrokeWidth = _clamp(screenWidth * 0.005, 2, 4);
+    final double maxContentWidth = screenWidth > 600
+        ? _clamp(screenWidth * 0.6, 400, 600)
+        : double.infinity;
+
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
@@ -493,13 +490,17 @@ final payload = {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontSize: screenWidth * 0.05,
+            fontSize: appBarTitleSize,
           ),
         ),
         centerTitle: true,
         backgroundColor: Colors.red,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: screenWidth * 0.055),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: leadingIconSize,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -508,9 +509,9 @@ final payload = {
         child: Center(
           child: SingleChildScrollView(
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: screenWidth > 600 ? 400 : double.infinity),
+              constraints: BoxConstraints(maxWidth: maxContentWidth),
               child: Padding(
-                padding: EdgeInsets.all(screenWidth * 0.04),
+                padding: EdgeInsets.all(pagePadding),
                 child: Column(
                   children: [
                     // Name field
@@ -518,20 +519,20 @@ final payload = {
                       controller: _nameController,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(fieldRadius),
                         ),
                         labelText: "Full Name",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        prefixIcon: Icon(Icons.person, size: screenWidth * 0.055),
+                        labelStyle: TextStyle(fontSize: labelFontSize),
+                        prefixIcon: Icon(Icons.person, size: fieldIconSize),
                         contentPadding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03,
-                          vertical: screenHeight * 0.015,
+                          horizontal: fieldContentPadH,
+                          vertical: fieldContentPadV,
                         ),
                       ),
                       validator: (value) =>
                           value == null || value.trim().isEmpty ? "Name is required" : null,
                     ),
-                    SizedBox(height: screenHeight * 0.015),
+                    SizedBox(height: spacingSmall),
 
                     // Phone field
                     TextFormField(
@@ -548,18 +549,18 @@ final payload = {
                       },
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(fieldRadius),
                         ),
                         labelText: "Phone",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        prefixIcon: Icon(Icons.phone, size: screenWidth * 0.055),
+                        labelStyle: TextStyle(fontSize: labelFontSize),
+                        prefixIcon: Icon(Icons.phone, size: fieldIconSize),
                         contentPadding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03,
-                          vertical: screenHeight * 0.015,
+                          horizontal: fieldContentPadH,
+                          vertical: fieldContentPadV,
                         ),
                       ),
                     ),
-                    SizedBox(height: screenHeight * 0.015),
+                    SizedBox(height: spacingSmall),
 
                     // DOB
                     GestureDetector(
@@ -569,22 +570,22 @@ final payload = {
                           controller: _dobController,
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                              borderRadius: BorderRadius.circular(fieldRadius),
                             ),
                             labelText: "Date of Birth",
-                            labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                            prefixIcon: Icon(Icons.calendar_today, size: screenWidth * 0.055),
+                            labelStyle: TextStyle(fontSize: labelFontSize),
+                            prefixIcon: Icon(Icons.calendar_today, size: fieldIconSize),
                             hintText: "Select DOB",
-                            hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                            hintStyle: TextStyle(fontSize: labelFontSize),
                             contentPadding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.03,
-                              vertical: screenHeight * 0.015,
+                              horizontal: fieldContentPadH,
+                              vertical: fieldContentPadV,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(height: screenHeight * 0.015),
+                    SizedBox(height: spacingSmall),
 
                     // Blood Group
                     DropdownButtonFormField<String>(
@@ -593,7 +594,10 @@ final payload = {
                           .map(
                             (bg) => DropdownMenuItem<String>(
                               value: bg,
-                              child: Text(bg, style: TextStyle(fontSize: screenWidth * 0.04)),
+                              child: Text(
+                                bg,
+                                style: TextStyle(fontSize: dropdownItemFontSize),
+                              ),
                             ),
                           )
                           .toList(),
@@ -604,107 +608,107 @@ final payload = {
                       },
                       decoration: InputDecoration(
                         labelText: "Blood Group",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        prefixIcon: Icon(Icons.bloodtype, size: screenWidth * 0.055),
+                        labelStyle: TextStyle(fontSize: labelFontSize),
+                        prefixIcon: Icon(Icons.bloodtype, size: fieldIconSize),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(fieldRadius),
                         ),
                         contentPadding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03,
-                          vertical: screenHeight * 0.015,
+                          horizontal: fieldContentPadH,
+                          vertical: fieldContentPadV,
                         ),
                       ),
                     ),
-                     SizedBox(height: screenHeight * 0.02),
+                    SizedBox(height: spacingMedium),
 
-               // Country (searchable)
-                GestureDetector(
-                  onTap: () => _openSearchModal(
-                      title: "Select Country", data: countries, onSelected: _onCountrySelected),
-                  child: AbsorbPointer(
-                    child: TextField(
-                      controller: _countryController,
-                      decoration: InputDecoration(
-                        labelText: "Country",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        prefixIcon: Icon(Icons.public, size: screenWidth * 0.055),
-                        hintText: "Select Country",
-                        hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                        contentPadding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: screenHeight * 0.012),
-          
-                // State (only visible after country selection)
-                if (states.isNotEmpty)
-                  GestureDetector(
-                    onTap: () => _openSearchModal(
-                        title: "Select State", data: states, onSelected: _onStateSelected),
-                    child: AbsorbPointer(
-                      child: TextField(
-                        controller: _stateController,
-                        decoration: InputDecoration(
-                          labelText: "State",
-                          labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                          prefixIcon: Icon(Icons.map, size: screenWidth * 0.055),
-                          hintText: "Select State",
-                          hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
+                    // Country (searchable)
+                    GestureDetector(
+                      onTap: () => _openSearchModal(
+                          title: "Select Country", data: countries, onSelected: _onCountrySelected),
+                      child: AbsorbPointer(
+                        child: TextField(
+                          controller: _countryController,
+                          decoration: InputDecoration(
+                            labelText: "Country",
+                            labelStyle: TextStyle(fontSize: labelFontSize),
+                            prefixIcon: Icon(Icons.public, size: fieldIconSize),
+                            hintText: "Select Country",
+                            hintStyle: TextStyle(fontSize: labelFontSize),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(fieldRadius)),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: fieldContentPadH, vertical: fieldContentPadV),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                if (states.isNotEmpty) SizedBox(height: screenHeight * 0.012),
-          
-                // District (only visible after state selection)
-                if (districts.isNotEmpty)
-                  GestureDetector(
-                    onTap: () => _openSearchModal(
-                        title: "Select District", data: districts, onSelected: _onDistrictSelected),
-                    child: AbsorbPointer(
-                      child: TextField(
-                        controller: _districtController,
-                        decoration: InputDecoration(
-                          labelText: "District",
-                          labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                          prefixIcon: Icon(Icons.location_city, size: screenWidth * 0.055),
-                          hintText: "Select District",
-                          hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(screenWidth * 0.025)),
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.03, vertical: screenHeight * 0.015),
+                    SizedBox(height: spacingSmall),
+
+                    // State (only visible after country selection)
+                    if (states.isNotEmpty)
+                      GestureDetector(
+                        onTap: () => _openSearchModal(
+                            title: "Select State", data: states, onSelected: _onStateSelected),
+                        child: AbsorbPointer(
+                          child: TextField(
+                            controller: _stateController,
+                            decoration: InputDecoration(
+                              labelText: "State",
+                              labelStyle: TextStyle(fontSize: labelFontSize),
+                              prefixIcon: Icon(Icons.map, size: fieldIconSize),
+                              hintText: "Select State",
+                              hintStyle: TextStyle(fontSize: labelFontSize),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(fieldRadius)),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: fieldContentPadH, vertical: fieldContentPadV),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                if (districts.isNotEmpty) SizedBox(height: screenHeight * 0.012),
+                    if (states.isNotEmpty) SizedBox(height: spacingSmall),
+
+                    // District (only visible after state selection)
+                    if (districts.isNotEmpty)
+                      GestureDetector(
+                        onTap: () => _openSearchModal(
+                            title: "Select District", data: districts, onSelected: _onDistrictSelected),
+                        child: AbsorbPointer(
+                          child: TextField(
+                            controller: _districtController,
+                            decoration: InputDecoration(
+                              labelText: "District",
+                              labelStyle: TextStyle(fontSize: labelFontSize),
+                              prefixIcon: Icon(Icons.location_city, size: fieldIconSize),
+                              hintText: "Select District",
+                              hintStyle: TextStyle(fontSize: labelFontSize),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(fieldRadius)),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: fieldContentPadH, vertical: fieldContentPadV),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (districts.isNotEmpty) SizedBox(height: spacingSmall),
 
                     // Place
                     TextField(
                       controller: _placeController,
                       decoration: InputDecoration(
                         labelText: "Place (local)",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        prefixIcon: Icon(Icons.location_on, size: screenWidth * 0.055),
+                        labelStyle: TextStyle(fontSize: labelFontSize),
+                        prefixIcon: Icon(Icons.location_on, size: fieldIconSize),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(fieldRadius),
                         ),
                         contentPadding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03,
-                          vertical: screenHeight * 0.015,
+                          horizontal: fieldContentPadH,
+                          vertical: fieldContentPadV,
                         ),
                       ),
                     ),
-                    SizedBox(height: screenHeight * 0.015),
+                    SizedBox(height: spacingSmall),
 
                     // Pincode
                     TextField(
@@ -713,18 +717,18 @@ final payload = {
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
                         labelText: "Pincode",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                        prefixIcon: Icon(Icons.pin_drop, size: screenWidth * 0.055),
+                        labelStyle: TextStyle(fontSize: labelFontSize),
+                        prefixIcon: Icon(Icons.pin_drop, size: fieldIconSize),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(fieldRadius),
                         ),
                         contentPadding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03,
-                          vertical: screenHeight * 0.015,
+                          horizontal: fieldContentPadH,
+                          vertical: fieldContentPadV,
                         ),
                       ),
                     ),
-                    SizedBox(height: screenHeight * 0.03),
+                    SizedBox(height: spacingLarge),
 
                     // Submit button
                     ElevatedButton(
@@ -732,25 +736,28 @@ final payload = {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red,
                         padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.08,
-                          vertical: screenHeight * 0.015,
+                          horizontal: buttonPaddingH,
+                          vertical: buttonPaddingV,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(fieldRadius),
                         ),
                       ),
                       child: isLoading
                           ? SizedBox(
-                              height: screenWidth * 0.05,
-                              width: screenWidth * 0.05,
+                              height: loaderSize,
+                              width: loaderSize,
                               child: CircularProgressIndicator(
                                 color: Colors.white,
-                                strokeWidth: screenWidth * 0.005,
+                                strokeWidth: loaderStrokeWidth,
                               ),
                             )
                           : Text(
                               widget.editData == null ? "Create Donor" : "Update Donor",
-                              style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.04),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: buttonFontSize,
+                              ),
                             ),
                     ),
                   ],

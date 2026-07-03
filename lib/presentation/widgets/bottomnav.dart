@@ -746,10 +746,10 @@ class BottomNavState extends ConsumerState<Bottomnav> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     // ─── Responsive dimensions ──────────────────────────────────────────────
-    final double iconSize = screenWidth * 0.06;          // ~21.6–24.8 on typical phones
-    final double badgeSize = iconSize * 0.75;            // ~16–18.6
-    final double badgeTextSize = badgeSize * 0.55;       // ~8.8–10.2
-    final double callIconSize = iconSize * 1.2;          // slightly larger for call button
+    final double iconSize = screenWidth * 0.06;         
+    final double badgeSize = iconSize * 0.75;            
+    final double badgeTextSize = badgeSize * 0.55;       
+    final double callIconSize = iconSize * 1.2;          
 
     return Scaffold(
       key: _scaffoldKey,
@@ -817,7 +817,7 @@ class BottomNavState extends ConsumerState<Bottomnav> {
             BottomNavigationBarItem(
               icon: Icon(
                 Icons.add_call,
-                color: Colors.red,
+                color: Colors.red.shade700,
                 size: callIconSize,
               ),
               label: "",

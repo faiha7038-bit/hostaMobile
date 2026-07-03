@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -10,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
-// User data provider
+
 final userDataProvider = StateNotifierProvider<UserDataNotifier, UserDataState>((ref) {
   return UserDataNotifier();
 });
@@ -102,14 +101,14 @@ Future<File> _compressImage(File file) async {
 
     final compressedFile = File(compressed.path);
 
-    // Compress ചെയ്തിട്ട് size കൂടിയാൽ original തന്നെ ഉപയോഗിക്കുക
+    
     if (await compressedFile.length() >= originalSize) {
       return file;
     }
 
     return compressedFile;
   } catch (e) {
-    print("❌ Compression Error: $e");
+   
     return file;
   }
 }
@@ -124,7 +123,7 @@ Future<void> deleteProfileImage() async {
     final key =
         imageUrl.toString().split('.amazonaws.com/').last;
 
-    print("DELETE KEY => $key");
+  
 
     await ApiService().deleteProfileImage(
       key,
@@ -143,9 +142,9 @@ state = state.copyWith(
 );
     await loadProfile();
 
-    print("DELETE SUCCESS");
+  
   } catch (e) {
-    print("❌ delete error: $e");
+   
   }
 }
   final ApiService _apiService = ApiService();
@@ -160,16 +159,16 @@ state = state.copyWith(
 
       state = state.copyWith(userId: storedUserId);
 
-      print("📱 Loaded user ID for profile: $storedUserId");
+     
 
       if (storedUserId != null && storedUserId.isNotEmpty) {
         await loadProfile();
       } else {
         state = state.copyWith(isLoading: false);
-        print("❌ No user ID found for profile");
+       
       }
     } catch (e) {
-      print("❌ Error loading user ID: $e");
+     
       state = state.copyWith(isLoading: false);
     }
   }
@@ -195,11 +194,11 @@ Future<void> loadProfile({int retryCount = 0}) async {
   } catch (e) {
     // Retry on 503 (server temporary error)
     if (e is DioException && e.response?.statusCode == 503 && retryCount < 3) {
-      print("⚠️ Server busy (503), retrying in 2 seconds...");
+    
       await Future.delayed(Duration(seconds: 2));
       return loadProfile(retryCount: retryCount + 1);
     }
-    print("❌ loadProfile error: $e");
+   
     state = state.copyWith(isLoading: false);
     // Optionally show a user message
   }
@@ -268,7 +267,7 @@ imageUrl = res["imageUrl"];
     await loadProfile();
   } catch (e) {
     state = state.copyWith(isSaving: false);
-    print("❌ saveProfile error: $e");
+   
   }
 }
 
@@ -303,7 +302,7 @@ Future<void> pickImage() async {
     final compressedFile = await _compressImage(File(croppedFile.path));
     state = state.copyWith(imageFile: compressedFile);
   } catch (e) {
-    print("❌ Error picking/cropping image: $e");
+
   }
 }
 
@@ -338,7 +337,7 @@ Future<void> pickImage() async {
         SnackBar(content: Text(errorMessage)),
       );
     } catch (e) {
-      print("❌ Error deleting donor: $e");
+  
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error deleting donor: $e")),
       );

@@ -1,5 +1,3 @@
-import 'package:hosta/services/api_service.dart';
-
 class Document {
   final String? id;
   final String? patientId;
@@ -7,7 +5,7 @@ class Document {
   final String date;
 
   final String? fileKey;
-  final String? imageUrl;      // full S3 URL
+  final String? imageUrl; 
   final String? fileName;
   final String? fileType;
   final String? fileSize;
@@ -29,10 +27,10 @@ class Document {
   });
 
   factory Document.fromJson(Map<String, dynamic> json) {
-    // Try to get full URL directly from 'imageUrl'
+
     String? image = json['imageUrl']?.toString();
 
-    // Fallback: if missing or empty, construct from 'fileUrl' or 'fileKey'
+   
     if (image == null || image.isEmpty) {
       final raw = json['fileUrl'] ?? json['fileKey'];
       if (raw != null) {

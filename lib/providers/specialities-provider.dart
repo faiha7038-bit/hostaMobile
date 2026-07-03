@@ -1,11 +1,9 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import '../../../services/api_service.dart';
 
-// API Service provider
+
 final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService();
 });
@@ -16,19 +14,19 @@ final specialtiesProvider = FutureProvider.family<List<dynamic>, String>((ref, s
    
   final refresh = ref.watch(specialityRefreshProvider); // 👈 IMPORTANT
 
-  print("♻️ REFRESH TRIGGER: $refresh");
+ 
    
   final apiService = ref.read(apiServiceProvider);
   final start = DateTime.now();
   final response = await apiService.getAllSpecility(searchQuery: searchQuery);
-log("⏱️ Specialities API: ${DateTime.now().difference(start).inMilliseconds} ms");
+
 
   if (response.statusCode == 200 && response.data != null) {
-    // Handle the response structure: { success, data: [...], count, error }
+   
     if (response.data is Map && response.data['data'] is List) {
       return List<dynamic>.from(response.data['data']);
     }
-    // Fallback for other possible structures (like direct list)
+   
     if (response.data is List) {
       return response.data;
     }
@@ -36,7 +34,7 @@ log("⏱️ Specialities API: ${DateTime.now().difference(start).inMilliseconds}
   return [];
 });
 
-// Keep searchQueryProvider to hold the current input text
+
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
 
@@ -66,7 +64,7 @@ class HospitalOperations {
 
       if (response.statusCode != 200 || response.data == null) {
         ref.read(hospitalsForSpecialtyProvider.notifier).state = [];
-        print("❌ Failed to load doctors: ${response.statusCode}");
+  
         return;
       }
 
@@ -93,7 +91,7 @@ class HospitalOperations {
 
       if (hospitalDoctorsMap.isEmpty) {
         ref.read(hospitalsForSpecialtyProvider.notifier).state = [];
-        print("⚠️ No hospitals found for $specialtyName");
+       
         return;
       }
 
@@ -123,7 +121,7 @@ class HospitalOperations {
               hospitalDetails = {'_id': hospitalId.toString(), 'name': 'Hospital $hospitalId'};
             }
           } catch (e) {
-            print("⚠️ Failed to fetch hospital $hospitalId: $e");
+          
             hospitalDetails = {'_id': hospitalId.toString(), 'name': 'Hospital $hospitalId'};
           }
         }
@@ -135,9 +133,9 @@ class HospitalOperations {
       }
 
       ref.read(hospitalsForSpecialtyProvider.notifier).state = hospitalList;
-      print("✅ Loaded ${hospitalList.length} hospitals for $specialtyName");
+  
     } catch (e) {
-      print("❌ Error in fetchHospitalsForSpecialty: $e");
+     
       ref.read(hospitalsForSpecialtyProvider.notifier).state = [];
     } finally {
       ref.read(hospitalsLoadingProvider.notifier).state = false;

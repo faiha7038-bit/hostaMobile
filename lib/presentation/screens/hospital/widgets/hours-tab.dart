@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+// Helper to clamp responsive values between safe limits
+double _clamp(double value, double min, double max) =>
+    value.clamp(min, max) as double;
+
 class HoursTab extends StatelessWidget {
   final Map<String, dynamic> hospital;
   final String Function(String) formatTime;
@@ -14,50 +18,79 @@ class HoursTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    
+
+    // Responsive clamped values used throughout
+    final double padding = _clamp(screenWidth * 0.04, 12, 24);
+    final double cardMarginBottom = _clamp(screenHeight * 0.0125, 8, 20);
+    final double cardRadius = _clamp(screenWidth * 0.03, 8, 20);
+    final double titleFontSize = _clamp(screenWidth * 0.0375, 14, 22);
+    final double subtitleFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double detailsFontSize = _clamp(screenWidth * 0.0325, 11, 17);
+    final double elevation = _clamp(screenWidth * 0.005, 2, 6);
+    final double emptyFontSize = _clamp(screenWidth * 0.04, 14, 22);
+
     // 👇 Check all possible working hours formats
     final workingHoursClinic = hospital["working_hours_clinic"] as List?;
     final workingHoursGeneral = hospital["working_hours_general"] as List?;
     final workingHoursClinicNoBreak = hospital["working_hours_clinic_nobreak"] as List?;
 
-    if (workingHoursClinic != null &&
-    workingHoursClinic.isNotEmpty) {
-
-  return _buildHoursTabClinicFormat(
-      workingHoursClinic,
-      screenWidth,
-      screenHeight);
-
-} else if (workingHoursClinicNoBreak != null &&
-           workingHoursClinicNoBreak.isNotEmpty) {
-
-  return _buildHoursTabClinicNoBreakFormat(
-      workingHoursClinicNoBreak,
-      screenWidth,
-      screenHeight);
-
-} else if (workingHoursGeneral != null &&
-           workingHoursGeneral.isNotEmpty) {
-
-  return _buildHoursTabGeneralFormat(
-      workingHoursGeneral,
-      screenWidth,
-      screenHeight);
-
-} else {
+    if (workingHoursClinic != null && workingHoursClinic.isNotEmpty) {
+      return _buildHoursTabClinicFormat(
+        workingHoursClinic,
+        padding,
+        cardMarginBottom,
+        cardRadius,
+        titleFontSize,
+        subtitleFontSize,
+        detailsFontSize,
+        elevation,
+      );
+    } else if (workingHoursClinicNoBreak != null &&
+        workingHoursClinicNoBreak.isNotEmpty) {
+      return _buildHoursTabClinicNoBreakFormat(
+        workingHoursClinicNoBreak,
+        padding,
+        cardMarginBottom,
+        cardRadius,
+        titleFontSize,
+        subtitleFontSize,
+        detailsFontSize,
+        elevation,
+      );
+    } else if (workingHoursGeneral != null && workingHoursGeneral.isNotEmpty) {
+      return _buildHoursTabGeneralFormat(
+        workingHoursGeneral,
+        padding,
+        cardMarginBottom,
+        cardRadius,
+        titleFontSize,
+        subtitleFontSize,
+        detailsFontSize,
+        elevation,
+      );
+    } else {
       return Center(
         child: Text(
           "No working hours available",
-          style: TextStyle(fontSize: screenWidth * 0.04),
+          style: TextStyle(fontSize: emptyFontSize),
         ),
       );
     }
   }
 
   // ✅ Clinic format with morning/evening sessions (has_break possible)
-  Widget _buildHoursTabClinicFormat(List<dynamic> hoursList, double screenWidth, double screenHeight) {
+  Widget _buildHoursTabClinicFormat(
+    List<dynamic> hoursList,
+    double padding,
+    double cardMarginBottom,
+    double cardRadius,
+    double titleFontSize,
+    double subtitleFontSize,
+    double detailsFontSize,
+    double elevation,
+  ) {
     return ListView.builder(
-      padding: EdgeInsets.all(screenWidth * 0.04),
+      padding: EdgeInsets.all(padding),
       itemCount: hoursList.length,
       itemBuilder: (context, index) {
         final item = hoursList[index];
@@ -66,46 +99,52 @@ class HoursTab extends StatelessWidget {
         final eveningSession = item["evening_session"];
 
         return Card(
-          elevation: screenWidth * 0.005,
-          margin: EdgeInsets.only(bottom: screenHeight * 0.0125),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.03)),
+          elevation: elevation,
+          margin: EdgeInsets.only(bottom: cardMarginBottom),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(cardRadius),
+          ),
           child: ListTile(
             title: Text(
               item["day"] ?? "Unknown",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: screenWidth * 0.0375,
+                fontSize: titleFontSize,
                 color: isHoliday ? Colors.red : Colors.black,
               ),
             ),
             subtitle: isHoliday
                 ? Text(
                     "Holiday",
-                    style: TextStyle(color: Colors.red, fontSize: screenWidth * 0.035),
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: subtitleFontSize,
+                    ),
                   )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 👇 Safe null check for morning session
                       if (morningSession != null &&
                           morningSession["open"] != null &&
                           morningSession["open"].toString().isNotEmpty)
                         Text(
                           "🌅 Morning: ${formatTime(morningSession["open"])} - ${formatTime(morningSession["close"])}",
-                          style: TextStyle(fontSize: screenWidth * 0.0325),
+                          style: TextStyle(fontSize: detailsFontSize),
                         ),
-                      // 👇 Safe null check for evening session
                       if (eveningSession != null &&
                           eveningSession["open"] != null &&
                           eveningSession["open"].toString().isNotEmpty)
                         Text(
                           "🌇 Evening: ${formatTime(eveningSession["open"])} - ${formatTime(eveningSession["close"])}",
-                          style: TextStyle(fontSize: screenWidth * 0.0325),
+                          style: TextStyle(fontSize: detailsFontSize),
                         ),
                       if (item["has_break"] == true)
                         Text(
                           "⏸️ Has break time",
-                          style: TextStyle(color: Colors.orange, fontSize: screenWidth * 0.0325),
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontSize: detailsFontSize,
+                          ),
                         ),
                     ],
                   ),
@@ -116,22 +155,32 @@ class HoursTab extends StatelessWidget {
   }
 
   // ✅ General format (single slot per day)
-  Widget _buildHoursTabGeneralFormat(List<dynamic> hoursList, double screenWidth, double screenHeight) {
+  Widget _buildHoursTabGeneralFormat(
+    List<dynamic> hoursList,
+    double padding,
+    double cardMarginBottom,
+    double cardRadius,
+    double titleFontSize,
+    double subtitleFontSize,
+    double detailsFontSize,
+    double elevation,
+  ) {
     return ListView.builder(
-      padding: EdgeInsets.all(screenWidth * 0.04),
+      padding: EdgeInsets.all(padding),
       itemCount: hoursList.length,
       itemBuilder: (context, index) {
         final item = hoursList[index];
         final isHoliday = item["is_holiday"] == true;
-        
-        // 👇 Some entries have "hours" string (e.g., "09:00-17:00") instead of opening_time/closing_time
+
         String displayText = "";
         if (item["opening_time"] != null && item["closing_time"] != null) {
-          displayText = "🕒 ${formatTime(item["opening_time"])} - ${formatTime(item["closing_time"])}";
+          displayText =
+              "🕒 ${formatTime(item["opening_time"])} - ${formatTime(item["closing_time"])}";
         } else if (item["hours"] != null && item["hours"].toString().contains("-")) {
           final parts = item["hours"].split("-");
           if (parts.length == 2) {
-            displayText = "🕒 ${formatTime(parts[0].trim())} - ${formatTime(parts[1].trim())}";
+            displayText =
+                "🕒 ${formatTime(parts[0].trim())} - ${formatTime(parts[1].trim())}";
           } else {
             displayText = item["hours"];
           }
@@ -140,21 +189,32 @@ class HoursTab extends StatelessWidget {
         }
 
         return Card(
-          elevation: screenWidth * 0.005,
-          margin: EdgeInsets.only(bottom: screenHeight * 0.0125),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.03)),
+          elevation: elevation,
+          margin: EdgeInsets.only(bottom: cardMarginBottom),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(cardRadius),
+          ),
           child: ListTile(
             title: Text(
               item["day"] ?? "Unknown",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: screenWidth * 0.0375,
+                fontSize: titleFontSize,
                 color: isHoliday ? Colors.red : Colors.black,
               ),
             ),
             subtitle: isHoliday
-                ? Text("Holiday", style: TextStyle(color: Colors.red, fontSize: screenWidth * 0.035))
-                : Text(displayText, style: TextStyle(fontSize: screenWidth * 0.0325)),
+                ? Text(
+                    "Holiday",
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: subtitleFontSize,
+                    ),
+                  )
+                : Text(
+                    displayText,
+                    style: TextStyle(fontSize: detailsFontSize),
+                  ),
           ),
         );
       },
@@ -162,32 +222,49 @@ class HoursTab extends StatelessWidget {
   }
 
   // ✅ Clinic no-break format (similar to general but field name may differ)
-  Widget _buildHoursTabClinicNoBreakFormat(List<dynamic> hoursList, double screenWidth, double screenHeight) {
+  Widget _buildHoursTabClinicNoBreakFormat(
+    List<dynamic> hoursList,
+    double padding,
+    double cardMarginBottom,
+    double cardRadius,
+    double titleFontSize,
+    double subtitleFontSize,
+    double detailsFontSize,
+    double elevation,
+  ) {
     return ListView.builder(
-      padding: EdgeInsets.all(screenWidth * 0.04),
+      padding: EdgeInsets.all(padding),
       itemCount: hoursList.length,
       itemBuilder: (context, index) {
         final item = hoursList[index];
         final isHoliday = item["is_holiday"] == true;
 
         return Card(
-          elevation: screenWidth * 0.005,
-          margin: EdgeInsets.only(bottom: screenHeight * 0.0125),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(screenWidth * 0.03)),
+          elevation: elevation,
+          margin: EdgeInsets.only(bottom: cardMarginBottom),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(cardRadius),
+          ),
           child: ListTile(
             title: Text(
               item["day"] ?? "Unknown",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: screenWidth * 0.0375,
+                fontSize: titleFontSize,
                 color: isHoliday ? Colors.red : Colors.black,
               ),
             ),
             subtitle: isHoliday
-                ? Text("Holiday", style: TextStyle(color: Colors.red, fontSize: screenWidth * 0.035))
+                ? Text(
+                    "Holiday",
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: subtitleFontSize,
+                    ),
+                  )
                 : Text(
                     "🕒 ${formatTime(item["opening_time"])} - ${formatTime(item["closing_time"])}",
-                    style: TextStyle(fontSize: screenWidth * 0.0325),
+                    style: TextStyle(fontSize: detailsFontSize),
                   ),
           ),
         );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hosta/common/top_snackbar.dart';
+import 'package:hosta/common/login_dialoge.dart';
 import 'package:hosta/presentation/screens/ambulance/ambulance_details.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/blood/blood_details.dart';
@@ -16,6 +16,10 @@ import 'package:hosta/presentation/screens/settings/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
+// Helper to clamp responsive values between safe limits
+double _clamp(double value, double min, double max) =>
+    value.clamp(min, max) as double;
+
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
@@ -27,13 +31,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Map<String, dynamic> userData = {};
   bool isLoading = true;
   String? userId;
-  //IO.Socket? socket;
 
   @override
   void initState() {
     super.initState();
     _loadUserId();
-   // _setupSocketListener();
   }
 
   Future<void> _loadUserId() async {
@@ -53,7 +55,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         setState(() => isLoading = false);
       }
     } catch (e) {
-      print("❌ Error loading user ID: $e");
       setState(() => isLoading = false);
     }
   }
@@ -75,15 +76,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         });
       }
     } catch (e) {
-      print("❌ Error loading user data: $e");
       if (mounted) {
-        //showTopSnackBar(context, "Error loading profile data", isError: true);
         setState(() => isLoading = false);
       }
     }
   }
-
-
 
   Future<void> _refreshUserData() async {
     if (userId == null || userId!.isEmpty) return;
@@ -94,86 +91,53 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         setState(() {
           userData = response.data['data'] ?? {};
         });
-       // showTopSnackBar(context, "Profile updated successfully");
       }
-    } catch (e) {
-      print('❌ Error refreshing user data: $e');
-    }
+    } catch (e) {}
   }
 
-  // Helper method to safely extract string values
   String _getSafeString(dynamic value, {String defaultValue = ''}) {
     if (value == null) return defaultValue;
     if (value is String) return value;
     if (value is Map) return value.toString();
     if (value is num) return value.toString();
     return defaultValue;
-  } 
-
-
-  String? _getProfileImage() {
-  final imageUrl = userData['imageUrl'];
-
-  if (imageUrl is String && imageUrl.isNotEmpty) {
-    return imageUrl;
   }
 
-  return null;
-}
+  String? _getProfileImage() {
+    final imageUrl = userData['imageUrl'];
+    if (imageUrl is String && imageUrl.isNotEmpty) {
+      return imageUrl;
+    }
+    return null;
+  }
 
-Future<void> _navigateToViewProfile() async {
-  final prefs = await SharedPreferences.getInstance();
-  String userId = prefs.getString('userId') ?? '';
+  Future<void> _navigateToViewProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    String userId = prefs.getString('userId') ?? '';
 
-  if (userId.isEmpty) {
-    final shouldLogin = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Login Required"),
-        content: const Text(
-          "Please login to view your profile.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context, false);
-            },
-            child: const Text("Cancel"),
+    if (userId.isEmpty) {
+      final shouldLogin = showLoginRequiredDialog(context);
+      if (shouldLogin == true) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const Signin(),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context, true);
-            },
-            child: const Text("Login"),
-          ),
-        ],
+        );
+        await _loadUserId();
+      }
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Profile(),
       ),
     );
 
-    if (shouldLogin == true) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const Signin(),
-        ),
-      );
-
-      // Refresh user after login
-      await _loadUserId();
-    }
-
-    return;
+    await _refreshUserData();
   }
-
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => Profile(),
-    ),
-  );
-
-  await _refreshUserData();
-}
 
   void _navigateToSettings() {
     Navigator.push(
@@ -196,8 +160,6 @@ Future<void> _navigateToViewProfile() async {
 
   @override
   void dispose() {
-    // socket?.disconnect();
-    // socket?.close();
     super.dispose();
   }
 
@@ -208,645 +170,569 @@ Future<void> _navigateToViewProfile() async {
     final screenWidth = screenSize.width;
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    
+
+    // Responsive clamped values
+    final double appBarTitleSize = _clamp(screenWidth * 0.05, 16, 24);
+    final double settingsIconSize = _clamp(screenWidth * 0.06, 20, 32);
+    final double avatarSize = _clamp(screenWidth * 0.28, 80, 150);
+    final double avatarMaxSize = _clamp(screenWidth * 0.32, 100, 180);
+    final double avatarMinSize = _clamp(screenWidth * 0.22, 60, 120);
+    final double borderWidth = _clamp(screenWidth * 0.01, 1, 3);
+    final double personIconSize = _clamp(screenWidth * 0.12, 30, 60);
+    final double loadingStrokeWidth = _clamp(screenWidth * 0.008, 2, 6);
+    final double nameFontSize = _clamp(screenWidth * 0.06, 20, 34);
+    final double emailFontSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double viewProfileIconSize = _clamp(screenWidth * 0.045, 16, 24);
+    final double viewProfileLabelSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double viewProfileButtonPadH = _clamp(screenWidth * 0.05, 16, 40);
+    final double viewProfileButtonPadV = _clamp(screenHeight * 0.015, 8, 20);
+    final double viewProfileButtonRadius = _clamp(screenWidth * 0.075, 20, 40);
+    final double sectionTitleSize = _clamp(screenWidth * 0.045, 16, 24);
+    final double cardElevation = _clamp(screenWidth * 0.005, 2, 8);
+    final double cardRadius = _clamp(screenWidth * 0.0375, 10, 24);
+    final double optionIconSize = _clamp(screenWidth * 0.055, 20, 32);
+    final double optionTitleSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double optionSubtitleSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double optionTrailingSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double versionTextSize = _clamp(screenWidth * 0.03, 10, 16);
+    final double listTileContentPadH = _clamp(screenWidth * 0.04, 12, 24);
+    final double listTileContentPadV = _clamp(screenHeight * 0.005, 2, 10);
+    final double iconContainerPadding = _clamp(screenWidth * 0.02, 6, 16);
+    final double iconContainerRadius = _clamp(screenWidth * 0.025, 6, 16);
+    final double spacingExtraSmall = _clamp(screenHeight * 0.01, 4, 12);
+    final double spacingSmall = _clamp(screenHeight * 0.012, 6, 16);
+    final double spacingMedium = _clamp(screenHeight * 0.02, 12, 24);
+    final double spacingLarge = _clamp(screenHeight * 0.025, 16, 32);
+    final double spacingXLarge = _clamp(screenHeight * 0.035, 20, 48);
+    final double screenPadding = _clamp(screenWidth * 0.04, 12, 32);
+    final double headerBottomRadius = _clamp(screenWidth * 0.08, 20, 40);
+
     String? profileImageUrl = _getProfileImage();
-    print("📸 Profile image URL: $profileImageUrl"); // Debug print
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'Profile',
           style: TextStyle(
-            color: Colors.white, 
+            color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: screenWidth * 0.05,
+            fontSize: appBarTitleSize,
           ),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF28A745),
         elevation: 0,
-        
         actions: [
-            if ((userId ?? '').isNotEmpty)
-          IconButton(
-            icon: Icon(Icons.settings, color: Colors.white, size: screenWidth * 0.06),
-            onPressed: _navigateToSettings,
-          ),
-      
+          if ((userId ?? '').isNotEmpty)
+            IconButton(
+              icon: Icon(
+                Icons.settings,
+                color: Colors.white,
+                size: settingsIconSize,
+              ),
+              onPressed: _navigateToSettings,
+            ),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                strokeWidth: loadingStrokeWidth,
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _refreshUserData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: screenHeight - kToolbarHeight - topPadding,
-                  ),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      children: [
-                        // Profile Header
-                        Container(
-                          width: screenWidth,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF28A745),
-                            borderRadius: BorderRadius.only(
-                              bottomLeft: Radius.circular(30),
-                              bottomRight: Radius.circular(30),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              SizedBox(height: screenHeight * 0.02),
-                              // Profile Image
-                              GestureDetector(
-                                onTap: _navigateToViewProfile,
-                                child: Container(
-                                  width: screenWidth * 0.28,
-                                  height: screenWidth * 0.28,
-                                  constraints: BoxConstraints(
-                                    maxWidth: screenWidth * 0.32,
-                                    maxHeight: screenWidth * 0.32,
-                                    minWidth: screenWidth * 0.22,
-                                    minHeight: screenWidth * 0.22,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: screenWidth * 0.01,
-                                    ),
-                                    color: Colors.white,
-                                  ),
-                                  child: ClipOval(
-                                    child: profileImageUrl != null
-                                        ? Image.network(
-                                            profileImageUrl,
-                                            fit: BoxFit.cover,
-                                            width: screenWidth * 0.28,
-                                            height: screenWidth * 0.28,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                                  print(
-                                                    "❌ Error loading image: $error",
-                                                  );
-                                                  return Container(
-                                                    color: Colors.grey[200],
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      size: screenWidth * 0.12,
-                                                      color: const Color(0xFF28A745),
-                                                    ),
-                                                  );
-                                                },
-                                            loadingBuilder:
-                                                (context, child, loadingProgress) {
-                                                  if (loadingProgress == null)
-                                                    return child;
-                                                  return Container(
-                                                    color: Colors.grey[200],
-                                                    child: Center(
-                                                      child: CircularProgressIndicator(
-                                                        color: const Color(0xFF28A745),
-                                                        strokeWidth: screenWidth * 0.008,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                          )
-                                        : Container(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Profile Header
+                    Container(
+                      width: screenWidth,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF28A745),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(headerBottomRadius),
+                          bottomRight: Radius.circular(headerBottomRadius),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          SizedBox(height: spacingMedium),
+                          // Profile Image
+                          GestureDetector(
+                            onTap: _navigateToViewProfile,
+                            child: Container(
+                              width: avatarSize,
+                              height: avatarSize,
+                              constraints: BoxConstraints(
+                                maxWidth: avatarMaxSize,
+                                maxHeight: avatarMaxSize,
+                                minWidth: avatarMinSize,
+                                minHeight: avatarMinSize,
+                              ),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: borderWidth,
+                                ),
+                                color: Colors.white,
+                              ),
+                              child: ClipOval(
+                                child: profileImageUrl != null
+                                    ? Image.network(
+                                        profileImageUrl,
+                                        fit: BoxFit.cover,
+                                        width: avatarSize,
+                                        height: avatarSize,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Container(
                                             color: Colors.grey[200],
                                             child: Icon(
                                               Icons.person,
-                                              size: screenWidth * 0.12,
+                                              size: personIconSize,
                                               color: const Color(0xFF28A745),
                                             ),
-                                          ),
-                                  ),
-                                ),
+                                          );
+                                        },
+                                        loadingBuilder:
+                                            (context, child, loadingProgress) {
+                                          if (loadingProgress == null)
+                                            return child;
+                                          return Container(
+                                            color: Colors.grey[200],
+                                            child: Center(
+                                              child: CircularProgressIndicator(
+                                                color: const Color(0xFF28A745),
+                                                strokeWidth: loadingStrokeWidth,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      )
+                                    : Container(
+                                        color: Colors.grey[200],
+                                        child: Icon(
+                                          Icons.person,
+                                          size: personIconSize,
+                                          color: const Color(0xFF28A745),
+                                        ),
+                                      ),
                               ),
-                              SizedBox(height: screenHeight * 0.02),
-                              // User Name
-                              Text(
-                                _getSafeString(
-                                  userData['name'],
-                                  defaultValue: 'User Name',
-                                ),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: screenWidth * 0.06,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: screenHeight * 0.01),
-                              // User Email
-                              Text(
-                                _getSafeString(
-                                  userData['email'],
-                                  defaultValue: 'email@example.com',
-                                ),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: screenWidth * 0.04,
-                                ),
-                              ),
-                              SizedBox(height: screenHeight * 0.025),
-                              //View Profile Button
-                              if (userId != null && userId!.isNotEmpty)
-                                ElevatedButton.icon(
-                                  onPressed: _navigateToViewProfile,
-                                  icon: Icon(Icons.person, size: screenWidth * 0.045),
-                                  label: Text(
-                                    'View Full Profile',
-                                    style: TextStyle(fontSize: screenWidth * 0.035),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF28A745),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: screenWidth * 0.05,
-                                      vertical: screenHeight * 0.015,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(screenWidth * 0.075),
-                                    ),
-                                  ),
-                                ),
-                              SizedBox(height: screenHeight * 0.035),
-                            ],
+                            ),
                           ),
-                        ),
-
-                        SizedBox(height: screenHeight * 0.025),
-
-                        // Profile Options
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-                          child: Column(
-                            children: [
-                              // App Settings Section
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'App Settings',
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.045,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF28A745),
+                          SizedBox(height: spacingMedium),
+                          // User Name
+                          Text(
+                            _getSafeString(
+                              userData['name'],
+                              defaultValue: 'User Name',
+                            ),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: nameFontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: spacingSmall),
+                          // User Email
+                          Text(
+                            _getSafeString(
+                              userData['email'],
+                              defaultValue: 'email@example.com',
+                            ),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: emailFontSize,
+                            ),
+                          ),
+                          SizedBox(height: spacingLarge),
+                          // View Profile Button
+                          if (userId != null && userId!.isNotEmpty)
+                            ElevatedButton.icon(
+                              onPressed: _navigateToViewProfile,
+                              icon: Icon(
+                                Icons.person,
+                                size: viewProfileIconSize,
+                              ),
+                              label: Text(
+                                'View Full Profile',
+                                style: TextStyle(fontSize: viewProfileLabelSize),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF28A745),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: viewProfileButtonPadH,
+                                  vertical: viewProfileButtonPadV,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    viewProfileButtonRadius,
                                   ),
                                 ),
                               ),
-                              SizedBox(height: screenHeight * 0.012),
+                            ),
+                          SizedBox(height: spacingXLarge),
+                        ],
+                      ),
+                    ),
 
-                              // Settings Card
-                              Card(
-                                elevation: screenWidth * 0.005,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(screenWidth * 0.0375),
-                                ),
-                                child: Column(
-                                  children: [
-                                    _buildProfileOption(
-                                      icon: Icons.local_taxi,
-                                      title: 'Ambulance',
-                                      subtitle: 'About ambulance',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: () async {
-                                        final prefs =
-                                            await SharedPreferences.getInstance();
-                                        String userId =
-                                            prefs.getString('userId') ?? '';
-                                        if (userId.isEmpty) {
-                                          showDialog(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
-                                              content: Text(
-                                                "Please login first",
-                                                style: TextStyle(fontSize: screenWidth * 0.04),
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.pop(context);
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            Signin(),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                          return;
-                                        }
+                    SizedBox(height: spacingLarge),
 
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                AmbulanceDetailsPage(),
-                                          ),
-                                        );
-                                      },
-                                    ),
+                    // Profile Options
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: screenPadding),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // App Settings Section
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'App Settings',
+                              style: TextStyle(
+                                fontSize: sectionTitleSize,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF28A745),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: spacingSmall),
 
-                                    const Divider(height: 0),
-                                    _buildProfileOption(
-                                      icon: Icons.water_drop,
-                                      title: 'Blood',
-                                      subtitle: 'About Blood',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: () async {
-                                        final prefs =
-                                            await SharedPreferences.getInstance();
-                                        String userId =
-                                            prefs.getString('userId') ?? '';
-
-                                        if (userId.isEmpty) {
-                                           showDialog(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
-                                              content: Text(
-                                                "Please login first",
-                                                style: TextStyle(fontSize: screenWidth * 0.04),
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.pop(context);
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            Signin(),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                          return;
-                                        }
-final result = await Navigator.push(
-  context,
-  MaterialPageRoute(builder: (_) => const MyBloodDetailsPage()),
-);
-
-if (!mounted) return;
-
-if (result == true) {
-  await _loadUserData();
-}
-                                        // Navigator.push(
-                                        //   context,
-                                        //   MaterialPageRoute(
-                                        //     builder: (context) =>
-                                        //         MyBloodDetailsPage(),
-                                        //   ),
-                                        // );
-                                      },
-                                    ),
-                                const Divider(height: 0),
+                          // Settings Card
+                          Card(
+                            elevation: cardElevation,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(cardRadius),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 _buildProfileOption(
-                                  
-                                  icon: Icons.note_add,
-                                  title: 'Prescription',
-                                  subtitle: 'About prescription',
+                                  icon: Icons.local_taxi,
+                                  title: 'Ambulance',
+                                  subtitle: 'About Your Registered Ambulance',
                                   screenWidth: screenWidth,
                                   screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
                                   onTap: () async {
                                     final prefs =
                                         await SharedPreferences.getInstance();
                                     String userId =
                                         prefs.getString('userId') ?? '';
                                     if (userId.isEmpty) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
-                                          content: Text(
-                                            "Please login first",
-                                            style: TextStyle(fontSize: screenWidth * 0.04),
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        Signin(),
-                                                        
-                                                  ),
-                                                );
-                                              },
-                                              child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
-                                            ),
-                                          ],
-                                        ),
-                                      );
+                                      showLoginRequiredDialog(context);
                                       return;
                                     }
-
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            AmbulanceDetailsPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const Divider(height: 0),
+                                _buildProfileOption(
+                                  icon: Icons.water_drop,
+                                  title: 'Blood',
+                                  subtitle: 'About Your Registered Blood ',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
+                                  onTap: () async {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    String userId =
+                                        prefs.getString('userId') ?? '';
+                                    if (userId.isEmpty) {
+                                      showLoginRequiredDialog(context);
+                                      return;
+                                    }
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const MyBloodDetailsPage(),
+                                      ),
+                                    );
+                                    if (!mounted) return;
+                                    if (result == true) {
+                                      await _loadUserData();
+                                    }
+                                  },
+                                ),
+                                const Divider(height: 0),
+                                _buildProfileOption(
+                                  icon: Icons.note_add,
+                                  title: 'Prescription',
+                                  subtitle: 'About Your Prescription',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
+                                  onTap: () async {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    String userId =
+                                        prefs.getString('userId') ?? '';
+                                    if (userId.isEmpty) {
+                                      showLoginRequiredDialog(context);
+                                      return;
+                                    }
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
                                             PrescriptionListScreen(
                                               userId: userId,
-                                              // userId: userId,
                                             ),
                                       ),
                                     );
                                   },
                                 ),
-                                     const Divider(height: 0),
-                                     _buildProfileOption(
-                                      icon: Icons.note_sharp,
-                                      title: 'Lab Report',
-                                      subtitle: 'Lab report details',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: () async {
-                                        final prefs =
-                                            await SharedPreferences.getInstance();
-                                        String userId =
-                                            prefs.getString('userId') ?? '';
-
-                                        if (userId.isEmpty) {
-                                           showDialog(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
-                                              content: Text(
-                                                "Please login first",
-                                                style: TextStyle(fontSize: screenWidth * 0.04),
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.pop(context);
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            Signin(),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                          return;
-                                        }
-
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => const LabReport(),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    const Divider(height: 0),
-                                       
-                                     _buildProfileOption(
-                                      icon: Icons.edit_document,
-                                      title: ' My Documents',
-                                      subtitle: ' ',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: () async {
-                                        final prefs =
-                                            await SharedPreferences.getInstance();
-                                        String userId =
-                                            prefs.getString('userId') ?? '';
-
-                                        if (userId.isEmpty) {
-                                           showDialog(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
-                                              content: Text(
-                                                "Please login first",
-                                                style: TextStyle(fontSize: screenWidth * 0.04),
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.pop(context);
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                        
-                                                           Signin(),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                          return;
-                                        }
-
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => DocumentsTab()
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                      const Divider(height: 0),
-                                       _buildProfileOption(
-                                      icon: Icons.person_add,
-                                      title: 'Patient details',
-                                      subtitle: 'Patient information',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: () async {
-                                        final prefs =
-                                            await SharedPreferences.getInstance();
-                                        String userId =
-                                            prefs.getString('userId') ?? '';
-
-                                        if (userId.isEmpty) {
-                                           showDialog(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: Text("Login Required", style: TextStyle(fontSize: screenWidth * 0.045)),
-                                              content: Text(
-                                                "Please login first",
-                                                style: TextStyle(fontSize: screenWidth * 0.04),
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                  child: Text("Cancel", style: TextStyle(color: Colors.black, fontSize: screenWidth * 0.04)),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () {
-                                                    Navigator.pop(context);
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            Signin(),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Text("Login", style: TextStyle(color: Colors.green, fontSize: screenWidth * 0.04)),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                          return;
-                                        }
-
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => const PatientDetailsScreen(),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                      const Divider(height: 0),
-                                        
-                                   
-
-                                
-                                    if (userId != null && userId!.isNotEmpty) ...[
-                                    const Divider(height: 0),
-
-                                    _buildProfileOption(
-                                      icon: Icons.settings,
-                                      title: 'Settings',
-                                      subtitle: 'App settings and preferences',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: _navigateToSettings,
-                                    ),
-                                    ],
-                                    const Divider(height: 0),
-                                    _buildProfileOption(
-                                      icon: Icons.lock,
-                                      title: 'Privacy',
-                                      subtitle: 'Privacy policy and terms',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: _showPrivacyDialog,
-                                    ),
-                                    const Divider(height: 0),
-                                    _buildProfileOption(
-                                      icon: Icons.info,
-                                      title: 'About',
-                                      subtitle: 'About this app',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: _showAboutDialog,
-                                    ),
-                                  ],
+                                const Divider(height: 0),
+                                _buildProfileOption(
+                                  icon: Icons.note_sharp,
+                                  title: 'Lab Report',
+                                  subtitle: 'About Your Lab Reports ',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
+                                  onTap: () async {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    String userId =
+                                        prefs.getString('userId') ?? '';
+                                    if (userId.isEmpty) {
+                                      showLoginRequiredDialog(context);
+                                      return;
+                                    }
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const LabReport(),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              ),
-                              SizedBox(height: screenHeight * 0.025),
-                              // Support Section
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Support',
-                                  style: TextStyle(
-                                    fontSize: screenWidth * 0.045,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF28A745),
+                                const Divider(height: 0),
+                                _buildProfileOption(
+                                  icon: Icons.edit_document,
+                                  title: ' My Documents',
+                                  subtitle: 'keep and View Your Documents ',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
+                                  onTap: () async {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    String userId =
+                                        prefs.getString('userId') ?? '';
+                                    if (userId.isEmpty) {
+                                      showLoginRequiredDialog(context);
+                                      return;
+                                    }
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => DocumentsTab(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const Divider(height: 0),
+                                _buildProfileOption(
+                                  icon: Icons.person_add,
+                                  title: 'Patient details',
+                                  subtitle: 'View Patient Information',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
+                                  onTap: () async {
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    String userId =
+                                        prefs.getString('userId') ?? '';
+                                    if (userId.isEmpty) {
+                                      showLoginRequiredDialog(context);
+                                      return;
+                                    }
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const PatientDetailsScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const Divider(height: 0),
+
+                                if (userId != null && userId!.isNotEmpty) ...[
+                                  const Divider(height: 0),
+                                  _buildProfileOption(
+                                    icon: Icons.settings,
+                                    title: 'Settings',
+                                    subtitle: 'App Settings and Preferences',
+                                    screenWidth: screenWidth,
+                                    screenHeight: screenHeight,
+                                    optionIconSize: optionIconSize,
+                                    optionTitleSize: optionTitleSize,
+                                    optionSubtitleSize: optionSubtitleSize,
+                                    optionTrailingSize: optionTrailingSize,
+                                    iconContainerPadding: iconContainerPadding,
+                                    iconContainerRadius: iconContainerRadius,
+                                    listTileContentPadH: listTileContentPadH,
+                                    listTileContentPadV: listTileContentPadV,
+                                    onTap: _navigateToSettings,
                                   ),
+                                ],
+                                const Divider(height: 0),
+                                _buildProfileOption(
+                                  icon: Icons.lock,
+                                  title: 'Privacy',
+                                  subtitle: 'Privacy policy and Terms',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
+                                  onTap: _showPrivacyDialog,
                                 ),
-                              ),
-                              SizedBox(height: screenHeight * 0.012),
-
-                              // Support Card
-                              Card(
-                                elevation: screenWidth * 0.005,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(screenWidth * 0.0375),
+                                const Divider(height: 0),
+                                _buildProfileOption(
+                                  icon: Icons.info,
+                                  title: 'About',
+                                  subtitle: 'About this app',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
+                                  onTap: _showAboutDialog,
                                 ),
-                                child: Column(
-                                  children: [
-                                    _buildProfileOption(
-                                      icon: Icons.headset_mic,
-                                      title: 'Contact Us',
-                                      subtitle: 'Get help and support',
-                                      screenWidth: screenWidth,
-                                      screenHeight: screenHeight,
-                                      onTap: _showContactDialog,
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              SizedBox(height: screenHeight * 0.025),
-
-                              // App Version
-                              Text(
-                                'Version 1.0.0',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: screenWidth * 0.03,
-                                ),
-                              ),
-
-                              SizedBox(height: screenHeight * 0.03),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: spacingLarge),
+
+                          // Support Section
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Support',
+                              style: TextStyle(
+                                fontSize: sectionTitleSize,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF28A745),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: spacingSmall),
+
+                          // Support Card
+                          Card(
+                            elevation: cardElevation,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(cardRadius),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildProfileOption(
+                                  icon: Icons.headset_mic,
+                                  title: 'Contact Us',
+                                  subtitle: 'Get help and support',
+                                  screenWidth: screenWidth,
+                                  screenHeight: screenHeight,
+                                  optionIconSize: optionIconSize,
+                                  optionTitleSize: optionTitleSize,
+                                  optionSubtitleSize: optionSubtitleSize,
+                                  optionTrailingSize: optionTrailingSize,
+                                  iconContainerPadding: iconContainerPadding,
+                                  iconContainerRadius: iconContainerRadius,
+                                  listTileContentPadH: listTileContentPadH,
+                                  listTileContentPadV: listTileContentPadV,
+                                  onTap: _showContactDialog,
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: spacingLarge),
+
+                          // App Version
+                          Text(
+                            'Version 1.0.0',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: versionTextSize,
+                            ),
+                          ),
+
+                          SizedBox(height: spacingLarge),
+                        ],
+                      ),
                     ),
-                  ),
+                    // Add a small bottom padding to ensure spacing
+                    SizedBox(height: bottomPadding + spacingMedium),
+                  ],
                 ),
               ),
             ),
@@ -860,36 +746,44 @@ if (result == true) {
     required VoidCallback onTap,
     required double screenWidth,
     required double screenHeight,
+    required double optionIconSize,
+    required double optionTitleSize,
+    required double optionSubtitleSize,
+    required double optionTrailingSize,
+    required double iconContainerPadding,
+    required double iconContainerRadius,
+    required double listTileContentPadH,
+    required double listTileContentPadV,
   }) {
     return ListTile(
       leading: Container(
-        padding: EdgeInsets.all(screenWidth * 0.02),
+        padding: EdgeInsets.all(iconContainerPadding),
         decoration: BoxDecoration(
           color: const Color(0xFF28A745).withOpacity(0.1),
-          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+          borderRadius: BorderRadius.circular(iconContainerRadius),
         ),
-        child: Icon(icon, color: const Color(0xFF28A745), size: screenWidth * 0.055),
+        child: Icon(icon, color: const Color(0xFF28A745), size: optionIconSize),
       ),
       title: Text(
-        title, 
+        title,
         style: TextStyle(
           fontWeight: FontWeight.w600,
-          fontSize: screenWidth * 0.04,
+          fontSize: optionTitleSize,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
-          color: Colors.grey[600], 
-          fontSize: screenWidth * 0.035,
+          color: Colors.grey[600],
+          fontSize: optionSubtitleSize,
         ),
       ),
-      trailing: Icon(Icons.arrow_forward_ios, size: screenWidth * 0.04),
+      trailing: Icon(Icons.arrow_forward_ios, size: optionTrailingSize),
       onTap: onTap,
       dense: screenHeight < 600 ? true : false,
       contentPadding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
-        vertical: screenHeight * 0.005,
+        horizontal: listTileContentPadH,
+        vertical: listTileContentPadV,
       ),
     );
   }
