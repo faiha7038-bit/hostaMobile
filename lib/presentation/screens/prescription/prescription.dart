@@ -136,17 +136,17 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
             ),
           ),
           SizedBox(height: screenHeight * 0.01),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
-            child: Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: screenWidth * 0.035,
-              ),
-            ),
-          ),
+          // Padding(
+          //   padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
+          //   child: Text(
+          //     _errorMessage!,
+          //     textAlign: TextAlign.center,
+          //     style: TextStyle(
+          //       color: Colors.grey.shade600,
+          //       fontSize: screenWidth * 0.035,
+          //     ),
+          //   ),
+          // ),
           SizedBox(height: screenHeight * 0.03),
           ElevatedButton(
             onPressed: _loadPrescriptions,
