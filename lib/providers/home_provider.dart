@@ -46,7 +46,7 @@ class HomeState {
 class HomeNotifier extends StateNotifier<HomeState> {
   Timer? _refreshTimer;
   bool _isInitialized = false;
-
+bool _fallbackAttempted = false;
   HomeNotifier() : super(HomeState());
 
   Future<void> init() async {
@@ -206,47 +206,104 @@ class HomeNotifier extends StateNotifier<HomeState> {
     }
   }
 
-  Future<void> _fetchCarouselImages(double? lat, double? lng) async {
-    try {
-      if (lat != null && lng != null) {
-        print("🌐 Calling API WITH location: lat=$lat, lng=$lng");
-      } else {
-        print("🌐 Calling API WITHOUT location");
-      }
 
-      final apiService = ApiService();
-      final response = await apiService.getAllCarousel(
-        latitude: lat,
-        longitude: lng,
-      );
 
-      print("📡 API Response Status Code: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        if (response.data != null && response.data["data"] != null) {
-          final data = response.data["data"] as List;
-          print("📸 Found ${data.length} carousel items");
-
-          final images = data
-              .where((item) => item["isActive"] == true && item["imageUrl"] != null)
-              .map<String>((item) => item["imageUrl"].toString())
-              .toList();
-
-          state = state.copyWith(carouselImages: images, isLoading: false);
-          print("✅ Successfully loaded ${images.length} active carousel images");
-        } else {
-          print("⚠️ No data in response");
-          state = state.copyWith(carouselImages: [], isLoading: false);
-        }
-      } else {
-        print("❌ API returned error status: ${response.statusCode}");
-        state = state.copyWith(carouselImages: [], isLoading: false);
-      }
-    } catch (e) {
-      print("❌ ERROR fetching carousel images: $e");
-      state = state.copyWith(carouselImages: [], isLoading: false);
+Future<void> _fetchCarouselImages(double? lat, double? lng) async {
+  try {
+    // Determine if this is a location-based call
+    final bool hasLocation = lat != null && lng != null;
+    if (hasLocation) {
+      print("🌐 Calling API WITH location: lat=$lat, lng=$lng");
+    } else {
+      print("🌐 Calling API WITHOUT location (fallback or initial)");
     }
+
+    final apiService = ApiService();
+    final response = await apiService.getAllCarousel(
+      latitude: lat,
+      longitude: lng,
+    );
+
+    print("📡 Status Code: ${response.statusCode}");
+    print("📡 Response: ${response.data}");
+
+    if (response.statusCode == 200) {
+      final responseData = response.data;
+
+      if (responseData != null &&
+          responseData is Map<String, dynamic> &&
+          responseData["ads"] != null) {
+
+        final List ads = responseData["ads"] as List;
+        print("📸 Total Ads: ${ads.length}");
+
+        // Extract valid image URLs (isActive == true and non-empty imageUrl)
+        final List<String> images = ads
+            .where((item) =>
+                item["isActive"] == true &&
+                (item["imageUrl"]?.toString().trim() ?? '').isNotEmpty)
+            .map((item) => item["imageUrl"].toString())
+            .toList();
+
+        print("✅ Valid Images Count: ${images.length}");
+        print(images);
+
+        // If we have images, update state and reset fallback flag
+        if (images.isNotEmpty) {
+          state = state.copyWith(
+            carouselImages: images,
+            isLoading: false,
+          );
+          _fallbackAttempted = false; // reset for next time
+          return;
+        }
+
+        // ----- FALLBACK LOGIC -----
+        // If we are currently using location and got zero images,
+        // and we haven't tried fallback yet, retry without location.
+        if (hasLocation && !_fallbackAttempted) {
+          print("🔄 No nearby ads with images – falling back to fetch ALL ads without location");
+          _fallbackAttempted = true; // prevent infinite loop
+          // Call the same function with null location
+          await _fetchCarouselImages(null, null);
+          return;
+        }
+
+        // If we reached here (either no location or fallback already tried),
+        // and still no images, set empty list.
+        print("⚠️ No valid carousel images available (fallback exhausted or no location).");
+        state = state.copyWith(
+          carouselImages: [],
+          isLoading: false,
+        );
+        _fallbackAttempted = false; // reset for next refresh
+      } else {
+        print("⚠️ 'ads' key not found or invalid response structure.");
+        state = state.copyWith(
+          carouselImages: [],
+          isLoading: false,
+        );
+        _fallbackAttempted = false;
+      }
+    } else {
+      print("❌ API Error: ${response.statusCode}");
+      state = state.copyWith(
+        carouselImages: [],
+        isLoading: false,
+      );
+      _fallbackAttempted = false;
+    }
+  } catch (e, stackTrace) {
+    print("❌ Error fetching carousel images");
+    print(e);
+    print(stackTrace);
+    state = state.copyWith(
+      carouselImages: [],
+      isLoading: false,
+    );
+    _fallbackAttempted = false;
   }
+}
 
   Future<void> openSettings() async {
     await Geolocator.openLocationSettings();

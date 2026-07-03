@@ -657,7 +657,7 @@ class Privacy extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHighlightedText(
-                  "Zorrow Tech IT Solutions",
+                  "Zorrow Tech IT Solutions Pvtl Ltd",
                   bodyFontSize,
                 ),
                 SizedBox(height: screenHeight * 0.008),
