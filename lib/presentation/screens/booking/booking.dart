@@ -255,21 +255,7 @@ void dispose() {
           ),
         ),
         centerTitle: true,
-        actions: [
-          // Socket connection indicator
-         // if (!isSocketConnected)
-            // Padding(
-            //   padding: EdgeInsets.only(right: screenWidth * 0.02),
-            //   child: Icon(Icons.wifi_off, color: Colors.white, size: screenWidth * 0.05),
-            // ),
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.white, size: screenWidth * 0.06),
-            onPressed: () {
-              ref.read(bookingStateProvider.notifier).refreshBookings();
-            },
-            tooltip: "Refresh bookings",
-          ),
-        ],
+      
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.green))

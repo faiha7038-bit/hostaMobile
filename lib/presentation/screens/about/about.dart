@@ -69,8 +69,8 @@
 //               "Welcome to our innovative hospital finder platform that connects patients with nearby hospitals and doctors. "
 //               "Our goal is to make healthcare access simple, fast, and stress-free.",
 //               style: TextStyle(
-//                 fontSize: screenWidth * 0.04, 
-//                 color: Colors.black87, 
+//                 fontSize: screenWidth * 0.04,
+//                 color: Colors.black87,
 //                 height: 1.5,
 //               ),
 //             ),
@@ -78,8 +78,8 @@
 //             Text(
 //               "You can search hospitals, book appointments, and even access emergency ambulance services instantly.",
 //               style: TextStyle(
-//                 fontSize: screenWidth * 0.04, 
-//                 color: Colors.black87, 
+//                 fontSize: screenWidth * 0.04,
+//                 color: Colors.black87,
 //                 height: 1.5,
 //               ),
 //             ),
@@ -132,8 +132,8 @@
 //             Text(
 //               "Use our search feature to find hospitals and doctors nearby. Simply enter your area or city to begin.",
 //               style: TextStyle(
-//                 fontSize: screenWidth * 0.04, 
-//                 color: Colors.black87, 
+//                 fontSize: screenWidth * 0.04,
+//                 color: Colors.black87,
 //                 height: 1.5,
 //               ),
 //             ),
@@ -145,8 +145,8 @@
 //             Text(
 //               "Healthcare providers can join our platform to:",
 //               style: TextStyle(
-//                 fontSize: screenWidth * 0.04, 
-//                 color: Colors.black87, 
+//                 fontSize: screenWidth * 0.04,
+//                 color: Colors.black87,
 //                 height: 1.5,
 //               ),
 //             ),
@@ -161,7 +161,7 @@
 //             Text(
 //               "Contact us to learn more about listing your hospital.",
 //               style: TextStyle(
-//                 fontSize: screenWidth * 0.04, 
+//                 fontSize: screenWidth * 0.04,
 //                 color: Colors.black87,
 //               ),
 //             ),
@@ -227,7 +227,7 @@
 //   Widget build(BuildContext context) {
 //     final screenWidth = MediaQuery.of(context).size.width;
 //     final screenHeight = MediaQuery.of(context).size.height;
-    
+
 //     return Container(
 //       width: (screenWidth / 2) - (screenWidth * 0.07),
 //       padding: EdgeInsets.all(screenWidth * 0.04),
@@ -279,7 +279,7 @@
 //   Widget build(BuildContext context) {
 //     final screenWidth = MediaQuery.of(context).size.width;
 //     final screenHeight = MediaQuery.of(context).size.height;
-    
+
 //     return Column(
 //       crossAxisAlignment: CrossAxisAlignment.start,
 //       children: items
@@ -290,15 +290,15 @@
 //                   children: [
 //                     Text("• ",
 //                         style: TextStyle(
-//                             fontSize: screenWidth * 0.045, 
-//                             color: Colors.green, 
+//                             fontSize: screenWidth * 0.045,
+//                             color: Colors.green,
 //                             height: 1.3)),
 //                     Expanded(
 //                       child: Text(
 //                         item,
 //                         style: TextStyle(
-//                             fontSize: screenWidth * 0.04, 
-//                             color: Colors.black87, 
+//                             fontSize: screenWidth * 0.04,
+//                             color: Colors.black87,
 //                             height: 1.4),
 //                       ),
 //                     ),
@@ -309,7 +309,6 @@
 //     );
 //   }
 // }
-
 
 import 'package:flutter/material.dart';
 
@@ -358,9 +357,9 @@ class About extends StatelessWidget {
           children: [
             // Header Section
             _buildHeader(screenWidth, screenHeight),
-            
+
             SizedBox(height: screenHeight * 0.03),
-            
+
             // About Section
             _buildSection(
               title: "About Our App",
@@ -378,9 +377,9 @@ class About extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             SizedBox(height: screenHeight * 0.03),
-            
+
             // Features Section
             _buildSection(
               title: "Key Features",
@@ -428,9 +427,9 @@ class About extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             SizedBox(height: screenHeight * 0.03),
-            
+
             // Find Section
             _buildSection(
               title: "Find Hospitals Near You",
@@ -442,9 +441,9 @@ class About extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             SizedBox(height: screenHeight * 0.03),
-            
+
             // For Hospitals Section
             _buildSection(
               title: "For Hospitals",
@@ -488,9 +487,9 @@ class About extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             SizedBox(height: screenHeight * 0.03),
-            
+
             // Commitment Section
             _buildSection(
               title: "Our Commitment",
@@ -505,9 +504,9 @@ class About extends StatelessWidget {
                 ]),
               ],
             ),
-            
+
             SizedBox(height: screenHeight * 0.04),
-            
+
             // Footer
             Center(
               child: Column(
@@ -536,9 +535,9 @@ class About extends StatelessWidget {
                   ),
                   SizedBox(height: screenHeight * 0.005),
                   Text(
-                    "© 2025 All Rights Reserved",
+                    "© ${DateTime.now().year} All Rights Reserved",
                     style: TextStyle(
-                      fontSize: screenWidth * 0.035,
+                      fontSize: screenWidth * 0.035, 
                       color: Colors.grey[400],
                     ),
                   ),

@@ -420,17 +420,7 @@ log("hasMyAmbulance => $hasMyAmbulance");
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.refresh,
-              color: Colors.white,
-              size: screenWidth * 0.06,
-            ),
-            onPressed: _refreshData,
-            tooltip: 'Refresh',
-          ),
-        ],
+     
       ),
       body: isLoading
           ? Center(

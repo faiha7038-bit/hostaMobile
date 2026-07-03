@@ -125,6 +125,7 @@ log("🔵 _verifyOtp() CALLED with OTP: $otp");
       "otp": otp,
       "fcmToken": token,
     });
+    log("responseofotp$response");
 log("REQUEST => Phone: $cleanPhone");
 log("REQUEST => OTP: $otp");
 

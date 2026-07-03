@@ -22,20 +22,18 @@ class Bottomnav extends ConsumerStatefulWidget {
 }
 
 class BottomNavState extends ConsumerState<Bottomnav> {
-  
   static final GlobalKey<BottomNavState> navigatorKey = GlobalKey<BottomNavState>();
-  
+
   int currentTabIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int notificationCount = 0;
   Map<String, dynamic> userData = {};
   bool isLoadingUser = true;
   String? userId;
-  static const double navIconSize = 24;
   OverlayEntry? _overlayEntry;
   Timer? _refreshTimer;
   late PageController _pageController;
-  
+
   final FirebaseMsg _firebaseMsg = FirebaseMsg();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
@@ -47,34 +45,34 @@ class BottomNavState extends ConsumerState<Bottomnav> {
   ];
 
   late List<Widget> pages;
-// ✅ GlobalKey for accessing from other screens
-  static final GlobalKey<BottomNavState> botttomNavKey = 
-      GlobalKey<BottomNavState>();
+  static final GlobalKey<BottomNavState> botttomNavKey = GlobalKey<BottomNavState>();
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: currentTabIndex);
     _initializePages();
-    _loadUserId();
-     _setupSocket();
-    _checkBadgeSupport();
-    _initializeFCM();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    await _loadUserId();
+    await _setupSocket();
+    await _initializeFCM();
     _startPeriodicRefresh();
   }
 
-void _setupSocket() async {
-    try {
-      // Get userId from SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      userId = prefs.getString('userId');
-      
-      if (userId != null && userId!.isNotEmpty) {
-        final socketService = SocketService();
-        socketService.joinUserRoom(userId!);
-        print("✅ BottomNav: Joined user room: $userId");
-      }
-    } catch (e) {
-      print("❌ BottomNav socket setup error: $e");
+  Future<void> _setupSocket() async {
+    final prefs = await SharedPreferences.getInstance();
+    userId = prefs.getString('userId');
+    final token = prefs.getString("authToken");
+    if (userId != null && token != null) {
+      final socketService = SocketService();
+      socketService.connect(token);
+      socketService.joinUserRoom(userId!);
+      print("✅ Socket connected: $userId");
+    } else {
+      print("❌ Socket skipped (missing userId/token)");
     }
   }
 
@@ -86,19 +84,8 @@ void _setupSocket() async {
         _loadNotificationCountFromAPI();
       }
     });
-     initSocket();
   }
-Future<void> initSocket() async {
-  final prefs = await SharedPreferences.getInstance();
 
-  final token = prefs.getString("authToken");
-  final userId = prefs.getString("userId");
-
-  if (token != null && userId != null) {
-    SocketService().connect(token);
-    SocketService().joinUserRoom(userId);
-  }
-}
   void _initializePages() {
     pages = [
       Home(key: ValueKey('home_page')),
@@ -122,44 +109,31 @@ Future<void> initSocket() async {
   }
 
   Future<void> _sendFCMTokenToBackend() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final fcmToken = prefs.getString('fcm_token');
-      final userId = prefs.getString('userId');
-      
-      if (fcmToken != null && userId != null && userId.isNotEmpty) {
-        print('🚀 Sending FCM token to backend server...');
-        print('🪙 FCM Token: $fcmToken');
-        print('👤 User ID: $userId');
-        print('✅ FCM token sent to backend successfully');
-      } else {
-        print('⚠️ Cannot send FCM token: User ID or Token missing');
-      }
-    } catch (e) {
-      print('❌ Error sending FCM token to backend: $e');
+    final prefs = await SharedPreferences.getInstance();
+    final fcmToken = prefs.getString('fcm_token');
+    final userId = prefs.getString('userId');
+    if (userId == null || fcmToken == null) {
+      print("❌ Skipping FCM send: missing data");
+      return;
     }
+    print("🚀 Sending FCM token for userId=$userId");
   }
 
   void _setupFCMListeners() {
     print('🔍 DEBUG: Setting up FCM listeners...');
-    
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print('📱 FCM Foreground message received in BottomNav');
       _handleIncomingNotification(message, isFromFCM: true);
     });
-
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print('📱 FCM App opened from notification in BottomNav');
       _handleNotificationTap(message);
     });
-
     _handleInitialNotification();
-
     _fcm.onTokenRefresh.listen((newToken) {
       print('🔄 FCM Token refreshed in BottomNav: $newToken');
       _sendRefreshedTokenToBackend(newToken);
     });
-
     print('✅ DEBUG: FCM listeners setup completed');
   }
 
@@ -167,7 +141,6 @@ Future<void> initSocket() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
-      
       if (userId != null && userId.isNotEmpty) {
         print('🔄 Sending refreshed FCM token to backend...');
         print('🪙 New FCM Token: $newToken');
@@ -194,13 +167,10 @@ Future<void> initSocket() async {
 
   void _handleIncomingNotification(RemoteMessage message, {bool isFromFCM = false}) {
     print('📱 Handling incoming notification in BottomNav');
-    
     final notification = message.notification;
     final data = message.data;
-
     String title = 'New Notification';
     String body = 'You have a new message';
-
     if (notification != null) {
       title = notification.title ?? title;
       body = notification.body ?? body;
@@ -208,11 +178,9 @@ Future<void> initSocket() async {
       title = data['title'] ?? data['notificationTitle'] ?? title;
       body = data['body'] ?? data['notificationBody'] ?? data['message'] ?? body;
     }
-
     _showCustomPushNotification(title, body);
     _incrementNotificationCount();
     _updateAppIconBadge();
-
     print('📱 Notification handled - Title: $title, Body: $body, From FCM: $isFromFCM');
     _refetchNotifications();
   }
@@ -231,21 +199,15 @@ Future<void> initSocket() async {
     if (index > 2) {
       pageIndex = index - 1;
     }
-
     if (pageIndex >= 0 && pageIndex < pages.length) {
       setState(() {
         currentTabIndex = index;
       });
-
       _pageController.animateToPage(
         pageIndex,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-
-      // if (index == 3) {
-      //   _markNotificationsAsRead();
-      // } 
       if (index == 0) {
         _loadNotificationCountFromAPI();
       }
@@ -281,22 +243,18 @@ Future<void> initSocket() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final storedUserId = prefs.getString('userId');
-      
       if (mounted) {
         setState(() {
           userId = storedUserId;
         });
       }
-      
       print('👤 User ID loaded: $userId');
-      
       if (userId != null && userId!.isNotEmpty) {
         await _loadUserData();
         await _loadNotificationCountFromStorage();
       } else {
         setState(() => isLoadingUser = false);
       }
-      
     } catch (e) {
       print("❌ Error loading user ID: $e");
       setState(() => isLoadingUser = false);
@@ -308,11 +266,9 @@ Future<void> initSocket() async {
       setState(() => isLoadingUser = false);
       return;
     }
-
     try {
       setState(() => isLoadingUser = true);
       final response = await ApiService().getAUser(userId!);
-      
       if (mounted) {
         setState(() {
           userData = response.data['data'] ?? {};
@@ -321,7 +277,6 @@ Future<void> initSocket() async {
       print('👤 User data loaded successfully');
     } catch (e) {
       print("❌ Error loading user data: $e");
-    //  showTopSnackBar(context, "Error loading user data", isError: true);
     } finally {
       if (mounted) {
         setState(() => isLoadingUser = false);
@@ -330,25 +285,20 @@ Future<void> initSocket() async {
   }
 
   // ==================== NOTIFICATION COUNT METHODS ====================
-  
   Future<void> _loadNotificationCountFromStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedCount = prefs.getInt('unread_count_$userId') ?? 0;
-      
       print('📊 Loaded notification count from storage: $savedCount');
-     final locallyReadIds = prefs.getStringList('locally_read_ids_$userId') ?? [];
-    final localReadCount = locallyReadIds.length;
-    
-    print('📊 Local read count: $localReadCount');
-    
+      final locallyReadIds = prefs.getStringList('locally_read_ids_$userId') ?? [];
+      final localReadCount = locallyReadIds.length;
+      print('📊 Local read count: $localReadCount');
       if (mounted) {
         setState(() {
           notificationCount = savedCount;
         });
         _updateAppIconBadge();
       }
-      
       await _loadNotificationCountFromAPI();
     } catch (e) {
       print("❌ Error loading notification count from storage: $e");
@@ -373,42 +323,32 @@ Future<void> initSocket() async {
       if (userId == null || userId!.isEmpty) {
         return;
       }
-
       try {
         final apiService = ApiService();
-     //   final response = await apiService.getUnreadCount('user', userId!);
-         final response = await apiService.getNotificationsByRole(
-        'user', 
-        userId!, 
-        page: 1, 
-        limit: 100  // Get all notifications
-      );
+        final response = await apiService.getNotificationsByRole(
+          'user',
+          userId!,
+          page: 1,
+          limit: 100,
+        );
         print('📊 Notifications list response: ${response.data['success']}');
-
-        
         if (response.data['success'] == true) {
-           final notificationList = response.data['data'] as List? ?? [];
-            int unreadCount = 0;
-    // ✅ Load local read status
-        final prefs = await SharedPreferences.getInstance();
-        final locallyReadIds = prefs.getStringList('locally_read_ids_$userId') ?? [];
-        final localReadSet = locallyReadIds.toSet();
-        
-        for (var notification in notificationList) {
-          final notificationId = notification['id']?.toString() ?? '';
-          final userReadStatus = notification['userReadStatus'] as Map? ?? {};
-
- final isReadFromServer = userReadStatus[userId] == true;
-          final isReadLocally = localReadSet.contains(notificationId);
-          final isRead = isReadFromServer || isReadLocally;
-          
-          if (!isRead) {
-            unreadCount++;
+          final notificationList = response.data['data'] as List? ?? [];
+          int unreadCount = 0;
+          final prefs = await SharedPreferences.getInstance();
+          final locallyReadIds = prefs.getStringList('locally_read_ids_$userId') ?? [];
+          final localReadSet = locallyReadIds.toSet();
+          for (var notification in notificationList) {
+            final notificationId = notification['id']?.toString() ?? '';
+            final userReadStatus = notification['userReadStatus'] as Map? ?? {};
+            final isReadFromServer = userReadStatus[userId] == true;
+            final isReadLocally = localReadSet.contains(notificationId);
+            final isRead = isReadFromServer || isReadLocally;
+            if (!isRead) {
+              unreadCount++;
+            }
           }
-        }
           print('📊 Unread count from API: $unreadCount');
-        
-
           if (mounted && notificationCount != unreadCount) {
             setState(() {
               notificationCount = unreadCount;
@@ -432,10 +372,8 @@ Future<void> initSocket() async {
       final apiService = ApiService();
       final response = await apiService.getNotificationsByRole('user', userId!, page: 1, limit: 100);
       print('📊 Notifications list response: ${response.data['success']}');
-    
       if (response.data['success'] == true) {
         final notificationList = response.data['data'] as List? ?? [];
-        
         final unreadCount = notificationList.where((notification) {
           final userReadStatus = notification['userReadStatus'] as Map? ?? {};
           final isRead = userReadStatus[userId] == true;
@@ -456,7 +394,6 @@ Future<void> initSocket() async {
     }
   }
 
-  // ✅ FIXED: Mark notifications as read
   void _markNotificationsAsRead() {
     if (mounted && notificationCount > 0) {
       setState(() {
@@ -464,7 +401,6 @@ Future<void> initSocket() async {
         _saveNotificationCountToStorage(0);
         FlutterAppBadger.removeBadge();
       });
-      
       print('📱 Notifications marked as read locally');
       _markAllNotificationsAsReadOnServer();
     }
@@ -472,14 +408,11 @@ Future<void> initSocket() async {
 
   Future<void> _markAllNotificationsAsReadOnServer() async {
     if (userId == null || userId!.isEmpty) return;
-    
     try {
       final apiService = ApiService();
       final response = await apiService.markAllAsRead('user', userId!);
-      
       if (response.data['success'] == true) {
         print('✅ All notifications marked as read on server');
-        
         if (mounted) {
           setState(() {
             notificationCount = 0;
@@ -490,30 +423,26 @@ Future<void> initSocket() async {
       }
     } catch (e) {
       print('❌ Error marking all as read on server: $e');
-      // Already marked locally, so it's fine
     }
   }
 
-  // ✅ FIXED: Increment notification count
   void _incrementNotificationCount() {
     if (mounted) {
       setState(() {
         notificationCount++;
         _saveNotificationCountToStorage(notificationCount);
       });
-      _updateAppIconBadge(); 
+      _updateAppIconBadge();
       print('➕ Incremented notification count: $notificationCount');
     }
   }
 
-  // ✅ FIXED: Decrement notification count
   void _decrementBadgeCount() {
     if (mounted && notificationCount > 0) {
       setState(() {
         notificationCount--;
         _saveNotificationCountToStorage(notificationCount);
       });
-      
       if (notificationCount == 0) {
         FlutterAppBadger.removeBadge();
       } else {
@@ -523,17 +452,14 @@ Future<void> initSocket() async {
     }
   }
 
-  // ✅ FIXED: Update notification count from outside
   void updateNotificationCount(int count) {
     print('📊 updateNotificationCount called with: $count');
     print('📊 Current notificationCount before: $notificationCount');
-    
     if (mounted) {
       setState(() {
         notificationCount = count;
         _saveNotificationCountToStorage(count);
       });
-      
       if (count > 0) {
         FlutterAppBadger.updateBadgeCount(count);
         print('🛎️ App badge updated to: $count');
@@ -555,27 +481,23 @@ Future<void> initSocket() async {
   }
 
   // ==================== PHONE CALL ====================
-
-
-Future<void> makePhoneCall(String phoneNumber) async {
-  var status = await Permission.phone.request();
-
-  print("Permission: $status");
-
-  if (status.isGranted) {
-    bool? res = await FlutterPhoneDirectCaller.callNumber(phoneNumber);
-    print("Result: $res");
-  } else {
-    print("Phone permission denied");
+  Future<void> makePhoneCall(String phoneNumber) async {
+    var status = await Permission.phone.request();
+    print("Permission: $status");
+    if (status.isGranted) {
+      bool? res = await FlutterPhoneDirectCaller.callNumber(phoneNumber);
+      print("Result: $res");
+    } else {
+      print("Phone permission denied");
+    }
   }
-}
 
   // ==================== OVERLAY METHODS ====================
   void _showCustomPushNotification(String title, String message) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final topPadding = MediaQuery.of(context).padding.top;
-    
+
     _removeOverlay();
 
     _overlayEntry = OverlayEntry(
@@ -679,7 +601,6 @@ Future<void> makePhoneCall(String phoneNumber) async {
   String? _getProfileImageUrl() {
     final picture = userData['picture'];
     if (picture == null) return null;
-    
     if (picture is Map) {
       if (picture['imageUrl'] != null) {
         final imageUrl = picture['imageUrl'];
@@ -698,63 +619,58 @@ Future<void> makePhoneCall(String phoneNumber) async {
         if (type.isNotEmpty) return type;
       }
     }
-    
     if (picture is String && picture.isNotEmpty) {
       return picture;
     }
     return null;
   }
 
-  Widget _buildNotificationWithBadge() {
-     const double navIconSize = 24;
-
-  final screenWidth = MediaQuery.of(context).size.width;
-  return Stack(
-    clipBehavior: Clip.none,
-    children: [
-      Icon(
-        currentTabIndex == 3
-            ? Icons.notifications
-            : Icons.notifications_outlined,
-        color: Colors.white,
-          size: navIconSize,
-      ),
-      if (notificationCount > 0)
-        Positioned(
-          right: -4,
-          top: -4,
-          child: Container(
-            width: 20,
-            height: 20,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: Colors.red,
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              // ✅ FIXED: Show actual number, even if > 99
-              '$notificationCount',  // ← Changed from 99+ to actual number
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
+  // ─── Responsive icon builder ──────────────────────────────────────────────
+  Widget _buildNotificationWithBadge(double iconSize, double badgeSize, double badgeTextSize) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(
+          currentTabIndex == 3
+              ? Icons.notifications
+              : Icons.notifications_outlined,
+          color: Colors.white,
+          size: iconSize,
+        ),
+        if (notificationCount > 0)
+          Positioned(
+            right: -badgeSize * 0.2,
+            top: -badgeSize * 0.2,
+            child: Container(
+              width: badgeSize,
+              height: badgeSize,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$notificationCount',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: badgeTextSize,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
-        ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
-  Widget _buildProfileIcon() {
-    const double navIconSize = 24;
+  Widget _buildProfileIcon(double iconSize) {
     final screenWidth = MediaQuery.of(context).size.width;
     String? profileImageUrl = _getProfileImageUrl();
-    
+
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
       return Container(
-         width: navIconSize,
-      height: navIconSize,
+        width: iconSize,
+        height: iconSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
@@ -773,8 +689,8 @@ Future<void> makePhoneCall(String phoneNumber) async {
           child: Image.network(
             profileImageUrl,
             fit: BoxFit.cover,
-            width: screenWidth * 0.09,
-            height: screenWidth * 0.09,
+            width: iconSize,
+            height: iconSize,
             errorBuilder: (context, error, stackTrace) {
               print('❌ Error loading profile image: $error');
               return Container(
@@ -782,7 +698,7 @@ Future<void> makePhoneCall(String phoneNumber) async {
                 child: Icon(
                   currentTabIndex == 4 ? Icons.person : Icons.person_outline,
                   color: Colors.green,
-                  size: navIconSize,
+                  size: iconSize,
                 ),
               );
             },
@@ -792,10 +708,10 @@ Future<void> makePhoneCall(String phoneNumber) async {
                 color: Colors.white,
                 child: Center(
                   child: SizedBox(
-                    width: screenWidth * 0.04,
-                    height: screenWidth * 0.04,
+                    width: iconSize * 0.5,
+                    height: iconSize * 0.5,
                     child: CircularProgressIndicator(
-                      strokeWidth: screenWidth * 0.005,
+                      strokeWidth: iconSize * 0.08,
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
                     ),
                   ),
@@ -809,7 +725,7 @@ Future<void> makePhoneCall(String phoneNumber) async {
       return Icon(
         currentTabIndex == 4 ? Icons.person : Icons.person_outline,
         color: Colors.white,
-        size: screenWidth * 0.08,
+        size: iconSize,
       );
     }
   }
@@ -828,7 +744,13 @@ Future<void> makePhoneCall(String phoneNumber) async {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    
+
+    // ─── Responsive dimensions ──────────────────────────────────────────────
+    final double iconSize = screenWidth * 0.06;          // ~21.6–24.8 on typical phones
+    final double badgeSize = iconSize * 0.75;            // ~16–18.6
+    final double badgeTextSize = badgeSize * 0.55;       // ~8.8–10.2
+    final double callIconSize = iconSize * 1.2;          // slightly larger for call button
+
     return Scaffold(
       key: _scaffoldKey,
       body: PageView(
@@ -840,9 +762,6 @@ Future<void> makePhoneCall(String phoneNumber) async {
           }
           setState(() {
             currentTabIndex = navIndex;
-            // if (navIndex == 3) {
-            //   _markNotificationsAsRead();
-            // }
           });
         },
         children: pages,
@@ -856,14 +775,13 @@ Future<void> makePhoneCall(String phoneNumber) async {
         ),
         child: BottomNavigationBar(
           currentIndex: currentTabIndex,
-        onTap: (index) {
-  if (index == 2) {
-    makePhoneCall("9567900329");
-    return;
-  }
-
-  _navigateToTab(index);
-},
+          onTap: (index) {
+            if (index == 2) {
+              makePhoneCall("9567900329");
+              return;
+            }
+            _navigateToTab(index);
+          },
           type: BottomNavigationBarType.fixed,
           backgroundColor: const Color(0xFF28A745),
           elevation: screenWidth * 0.025,
@@ -876,39 +794,40 @@ Future<void> makePhoneCall(String phoneNumber) async {
           unselectedLabelStyle: TextStyle(
             fontSize: screenWidth * 0.0275,
           ),
+          // Let each item define its own icon size for full control
           items: [
-          BottomNavigationBarItem(
-  icon: Icon(
-    currentTabIndex == 0
-        ? Icons.home
-        : Icons.home_outlined,
-    size: navIconSize,
-  ),
-  label: "Home",
-),
-           BottomNavigationBarItem(
-  icon: Icon(
-    currentTabIndex == 1
-        ? Icons.calendar_month
-        : Icons.calendar_month_outlined,
-   size: navIconSize,
-  ),
-  label: "Bookings",
-),
-           BottomNavigationBarItem(
-  icon: const Icon(
-    Icons.add_call,
-    color: Colors.red,
-    size: 28,
-  ),
-  label: "",
-),
             BottomNavigationBarItem(
-              icon: _buildNotificationWithBadge(),
+              icon: Icon(
+                currentTabIndex == 0 ? Icons.home : Icons.home_outlined,
+                color: Colors.white,
+                size: iconSize,
+              ),
+              label: "Home",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                currentTabIndex == 1
+                    ? Icons.calendar_month
+                    : Icons.calendar_month_outlined,
+                color: Colors.white,
+                size: iconSize,
+              ),
+              label: "Bookings",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.add_call,
+                color: Colors.red,
+                size: callIconSize,
+              ),
+              label: "",
+            ),
+            BottomNavigationBarItem(
+              icon: _buildNotificationWithBadge(iconSize, badgeSize, badgeTextSize),
               label: "Notifications",
             ),
             BottomNavigationBarItem(
-              icon: _buildProfileIcon(),
+              icon: _buildProfileIcon(iconSize),
               label: "Profile",
             ),
           ],

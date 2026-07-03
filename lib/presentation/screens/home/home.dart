@@ -29,7 +29,7 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
     {"name": "Specialties", "icon": Icons.category_outlined, "page": const Specialties()},
     {"name": "Ambulance", "icon": Icons.local_taxi_outlined, "page": const Ambulance()},
     {"name": "Blood", "icon": Icons.bloodtype_outlined, "page": const Blood()},
-    {"name": "Medicine", "icon": Icons.local_pharmacy, "page": ReminderScreen()},
+    {"name": "Medicine Reminder", "icon": Icons.local_pharmacy, "page": ReminderScreen()},
   ];
 
   @override
