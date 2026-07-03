@@ -410,7 +410,7 @@ Future<void> _navigateToViewProfile() async {
                                 child: Column(
                                   children: [
                                     _buildProfileOption(
-                                      icon: Icons.local_taxi_outlined,
+                                      icon: Icons.local_taxi,
                                       title: 'Ambulance',
                                       subtitle: 'About ambulance',
                                       screenWidth: screenWidth,
@@ -466,7 +466,7 @@ Future<void> _navigateToViewProfile() async {
 
                                     const Divider(height: 0),
                                     _buildProfileOption(
-                                      icon: Icons.water_drop_outlined,
+                                      icon: Icons.water_drop,
                                       title: 'Blood',
                                       subtitle: 'About Blood',
                                       screenWidth: screenWidth,
@@ -532,7 +532,7 @@ if (result == true) {
                                 const Divider(height: 0),
                                 _buildProfileOption(
                                   
-                                  icon: Icons.note_add_outlined,
+                                  icon: Icons.note_add,
                                   title: 'Prescription',
                                   subtitle: 'About prescription',
                                   screenWidth: screenWidth,
@@ -765,7 +765,7 @@ if (result == true) {
                                     const Divider(height: 0),
 
                                     _buildProfileOption(
-                                      icon: Icons.settings_outlined,
+                                      icon: Icons.settings,
                                       title: 'Settings',
                                       subtitle: 'App settings and preferences',
                                       screenWidth: screenWidth,
@@ -775,7 +775,7 @@ if (result == true) {
                                     ],
                                     const Divider(height: 0),
                                     _buildProfileOption(
-                                      icon: Icons.lock_outline,
+                                      icon: Icons.lock,
                                       title: 'Privacy',
                                       subtitle: 'Privacy policy and terms',
                                       screenWidth: screenWidth,
@@ -784,7 +784,7 @@ if (result == true) {
                                     ),
                                     const Divider(height: 0),
                                     _buildProfileOption(
-                                      icon: Icons.info_outline,
+                                      icon: Icons.info,
                                       title: 'About',
                                       subtitle: 'About this app',
                                       screenWidth: screenWidth,
@@ -818,7 +818,7 @@ if (result == true) {
                                 child: Column(
                                   children: [
                                     _buildProfileOption(
-                                      icon: Icons.headset_mic_outlined,
+                                      icon: Icons.headset_mic,
                                       title: 'Contact Us',
                                       subtitle: 'Get help and support',
                                       screenWidth: screenWidth,
