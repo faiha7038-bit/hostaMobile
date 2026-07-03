@@ -12,9 +12,6 @@ import '../blood/blood.dart';
 import '../speciality/specialties.dart';
 import '../doctor/doctors.dart';
 
-// Import the provider file (adjust path as needed)
-// import 'home_provider.dart';
-
 class Home extends ConsumerStatefulWidget {
   const Home({super.key});
 
@@ -46,7 +43,6 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // ❌ DO NOT call ref.read or any ref methods here – Riverpod handles cleanup via ref.onDispose
     super.dispose();
   }
 
@@ -81,7 +77,6 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
     final screenWidth = MediaQuery.of(context).size.width;
     final isAndroid = Platform.isAndroid;
 
-    // Responsive values with clamp to prevent overflow
     final double carouselHeight = screenHeight * 0.22;
     final double cardHeight = screenHeight * 0.14;
     final double horizontalPadding = screenWidth * 0.04;
@@ -211,7 +206,6 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Row 1
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -220,7 +214,6 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
                         ],
                       ),
                       SizedBox(height: cardSpacing),
-                      // Row 2
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -229,7 +222,6 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
                         ],
                       ),
                       SizedBox(height: cardSpacing),
-                      // Row 3
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -256,12 +248,11 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
     BuildContext context,
     double screenWidth,
   ) {
-    // Clamped values to prevent overflow
     final double iconSize = (width * 0.22).clamp(24.0, 60.0);
     final double fontSize = (width * 0.09).clamp(12.0, 18.0);
     final double padding = (width * 0.07).clamp(8.0, 20.0);
-    final double topSpacing = (height * 0.08).clamp(4.0, 12.0);
-    final double bottomSpacing = (height * 0.045).clamp(2.0, 8.0);
+    final double topSpacing = (height * 0.06).clamp(4.0, 12.0);   // space between icon and text
+    final double bottomSpacing = (height * 0.04).clamp(2.0, 8.0); // space below text (before line)
 
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => item["page"])),
@@ -271,18 +262,23 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
         decoration: BoxDecoration(
           gradient: LinearGradient(colors: [Colors.white, const Color(0xFFF8F9FA)], begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4), spreadRadius: 1)],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
           border: Border.all(color: Colors.grey.shade200, width: 1),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center, // centers the whole group
           children: [
+            // Icon
             Container(
               padding: EdgeInsets.all(padding),
-              decoration: BoxDecoration(color: const Color(0xFF28A745).withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: const Color(0xFF28A745).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(item["icon"], size: iconSize, color: const Color(0xFF28A745)),
             ),
             SizedBox(height: topSpacing),
+            // Name
             Flexible(
               child: Text(
                 item["name"],
@@ -293,6 +289,7 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
               ),
             ),
             SizedBox(height: bottomSpacing),
+            // Decorative line
             Container(
               height: 3,
               width: screenWidth * 0.08,

@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// A reusable top snackbar that can be shown from anywhere.
-///
-/// Example:
-/// ```dart
-/// showTopSnackBar(context, "Profile updated!");
-/// showTopSnackBar(context, "Something went wrong", isError: true);
-/// ```
-void showTopSnackBar(BuildContext context, String message, {bool isError = false}) {
+void showTopSnackBar(BuildContext context, String message,
+    {bool isError = false}) {
   final overlay = Overlay.of(context);
   if (overlay == null) return;
 

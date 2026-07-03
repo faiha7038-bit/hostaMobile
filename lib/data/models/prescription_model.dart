@@ -45,9 +45,9 @@ class Prescription {
   final String? canvasBg;
   final String? hospitalName;
   final String? patientName;
-  final String? patientAge;      // ✅ ഇത് വേണം
-  final String? patientGender;   // ✅ ഇത് വേണം
-  final String? patientPhone;    // ✅ ഇത് വേണം
+  final String? patientAge;      
+  final String? patientGender;  
+  final String? patientPhone;    
   final List<DesignElement> design;
   final String createdAt;
   final String updatedAt;
@@ -113,10 +113,10 @@ class Prescription {
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       
-      // ✅ ശരിയായ ഫീൽഡുകൾ മാപ്പ് ചെയ്യുക:
-      patientAge: json['age']?.toString(),        // ✅ 'age' എടുക്കുക
-      patientGender: json['gender']?.toString(),  // ✅ 'gender' എടുക്കുക
-      patientPhone: json['contact']?.toString(),  // ✅ 'contact' എടുക്കുക
+    
+      patientAge: json['age']?.toString(),        
+      patientGender: json['gender']?.toString(), 
+      patientPhone: json['contact']?.toString(),  
     );
   }
 }

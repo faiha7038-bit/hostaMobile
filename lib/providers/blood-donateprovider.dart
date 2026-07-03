@@ -5,24 +5,25 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import '../../../services/api_service.dart';
 
-// API Service Provider
 final apiServiceProvider = Provider<ApiService>((ref) => ApiService());
 
-// Location Data Provider (cached)
-final locationDataProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final locationDataProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final String response = await rootBundle.loadString(
     'assets/countries+states+cities.json',
   );
   final data = await json.decode(response);
-  return data.map<Map<String, dynamic>>((c) => {
-    'id': c['iso3'],
-    'name': c['name'],
-    'states': c['states'],
-  }).toList();
+  return data
+      .map<Map<String, dynamic>>((c) => {
+            'id': c['iso3'],
+            'name': c['name'],
+            'states': c['states'],
+          })
+      .toList();
 });
 
-// Donor Form State
-final donorFormProvider = StateNotifierProvider<DonorFormNotifier, DonorFormState>((ref) {
+final donorFormProvider =
+    StateNotifierProvider<DonorFormNotifier, DonorFormState>((ref) {
   return DonorFormNotifier();
 });
 
@@ -93,7 +94,7 @@ class DonorFormNotifier extends StateNotifier<DonorFormState> {
               'cities': s['cities'],
             })
         .toList();
-    
+
     state = state.copyWith(
       selectedCountry: country,
       selectedState: null,
@@ -146,28 +147,16 @@ class DonorFormNotifier extends StateNotifier<DonorFormState> {
   }
 }
 
-// Donor Creation Provider
-final donorCreationProvider =
-    FutureProvider.family<bool, Map<String, dynamic>>(
+final donorCreationProvider = FutureProvider.family<bool, Map<String, dynamic>>(
   (ref, payload) async {
     final apiService = ref.read(apiServiceProvider);
 
     try {
       final response = await apiService.createADonor(payload);
 
-      print("STATUS => ${response.statusCode}");
-      print("DATA => ${response.data}");
-      
-
-      // ✅ accept any success code
       if (response.statusCode != null &&
           response.statusCode! >= 200 &&
           response.statusCode! < 300) {
-print("🚀 Sending donor creation request with payload: $payload");
-// final response = await apiService.createADonor(payload);
-// print("✅ Response status: ${response.statusCode}");
-// print("📦 Response data: ${response.data}");
-        // safely extract id
         final bloodId = response.data?["data"]?["id"]?.toString();
 
         if (bloodId != null) {
@@ -179,39 +168,27 @@ print("🚀 Sending donor creation request with payload: $payload");
       }
 
       throw Exception(response.data?['message'] ?? 'Donate failed');
-
     } on DioException catch (dioError) {
-
-      print("DIO ERROR => ${dioError.response?.data}");
-      print("DIO STATUS => ${dioError.response?.statusCode}");
-
       String errorMessage = "Something went wrong";
 
       if (dioError.response != null) {
         try {
-          errorMessage =
-              dioError.response?.data['message'] ?? errorMessage;
+          errorMessage = dioError.response?.data['message'] ?? errorMessage;
         } catch (_) {}
       }
 
       throw Exception(errorMessage);
-
     } catch (e) {
-
-      print("GENERAL ERROR => $e");
-
       throw Exception("Something went wrong");
     }
   },
 );
 
-// User Phone Provider
 final userPhoneProvider = FutureProvider<String?>((ref) async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getString('userPhone');
 });
 
-// User ID Provider
 final userIdProvider = FutureProvider<String?>((ref) async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getString('userId');

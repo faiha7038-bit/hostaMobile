@@ -12,7 +12,7 @@ class NotificationProvider extends ChangeNotifier {
     if (_count != count) {
       _count = count;
       notifyListeners();
-      print('📊 NotificationProvider: Count updated to: $count');
+     
     }
   }
   
@@ -26,15 +26,15 @@ class NotificationProvider extends ChangeNotifier {
       final savedCount = prefs.getInt('notification_count') ?? 0;
       _count = savedCount;
       notifyListeners();
-      print('📊 NotificationProvider: Loaded count: $savedCount');
+     
     } catch (e) {
-      print('❌ Error loading count: $e');
+    
     }
   }
   
   void resetCount() {
     _count = 0;
     notifyListeners();
-    print('📊 NotificationProvider: Count reset to 0');
+  
   }
 }

@@ -32,9 +32,11 @@ class DoctorsState {
 
   List<Doctor> get filteredDoctors {
     if (searchQuery.isEmpty) return doctors;
-    
+
     return doctors.where((doctor) {
-      return doctor.fullName.toLowerCase().contains(searchQuery.toLowerCase()) ||
+      return doctor.fullName
+              .toLowerCase()
+              .contains(searchQuery.toLowerCase()) ||
           doctor.specialty.toLowerCase().contains(searchQuery.toLowerCase());
     }).toList();
   }
@@ -52,50 +54,37 @@ class DoctorsNotifier extends StateNotifier<DoctorsState> {
   Future<void> fetchDoctors() async {
     try {
       state = state.copyWith(isLoading: true, errorMessage: null);
-      
-      print("🟡 Fetching doctors for hospital: $hospitalId, specialty: $specialty");
-      
+
       final response = await _apiService.getDoctors(
         hospitalId: hospitalId,
-       speciality: specialty,
+        speciality: specialty,
       );
-      
-      print("🟢 Response status: ${response.statusCode}");
-      print("🟢 Response data: ${response.data}");
-      
-      // Check if response is successful
+
       if (response.statusCode == 200 && response.data['success'] == true) {
         final doctorsData = response.data['data'];
-        
+
         if (doctorsData is List) {
-          // Convert each JSON to Doctor object
           final doctors = doctorsData.map((json) {
             return Doctor.fromJson(json);
           }).toList();
-          
-          print("✅ Successfully loaded ${doctors.length} doctors");
-          
+
           state = state.copyWith(
             doctors: doctors,
             isLoading: false,
           );
         } else {
-          print("❌ doctorsData is not a List");
           state = state.copyWith(
             errorMessage: "Invalid data format",
             isLoading: false,
           );
         }
       } else {
-        print("❌ API returned error");
         state = state.copyWith(
           errorMessage: response.data['message'] ?? "Failed to load doctors",
           isLoading: false,
         );
       }
     } catch (e, stackTrace) {
-      print("❌ Error fetching doctors: $e");
-      print("❌ Stack trace: $stackTrace");
       state = state.copyWith(
         errorMessage: "Error: $e",
         isLoading: false,
@@ -109,12 +98,11 @@ class DoctorsNotifier extends StateNotifier<DoctorsState> {
 }
 
 // Provider
-final doctorsProvider = StateNotifierProvider.family<DoctorsNotifier, DoctorsState, ({String hospitalId, String specialty})>(
-  (ref, params) {
-    final apiService = ref.read(apiServiceProvider);
-    return DoctorsNotifier(apiService, params.hospitalId, params.specialty);
-  }
-);
+final doctorsProvider = StateNotifierProvider.family<DoctorsNotifier,
+    DoctorsState, ({String hospitalId, String specialty})>((ref, params) {
+  final apiService = ref.read(apiServiceProvider);
+  return DoctorsNotifier(apiService, params.hospitalId, params.specialty);
+});
 
 // ApiService provider
 final apiServiceProvider = Provider((ref) => ApiService());

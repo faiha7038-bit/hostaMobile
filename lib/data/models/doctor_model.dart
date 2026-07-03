@@ -29,7 +29,7 @@ class Doctor {
   final String experience;
   final String? imageUrl;
   
-  // UI-ന് വേണ്ടി additional fields
+  
   String? hospitalName;
   String? hospitalAddress;
   String? hospitalPhone;
@@ -73,12 +73,11 @@ final List<ConsultingTwo> consultingTwo;
 required this.consultingTwo,
   });
 
-  // Helper getters for UI
+ 
   String get fullName => displayName.isNotEmpty ? displayName : "$firstName $lastName";
   String get name => fullName;
   String get specialty => specialist;
 
-  // JSON to Doctor object
   factory Doctor.fromJson(Map<String, dynamic> json) {
     return Doctor(
       id: json['id'] ?? 0,
@@ -131,7 +130,7 @@ consultingTwo: (json['consultingTwo'] as List?)
 
   get doctors => null;
 
-  // Copy with method for adding hospital info
+
   Doctor copyWith({
     String? hospitalName,
     String? hospitalAddress,
@@ -188,7 +187,6 @@ List<String> get availableDays {
 }
 }
 
-// Address model
 class Address {
   final String place;
   final String state;
@@ -217,7 +215,6 @@ class Address {
   String get fullAddress => "$place, $district, $state, $country - $pincode";
 }
 
-// Consulting time model
 class ConsultingTime {
   final Session? morningSession;
   final Session? eveningSession;
@@ -238,7 +235,7 @@ class ConsultingTime {
     );
   }
   
-  // For UI display
+ 
   List<ConsultingSlot> getAvailableSlots() {
     List<ConsultingSlot> slots = [];
     
@@ -265,7 +262,6 @@ class ConsultingTime {
 class day {
 }
 
-// Session model
 class Session {
   final String open;
   final String close;
@@ -285,7 +281,6 @@ class Session {
   String get range => "$open - $close";
 }
 
-// Outdoor consulting model
 class OutDoorConsulting {
   final TimeSlot time;
   final String place;
@@ -303,7 +298,6 @@ class OutDoorConsulting {
   }
 }
 
-// Time slot model
 class TimeSlot {
   final String open;
   final String close;
@@ -323,7 +317,6 @@ class TimeSlot {
   String get range => "$open - $close";
 }
 
-// UI Helper class
 class ConsultingSlot {
   final String title;
   final String time;

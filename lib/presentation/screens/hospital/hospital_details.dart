@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart'; 
@@ -13,14 +12,16 @@ import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
 import 'package:hosta/providers/hospital-details-provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// Helper to clamp responsive values between safe limits
+double _clamp(double value, double min, double max) =>
+    value.clamp(min, max) as double;
+
 class HospitalDetailsPage extends ConsumerStatefulWidget {
   final String hospitalId;
- // final Map<String, dynamic> hospital;
 
   const HospitalDetailsPage({
     super.key,
     required this.hospitalId,
-   // required this.hospital,
   });
 
   @override
@@ -48,17 +49,15 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
       return;
     }
     _initializeData();
-    _getCurrentLocation(); // ✅ ADD THIS LINE - Get user location
+    _getCurrentLocation();
   }
 
-  // ✅ ADD THIS ENTIRE METHOD - To get user's current location
   Future<void> _getCurrentLocation() async {
     setState(() {
       _isLoadingLocation = true;
     });
 
     try {
-      // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
@@ -76,7 +75,6 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
         return;
       }
 
-      // Check and request permission
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -109,7 +107,6 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
         return;
       }
 
-      // Get current position
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
@@ -119,12 +116,8 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
           _currentPosition = position;
           _isLoadingLocation = false;
         });
-        print(
-          "📍 User location obtained: ${position.latitude}, ${position.longitude}",
-        );
       }
     } catch (e) {
-      print("❌ Error getting location: $e");
       if (mounted) {
         setState(() {
           _isLoadingLocation = false;
@@ -138,11 +131,8 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
     await _loadInitialData();
   }
 
-  // Rest of your code remains the SAME...
   Future<void> _loadInitialData() async {
     try {
-      print("🔄 Loading initial data for hospital ID: ${widget.hospitalId}");
-
       await ref.read(hospitalDetailsProvider(widget.hospitalId).future);
       await ref.read(hospitalReviewsProvider(widget.hospitalId).future);
 
@@ -157,23 +147,20 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
         isLoading = false;
       });
     } catch (e) {
-      print("❌ Error loading initial data: $e");
       setState(() => isLoading = false);
     }
   }
 
   Future<void> _fetchHospitalDetails() async {
     try {
-      print("🏥 Fetching hospital details for ID: ${widget.hospitalId}");
       final hospitalData = await ref.read(
         hospitalDetailsProvider(widget.hospitalId).future,
       );
       setState(() {
         hospital = hospitalData;
       });
-      print("✅ Hospital details fetched successfully");
     } catch (e) {
-      print("❌ Error fetching hospital details: $e");
+      // ignore
     }
   }
 
@@ -348,34 +335,47 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
     final userState = ref.watch(userProvider);
     final isReviewLoading = ref.watch(reviewLoadingProvider);
 
-  return hospitalAsync.when(
-    loading: () => Scaffold(
-      body: Center(child: CircularProgressIndicator(color: Colors.green)),
-    ),
-    error: (error, stack) => Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-           // Text("Error loading hospital data: $error"),
-            ElevatedButton(
-              onPressed: () => ref.invalidate(hospitalDetailsProvider(widget.hospitalId)),
-              child: Text("Retry"),
-            ),
-          ],
+    return hospitalAsync.when(
+      loading: () => Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.green,
+            strokeWidth: _clamp(MediaQuery.of(context).size.width * 0.008, 2, 6),
+          ),
         ),
       ),
-    ),
-    data: (hospitalData) {
-      log("🏥 Hospital data: id=${hospitalData['id']}, name=${hospitalData['name']}, hospitalId=${hospitalData['hospitalId']}");
-      // ✅ Get screen size inside builder
-      final screenWidth = MediaQuery.of(context).size.width;
-      final screenHeight = MediaQuery.of(context).size.height;
-      
-      // ✅ Extract image URL safely (backend may not have image field)
-      final imageUrl = hospitalData["image"] != null 
-          ? (hospitalData["image"]["imageUrl"] ?? "")
-          : "";
+      error: (error, stack) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Text("Error loading hospital data: $error"),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(hospitalDetailsProvider(widget.hospitalId)),
+                child: Text("Retry"),
+              ),
+            ],
+          ),
+        ),
+      ),
+      data: (hospitalData) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+
+        // Responsive clamped values
+        final double imageHeight = _clamp(screenHeight * 0.33, 200, 400);
+        final double backButtonRadius = _clamp(screenWidth * 0.06, 24, 48);
+        final double backIconSize = _clamp(screenWidth * 0.065, 24, 40);
+        final double topPadding = _clamp(screenHeight * 0.015, 8, 24);
+        final double leftPadding = _clamp(screenWidth * 0.03, 8, 20);
+        final double bottomRadius = _clamp(screenWidth * 0.05, 16, 32);
+        final double tabLabelSize = _clamp(screenWidth * 0.0375, 12, 20);
+        final double tabUnselectedSize = _clamp(screenWidth * 0.035, 11, 18);
+        final double spacing = _clamp(screenHeight * 0.01, 4, 16);
+
+        final imageUrl = hospitalData["image"] != null 
+            ? (hospitalData["image"]["imageUrl"] ?? "")
+            : "";
 
         return DefaultTabController(
           length: 5,
@@ -388,18 +388,18 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.vertical(
-                          bottom: Radius.circular(screenWidth * 0.05),
+                          bottom: Radius.circular(bottomRadius),
                         ),
                         child: imageUrl.isNotEmpty
                             ? Image.network(
                                 imageUrl,
-                                height: screenHeight * 0.33,
+                                height: imageHeight,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
                                   return Image.asset(
                                     'images/hospital.jpg',
-                                    height: screenHeight * 0.33,
+                                    height: imageHeight,
                                     width: double.infinity,
                                     fit: BoxFit.cover,
                                   );
@@ -407,22 +407,22 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
                               )
                             : Image.asset(
                                 'images/hospital.jpg',
-                                height: screenHeight * 0.33,
+                                height: imageHeight,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
                               ),
                       ),
                       Positioned(
-                        top: screenHeight * 0.015,
-                        left: screenWidth * 0.03,
+                        top: topPadding,
+                        left: leftPadding,
                         child: CircleAvatar(
                           backgroundColor: Colors.black45,
-                          radius: screenWidth * 0.06,
+                          radius: backButtonRadius,
                           child: IconButton(
                             icon: Icon(
                               Icons.arrow_back_ios_new,
                               color: Colors.white,
-                              size: screenWidth * 0.065,
+                              size: backIconSize,
                             ),
                             onPressed: () => Navigator.pop(context),
                           ),
@@ -430,18 +430,18 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
                       ),
                     ],
                   ),
-                  SizedBox(height: screenHeight * 0.01),
+                  SizedBox(height: spacing),
                   TabBar(
                     isScrollable: true,
                     labelColor: Colors.green,
                     unselectedLabelColor: Colors.black,
                     indicatorColor: Colors.green,
                     labelStyle: TextStyle(
-                      fontSize: screenWidth * 0.0375,
+                      fontSize: tabLabelSize,
                       fontWeight: FontWeight.bold,
                     ),
                     unselectedLabelStyle: TextStyle(
-                      fontSize: screenWidth * 0.035,
+                      fontSize: tabUnselectedSize,
                     ),
                     tabs: const [
                       Tab(text: "Information"),
@@ -452,33 +452,30 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
                     ],
                   ),
                   Expanded(
-                    child: 
-                  TabBarView(
-  children: [
-    InfoTab(
-      hospital: hospitalData,
-      makePhoneCall: _makePhoneCall,
-    ),
-    SpecialtiesTab(
-      hospital: hospitalData,
-      onSpecialtyTap: _navigateToDoctorsPage,
-    ),
-    HoursTab(
-      hospital: hospitalData,
-      formatTime: _formatTime,
-    ),
-    LocationTab(
-      hospital: hospitalData,
-      userLatitude: _currentPosition?.latitude,
-      userLongitude: _currentPosition?.longitude,
-    ),
-    ReviewsTab(
-      hospitalId: widget.hospitalId,
-    
-    
-    ),
-  ],
-)
+                    child: TabBarView(
+                      children: [
+                        InfoTab(
+                          hospital: hospitalData,
+                          makePhoneCall: _makePhoneCall,
+                        ),
+                        SpecialtiesTab(
+                          hospital: hospitalData,
+                          onSpecialtyTap: _navigateToDoctorsPage,
+                        ),
+                        HoursTab(
+                          hospital: hospitalData,
+                          formatTime: _formatTime,
+                        ),
+                        LocationTab(
+                          hospital: hospitalData,
+                          userLatitude: _currentPosition?.latitude,
+                          userLongitude: _currentPosition?.longitude,
+                        ),
+                        ReviewsTab(
+                          hospitalId: widget.hospitalId,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

@@ -1,325 +1,32 @@
-// import 'package:flutter/material.dart';
-
-// class About extends StatelessWidget {
-//   const About({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final screenWidth = MediaQuery.of(context).size.width;
-//     final screenHeight = MediaQuery.of(context).size.height;
-//     final isSmallScreen = screenWidth < 600;
-
-//     return Scaffold(
-//       backgroundColor: const Color(0xFFECFDF5),
-//       appBar: AppBar(
-//         backgroundColor: Colors.green,
-//         elevation: 3,
-//         shadowColor: Colors.green.shade100,
-//         leading: IconButton(
-//           icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: screenWidth * 0.055),
-//           onPressed: () => Navigator.pop(context),
-//         ),
-//         title: Text(
-//           "About",
-//           style: TextStyle(
-//             color: Colors.white,
-//             fontWeight: FontWeight.w600,
-//             fontSize: screenWidth * 0.05,
-//           ),
-//         ),
-//         centerTitle: true,
-//       ),
-//       body: SingleChildScrollView(
-//         padding: EdgeInsets.all(screenWidth * 0.05),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             // 🌿 Header
-//             Center(
-//               child: Column(
-//                 children: [
-//                   Icon(Icons.local_hospital, size: screenWidth * 0.18, color: Colors.green[700]),
-//                   SizedBox(height: screenHeight * 0.015),
-//                   Text(
-//                     "Hospital Finder",
-//                     style: TextStyle(
-//                       fontSize: screenWidth * 0.065,
-//                       fontWeight: FontWeight.bold,
-//                       color: Colors.green,
-//                     ),
-//                   ),
-//                   SizedBox(height: screenHeight * 0.01),
-//                   Text(
-//                     "Connecting you to quality healthcare easily.",
-//                     textAlign: TextAlign.center,
-//                     style: TextStyle(
-//                       fontSize: screenWidth * 0.04,
-//                       color: Colors.black54,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-
-//             SizedBox(height: screenHeight * 0.037),
-
-//             // 🌿 About Section
-//             _buildSectionTitle("About Our App", screenWidth),
-//             Text(
-//               "Welcome to our innovative hospital finder platform that connects patients with nearby hospitals and doctors. "
-//               "Our goal is to make healthcare access simple, fast, and stress-free.",
-//               style: TextStyle(
-//                 fontSize: screenWidth * 0.04,
-//                 color: Colors.black87,
-//                 height: 1.5,
-//               ),
-//             ),
-//             SizedBox(height: screenHeight * 0.012),
-//             Text(
-//               "You can search hospitals, book appointments, and even access emergency ambulance services instantly.",
-//               style: TextStyle(
-//                 fontSize: screenWidth * 0.04,
-//                 color: Colors.black87,
-//                 height: 1.5,
-//               ),
-//             ),
-
-//             SizedBox(height: screenHeight * 0.037),
-
-//             // 🌿 Key Features
-//             _buildSectionTitle("Key Features", screenWidth),
-//             Wrap(
-//               spacing: screenWidth * 0.035,
-//               runSpacing: screenHeight * 0.0175,
-//               children: const [
-//                 FeatureCard(
-//                   icon: Icons.search,
-//                   title: "Find Hospitals",
-//                   description: "Locate nearby hospitals easily.",
-//                 ),
-//                 FeatureCard(
-//                   icon: Icons.calendar_month,
-//                   title: "Book Appointments",
-//                   description: "Schedule consultations quickly.",
-//                 ),
-//                 FeatureCard(
-//                   icon: Icons.emergency,
-//                   title: "Emergency Help",
-//                   description: "Access ambulance services fast.",
-//                 ),
-//                 FeatureCard(
-//                   icon: Icons.person_add,
-//                   title: "Register Hospitals",
-//                   description: "Sign up as a healthcare provider.",
-//                 ),
-//                 FeatureCard(
-//                   icon: Icons.assignment,
-//                   title: "Doctor Details",
-//                   description: "View hospital specialties & doctors.",
-//                 ),
-//                 FeatureCard(
-//                   icon: Icons.access_time,
-//                   title: "Working Hours",
-//                   description: "Check real-time doctor availability.",
-//                 ),
-//               ],
-//             ),
-
-//             SizedBox(height: screenHeight * 0.037),
-
-//             // 🌿 Find Section
-//             _buildSectionTitle("Find Hospitals Near You", screenWidth),
-//             Text(
-//               "Use our search feature to find hospitals and doctors nearby. Simply enter your area or city to begin.",
-//               style: TextStyle(
-//                 fontSize: screenWidth * 0.04,
-//                 color: Colors.black87,
-//                 height: 1.5,
-//               ),
-//             ),
-
-//             SizedBox(height: screenHeight * 0.037),
-
-//             // 🌿 For Hospitals
-//             _buildSectionTitle("For Hospitals", screenWidth),
-//             Text(
-//               "Healthcare providers can join our platform to:",
-//               style: TextStyle(
-//                 fontSize: screenWidth * 0.04,
-//                 color: Colors.black87,
-//                 height: 1.5,
-//               ),
-//             ),
-//             SizedBox(height: screenHeight * 0.012),
-//             _BulletList(items: [
-//               "Showcase facilities and services",
-//               "Manage appointments and patient bookings",
-//               "Add doctor details and specialties",
-//               "Provide updates about working hours"
-//             ]),
-//             SizedBox(height: screenHeight * 0.012),
-//             Text(
-//               "Contact us to learn more about listing your hospital.",
-//               style: TextStyle(
-//                 fontSize: screenWidth * 0.04,
-//                 color: Colors.black87,
-//               ),
-//             ),
-
-//             SizedBox(height: screenHeight * 0.037),
-
-//             // 🌿 Commitment
-//             _buildSectionTitle("Our Commitment", screenWidth),
-//             _BulletList(items: [
-//               "Simplifying access to healthcare",
-//               "Providing accurate information",
-//               "Ensuring a seamless experience",
-//               "Improving based on feedback",
-//               "Maintaining data privacy and security",
-//             ]),
-
-//             SizedBox(height: screenHeight * 0.05),
-//             Center(
-//               child: Text(
-//                 "© 2025 Hospital Finder App",
-//                 style: TextStyle(
-//                   fontSize: screenWidth * 0.035,
-//                   color: Colors.grey[600],
-//                 ),
-//               ),
-//             ),
-//             SizedBox(height: screenHeight * 0.012),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _buildSectionTitle(String title, double screenWidth) {
-//     return Padding(
-//       padding: EdgeInsets.only(bottom: screenWidth * 0.025),
-//       child: Text(
-//         title,
-//         style: TextStyle(
-//           fontSize: screenWidth * 0.055,
-//           fontWeight: FontWeight.w600,
-//           color: Colors.green,
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// // 🌿 Feature Card Widget
-// class FeatureCard extends StatelessWidget {
-//   final IconData icon;
-//   final String title;
-//   final String description;
-
-//   const FeatureCard({
-//     super.key,
-//     required this.icon,
-//     required this.title,
-//     required this.description,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final screenWidth = MediaQuery.of(context).size.width;
-//     final screenHeight = MediaQuery.of(context).size.height;
-
-//     return Container(
-//       width: (screenWidth / 2) - (screenWidth * 0.07),
-//       padding: EdgeInsets.all(screenWidth * 0.04),
-//       decoration: BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(screenWidth * 0.035),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.green.withOpacity(0.1),
-//             blurRadius: 6,
-//             offset: const Offset(0, 3),
-//           )
-//         ],
-//       ),
-//       child: Column(
-//         children: [
-//           Icon(icon, size: screenWidth * 0.12, color: Colors.green),
-//           SizedBox(height: screenHeight * 0.01),
-//           Text(
-//             title,
-//             textAlign: TextAlign.center,
-//             style: TextStyle(
-//               fontWeight: FontWeight.bold,
-//               fontSize: screenWidth * 0.04,
-//               color: Colors.green,
-//             ),
-//           ),
-//           SizedBox(height: screenHeight * 0.0075),
-//           Text(
-//             description,
-//             textAlign: TextAlign.center,
-//             style: TextStyle(
-//               fontSize: screenWidth * 0.035,
-//               color: Colors.black54,
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// // 🌿 Bullet List Widget
-// class _BulletList extends StatelessWidget {
-//   final List<String> items;
-//   const _BulletList({required this.items});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final screenWidth = MediaQuery.of(context).size.width;
-//     final screenHeight = MediaQuery.of(context).size.height;
-
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: items
-//           .map((item) => Padding(
-//                 padding: EdgeInsets.symmetric(vertical: screenHeight * 0.005),
-//                 child: Row(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     Text("• ",
-//                         style: TextStyle(
-//                             fontSize: screenWidth * 0.045,
-//                             color: Colors.green,
-//                             height: 1.3)),
-//                     Expanded(
-//                       child: Text(
-//                         item,
-//                         style: TextStyle(
-//                             fontSize: screenWidth * 0.04,
-//                             color: Colors.black87,
-//                             height: 1.4),
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ))
-//           .toList(),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
 
 class About extends StatelessWidget {
   const About({super.key});
+
+  // Helper to clamp a responsive value between min and max.
+  double _clamp(double value, double min, double max) =>
+      value.clamp(min, max) as double;
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 600;
+
+    // Responsive font sizes (with sensible limits)
+    final double appBarTitleSize = _clamp(screenWidth * 0.055, 16, 24);
+    final double sectionTitleSize = _clamp(screenWidth * 0.055, 18, 28);
+    final double bodyTextSize = _clamp(screenWidth * 0.04, 14, 18);
+    final double smallTextSize = _clamp(screenWidth * 0.035, 12, 16);
+    final double featureTitleSize = _clamp(screenWidth * 0.035, 12, 16);
+    final double featureDescSize = _clamp(screenWidth * 0.03, 10, 14);
+
+    // Responsive spacing
+    final double horizontalPadding = screenWidth * 0.05;
+    final double verticalPadding = screenHeight * 0.02;
+    final double sectionSpacing = screenHeight * 0.03;
+    final double smallSpacing = screenHeight * 0.015;
+    final double tinySpacing = screenHeight * 0.005;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -330,12 +37,12 @@ class About extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "About",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
-            fontSize: 20,
+            fontSize: appBarTitleSize,
           ),
         ),
         centerTitle: true,
@@ -349,8 +56,8 @@ class About extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
-          horizontal: screenWidth * 0.05,
-          vertical: screenHeight * 0.02,
+          horizontal: horizontalPadding,
+          vertical: verticalPadding,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,32 +65,36 @@ class About extends StatelessWidget {
             // Header Section
             _buildHeader(screenWidth, screenHeight),
 
-            SizedBox(height: screenHeight * 0.03),
+            SizedBox(height: sectionSpacing),
 
             // About Section
             _buildSection(
               title: "About Our App",
               icon: Icons.info_outline,
+              screenWidth: screenWidth,
+              screenHeight: screenHeight,
               children: [
                 Text(
                   "Welcome to our innovative hospital finder platform that connects patients with nearby hospitals and doctors. "
                   "Our goal is to make healthcare access simple, fast, and stress-free.",
-                  style: _bodyTextStyle(screenWidth),
+                  style: _bodyTextStyle(screenWidth, bodyTextSize),
                 ),
-                SizedBox(height: screenHeight * 0.015),
+                SizedBox(height: smallSpacing),
                 Text(
                   "You can search hospitals, book appointments, and even access emergency ambulance services instantly.",
-                  style: _bodyTextStyle(screenWidth),
+                  style: _bodyTextStyle(screenWidth, bodyTextSize),
                 ),
               ],
             ),
 
-            SizedBox(height: screenHeight * 0.03),
+            SizedBox(height: sectionSpacing),
 
             // Features Section
             _buildSection(
               title: "Key Features",
               icon: Icons.star_outline,
+              screenWidth: screenWidth,
+              screenHeight: screenHeight,
               children: [
                 GridView.count(
                   shrinkWrap: true,
@@ -392,75 +103,95 @@ class About extends StatelessWidget {
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   childAspectRatio: 1.1,
-                  children: const [
+                  children: [
                     FeatureCard(
                       icon: Icons.search,
                       title: "Find Hospitals",
                       description: "Locate nearby hospitals easily.",
+                      screenWidth: screenWidth,
+                      screenHeight: screenHeight,
                     ),
                     FeatureCard(
                       icon: Icons.calendar_month,
                       title: "Book Appointments",
                       description: "Schedule consultations quickly.",
+                      screenWidth: screenWidth,
+                      screenHeight: screenHeight,
                     ),
                     FeatureCard(
                       icon: Icons.emergency,
                       title: "Emergency Help",
                       description: "Access ambulance services fast.",
+                      screenWidth: screenWidth,
+                      screenHeight: screenHeight,
                     ),
                     FeatureCard(
                       icon: Icons.person_add,
                       title: "Register Hospitals",
                       description: "Sign up as a healthcare provider.",
+                      screenWidth: screenWidth,
+                      screenHeight: screenHeight,
                     ),
                     FeatureCard(
                       icon: Icons.assignment,
                       title: "Doctor Details",
                       description: "View hospital specialties & doctors.",
+                      screenWidth: screenWidth,
+                      screenHeight: screenHeight,
                     ),
                     FeatureCard(
                       icon: Icons.access_time,
                       title: "Working Hours",
                       description: "Check real-time doctor availability.",
+                      screenWidth: screenWidth,
+                      screenHeight: screenHeight,
                     ),
                   ],
                 ),
               ],
             ),
 
-            SizedBox(height: screenHeight * 0.03),
+            SizedBox(height: sectionSpacing),
 
             // Find Section
             _buildSection(
               title: "Find Hospitals Near You",
               icon: Icons.location_on_outlined,
+              screenWidth: screenWidth,
+              screenHeight: screenHeight,
               children: [
                 Text(
                   "Use our search feature to find hospitals and doctors nearby. Simply enter your area or city to begin.",
-                  style: _bodyTextStyle(screenWidth),
+                  style: _bodyTextStyle(screenWidth, bodyTextSize),
                 ),
               ],
             ),
 
-            SizedBox(height: screenHeight * 0.03),
+            SizedBox(height: sectionSpacing),
 
             // For Hospitals Section
             _buildSection(
               title: "For Hospitals",
               icon: Icons.business_outlined,
+              screenWidth: screenWidth,
+              screenHeight: screenHeight,
               children: [
                 Text(
                   "Healthcare providers can join our platform to:",
-                  style: _bodyTextStyle(screenWidth),
+                  style: _bodyTextStyle(screenWidth, bodyTextSize),
                 ),
-                SizedBox(height: screenHeight * 0.012),
-                _BulletList(items: [
-                  "Showcase facilities and services",
-                  "Manage appointments and patient bookings",
-                  "Add doctor details and specialties",
-                  "Provide updates about working hours"
-                ]),
-                SizedBox(height: screenHeight * 0.015),
+                SizedBox(height: tinySpacing),
+                _BulletList(
+                  items: [
+                    "Showcase facilities and services",
+                    "Manage appointments and patient bookings",
+                    "Add doctor details and specialties",
+                    "Provide updates about working hours",
+                  ],
+                  screenWidth: screenWidth,
+                  screenHeight: screenHeight,
+                ),
+                SizedBox(height: smallSpacing),
                 Container(
                   padding: EdgeInsets.all(screenWidth * 0.04),
                   decoration: BoxDecoration(
@@ -470,13 +201,17 @@ class About extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.email_outlined, color: Colors.green, size: 24),
+                      Icon(
+                        Icons.email_outlined,
+                        color: Colors.green,
+                        size: _clamp(screenWidth * 0.065, 20, 32),
+                      ),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           "Contact us at hosta@gmail.com to learn more about listing your hospital.",
                           style: TextStyle(
-                            fontSize: screenWidth * 0.04,
+                            fontSize: bodyTextSize,
                             color: Colors.green,
                             height: 1.4,
                           ),
@@ -488,32 +223,38 @@ class About extends StatelessWidget {
               ],
             ),
 
-            SizedBox(height: screenHeight * 0.03),
+            SizedBox(height: sectionSpacing),
 
             // Commitment Section
             _buildSection(
               title: "Our Commitment",
               icon: Icons.verified_outlined,
+              screenWidth: screenWidth,
+              screenHeight: screenHeight,
               children: [
-                _BulletList(items: [
-                  "Simplifying access to healthcare",
-                  "Providing accurate information",
-                  "Ensuring a seamless experience",
-                  "Improving based on feedback",
-                  "Maintaining data privacy and security",
-                ]),
+                _BulletList(
+                  items: [
+                    "Simplifying access to healthcare",
+                    "Providing accurate information",
+                    "Ensuring a seamless experience",
+                    "Improving based on feedback",
+                    "Maintaining data privacy and security",
+                  ],
+                  screenWidth: screenWidth,
+                  screenHeight: screenHeight,
+                ),
               ],
             ),
 
-            SizedBox(height: screenHeight * 0.04),
+            SizedBox(height: sectionSpacing * 1.5),
 
             // Footer
             Center(
               child: Column(
                 children: [
                   Container(
-                    width: 60,
-                    height: 60,
+                    width: _clamp(screenWidth * 0.15, 50, 80),
+                    height: _clamp(screenWidth * 0.15, 50, 80),
                     decoration: BoxDecoration(
                       color: Colors.green[50],
                       shape: BoxShape.circle,
@@ -521,30 +262,30 @@ class About extends StatelessWidget {
                     child: Icon(
                       Icons.local_hospital,
                       color: Colors.green,
-                      size: 30,
+                      size: _clamp(screenWidth * 0.08, 24, 40),
                     ),
                   ),
-                  SizedBox(height: screenHeight * 0.015),
+                  SizedBox(height: smallSpacing),
                   Text(
                     "Hospital Finder",
                     style: TextStyle(
-                      fontSize: screenWidth * 0.04,
+                      fontSize: _clamp(screenWidth * 0.04, 14, 22),
                       fontWeight: FontWeight.w600,
                       color: Colors.green,
                     ),
                   ),
-                  SizedBox(height: screenHeight * 0.005),
+                  SizedBox(height: tinySpacing),
                   Text(
                     "© ${DateTime.now().year} All Rights Reserved",
                     style: TextStyle(
-                      fontSize: screenWidth * 0.035, 
+                      fontSize: _clamp(screenWidth * 0.035, 10, 16),
                       color: Colors.grey[400],
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: screenHeight * 0.02),
+            SizedBox(height: verticalPadding),
           ],
         ),
       ),
@@ -552,16 +293,18 @@ class About extends StatelessWidget {
   }
 
   Widget _buildHeader(double screenWidth, double screenHeight) {
+    final double headerPadding = screenWidth * 0.06;
+    final double iconSize = _clamp(screenWidth * 0.12, 50, 90);
+    final double titleSize = _clamp(screenWidth * 0.055, 20, 34);
+    final double subtitleSize = _clamp(screenWidth * 0.04, 14, 22);
+
     return Container(
-      padding: EdgeInsets.all(screenWidth * 0.06),
+      padding: EdgeInsets.all(headerPadding),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.green[400]!,
-            Colors.green[700]!,
-          ],
+          colors: [Colors.green[400]!, Colors.green[700]!],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -575,14 +318,14 @@ class About extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(_clamp(screenWidth * 0.04, 10, 20)),
             decoration: const BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.health_and_safety,
-              size: screenWidth * 0.12,
+              size: iconSize,
               color: Colors.green[700],
             ),
           ),
@@ -590,7 +333,7 @@ class About extends StatelessWidget {
           Text(
             "Your Health, Our Priority",
             style: TextStyle(
-              fontSize: screenWidth * 0.055,
+              fontSize: titleSize,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -600,7 +343,7 @@ class About extends StatelessWidget {
             "Connecting you to quality healthcare easily",
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: screenWidth * 0.04,
+              fontSize: subtitleSize,
               color: Colors.white.withOpacity(0.9),
             ),
           ),
@@ -612,19 +355,24 @@ class About extends StatelessWidget {
   Widget _buildSection({
     required String title,
     required IconData icon,
+    required double screenWidth,
+    required double screenHeight,
     required List<Widget> children,
   }) {
+    final double iconSize = _clamp(screenWidth * 0.065, 20, 32);
+    final double titleSize = _clamp(screenWidth * 0.055, 18, 28);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, color: Colors.green[700], size: 24),
+            Icon(icon, color: Colors.green[700], size: iconSize),
             SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 20,
+              style: TextStyle(
+                fontSize: titleSize,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
@@ -637,9 +385,9 @@ class About extends StatelessWidget {
     );
   }
 
-  TextStyle _bodyTextStyle(double screenWidth) {
+  TextStyle _bodyTextStyle(double screenWidth, double fontSize) {
     return TextStyle(
-      fontSize: screenWidth * 0.04,
+      fontSize: fontSize,
       color: Colors.black87,
       height: 1.6,
       letterSpacing: 0.2,
@@ -652,21 +400,27 @@ class FeatureCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
+  final double screenWidth;
+  final double screenHeight;
 
   const FeatureCard({
     super.key,
     required this.icon,
     required this.title,
     required this.description,
+    required this.screenWidth,
+    required this.screenHeight,
   });
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final double iconSize = _clamp(screenWidth * 0.08, 28, 44);
+    final double titleSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double descSize = _clamp(screenWidth * 0.03, 10, 14);
+    final double padding = screenWidth * 0.04;
 
     return Container(
-      padding: EdgeInsets.all(screenWidth * 0.04),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -677,23 +431,20 @@ class FeatureCard extends StatelessWidget {
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(
-          color: Colors.grey[100]!,
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey[100]!, width: 1),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(_clamp(screenWidth * 0.025, 6, 14)),
             decoration: BoxDecoration(
               color: Colors.green[50],
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
-              size: screenWidth * 0.08,
+              size: iconSize,
               color: Colors.green[700],
             ),
           ),
@@ -703,7 +454,7 @@ class FeatureCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: screenWidth * 0.035,
+              fontSize: titleSize,
               color: Colors.black87,
             ),
           ),
@@ -712,7 +463,7 @@ class FeatureCard extends StatelessWidget {
             description,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: screenWidth * 0.03,
+              fontSize: descSize,
               color: Colors.grey[600],
               height: 1.2,
             ),
@@ -721,21 +472,31 @@ class FeatureCard extends StatelessWidget {
       ),
     );
   }
+
+  double _clamp(double value, double min, double max) =>
+      value.clamp(min, max) as double;
 }
 
 // Bullet List Widget
 class _BulletList extends StatelessWidget {
   final List<String> items;
+  final double screenWidth;
+  final double screenHeight;
 
-  const _BulletList({required this.items});
+  const _BulletList({
+    required this.items,
+    required this.screenWidth,
+    required this.screenHeight,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final double fontSize = _clamp(screenWidth * 0.04, 14, 20);
+    final double padding = screenWidth * 0.04;
+    final double bulletSize = _clamp(screenWidth * 0.015, 4, 8);
 
     return Container(
-      padding: EdgeInsets.all(screenWidth * 0.04),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
@@ -751,8 +512,8 @@ class _BulletList extends StatelessWidget {
                     children: [
                       Container(
                         margin: EdgeInsets.only(top: screenHeight * 0.005),
-                        width: 6,
-                        height: 6,
+                        width: bulletSize,
+                        height: bulletSize,
                         decoration: const BoxDecoration(
                           color: Colors.green,
                           shape: BoxShape.circle,
@@ -763,7 +524,7 @@ class _BulletList extends StatelessWidget {
                         child: Text(
                           item,
                           style: TextStyle(
-                            fontSize: screenWidth * 0.04,
+                            fontSize: fontSize,
                             color: Colors.black87,
                             height: 1.4,
                           ),
@@ -776,4 +537,7 @@ class _BulletList extends StatelessWidget {
       ),
     );
   }
+
+  double _clamp(double value, double min, double max) =>
+      value.clamp(min, max) as double;
 }
