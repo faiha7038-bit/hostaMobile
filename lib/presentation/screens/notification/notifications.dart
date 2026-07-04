@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app_badger_plus/flutter_app_badger_plus.dart';
 import 'package:hosta/presentation/screens/notification/notification_details.dart';
 import 'package:hosta/services/fcm_service.dart';
 import 'package:hosta/services/socket-service.dart';
@@ -11,7 +10,6 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
 
