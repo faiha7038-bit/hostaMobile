@@ -203,7 +203,7 @@ class _ReviewsTabState extends State<ReviewsTab> {
       await fetchReviews();
       await fetchMyReview();
     } catch (e) {
-      debugPrint(e.toString());
+      
     }
   }
 
@@ -225,7 +225,7 @@ class _ReviewsTabState extends State<ReviewsTab> {
       await fetchReviews();
       await fetchMyReview();
     } catch (e) {
-      debugPrint(e.toString());
+      
     }
   }
 
@@ -242,7 +242,7 @@ class _ReviewsTabState extends State<ReviewsTab> {
       await _fetchRating();
       await fetchReviews();
     } catch (e) {
-      debugPrint(e.toString());
+      
     }
   }
 
