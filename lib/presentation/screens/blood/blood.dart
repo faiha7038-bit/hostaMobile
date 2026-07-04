@@ -58,6 +58,7 @@ bool _hasDonated = false;
 bool _isLoading = true;      
   final ApiService _apiService = ApiService();
 late Box cacheBox;
+
 bool isOffline = false;
 Timer? _debounce;
 List<dynamic> allDonors = [];
@@ -473,36 +474,70 @@ Future<void> _makePhoneCall(String phone) async {
   }
 }
 
-  void _handleDonateNavigation() {
-    if (userId == null) {
-      Navigator.push(
+Future<void> _handleDonateNavigation() async {
+  if (userId == null) {
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Login Required"),
+          content: const Text(
+            "You need to login to register as a blood donor.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false); // Cancel
+              },
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context, true); // Login
+              },
+              child: const Text("Login"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogin == true) {
+      await Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const Signin()),
-      )
-     .then((_) async {
-  await _loadUserData();
+        MaterialPageRoute(
+          builder: (_) => const Signin(),
+        ),
+      );
 
-  if (userId != null) {
-    await ref.read(bloodProvider.notifier)
-        .fetchDonor(userId!);
+      await _loadUserData();
 
-    final donor = ref.read(bloodProvider);
+      if (userId != null) {
+        await ref.read(bloodProvider.notifier).fetchDonor(userId!);
 
-    setState(() {
-      bloodId = donor?['id']?.toString();
-    });
-  }
-});
-    } else if (bloodId == null) {
- Navigator.push(
-  context,
-  MaterialPageRoute(builder: (context) => const Donate()),
-).then((value) async {
-  await _loadUserData();   // 🔥 reload bloodId AFTER return
-  await _fetchDonors();   // optional refresh list
-});
+        final donor = ref.read(bloodProvider);
+
+        setState(() {
+          bloodId = donor?['id']?.toString();
+        });
+      }
     }
+
+    return;
   }
+
+  if (bloodId == null) {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const Donate(),
+      ),
+    );
+
+    await _loadUserData();
+    await _fetchDonors();
+  }
+}
 
 Future<void> _refreshData() async {
   await _loadUserData();   
@@ -535,17 +570,7 @@ Future<void> _refreshData() async {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.refresh,
-              color: Colors.white,
-              size: screenWidth * 0.06,
-            ),
-            onPressed: _refreshData,
-            tooltip: 'Refresh',
-          ),
-        ],
+      
         elevation: 0,
       ),
       body: SafeArea(

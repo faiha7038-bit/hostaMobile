@@ -175,7 +175,7 @@
 //     ScaffoldMessenger.of(context).showSnackBar(
 //       SnackBar(
 //         content: const Text('Message sent successfully! 🎉'),
-//         backgroundColor: Colors.green.shade700,
+//         backgroundColor: Colors.green,
 //         behavior: SnackBarBehavior.floating,
 //         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
 //         duration: const Duration(seconds: 3),
@@ -210,18 +210,18 @@
 //           <td align="center">
 //             <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 //               <tr>
-//                 <td style="background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%); padding: 30px 20px; text-align: center;">
+//                 <td style="background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); padding: 30px 20px; text-align: center;">
 //                   <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">Hosta Healthcare</h1>
 //                   <p style="color: #e8f5e9; margin: 10px 0 0 0; font-size: 16px;">New Contact Form Submission</p>
 //                 </td>
 //               </tr>
 //               <tr>
 //                 <td style="padding: 40px 30px;">
-//                   <p style="color: #2e7d32; font-size: 18px; margin: 0 0 20px 0; font-weight: 500;">👋 You have a new message!</p>
-//                   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f8e9; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #43a047;">
+//                   <p style="color: #388E3C; font-size: 18px; margin: 0 0 20px 0; font-weight: 500;">👋 You have a new message!</p>
+//                   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f1f8e9; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #4CAF50;">
 //                     <tr>
 //                       <td style="padding: 20px;">
-//                         <h3 style="color: #2e7d32; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">📋 Sender Information</h3>
+//                         <h3 style="color: #388E3C; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">📋 Sender Information</h3>
 //                         <table width="100%" cellpadding="5" cellspacing="0" border="0">
 //                           <tr>
 //                             <td width="100" style="color: #558b2f; font-weight: 500;">Name:</td>
@@ -230,7 +230,7 @@
 //                           <tr>
 //                             <td style="color: #558b2f; font-weight: 500;">Email:</td>
 //                             <td style="color: #333333;">
-//                               <a href="mailto:$email" style="color: #43a047; text-decoration: none; font-weight: 500;">$email</a>
+//                               <a href="mailto:$email" style="color: #4CAF50; text-decoration: none; font-weight: 500;">$email</a>
 //                             </td>
 //                           </tr>
 //                         </table>
@@ -240,8 +240,8 @@
 //                   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 10px; margin-bottom: 25px; border: 1px solid #e0e0e0;">
 //                     <tr>
 //                       <td style="padding: 20px;">
-//                         <h3 style="color: #2e7d32; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">💬 Message</h3>
-//                         <p style="color: #555555; line-height: 1.6; margin: 0; font-size: 15px; background-color: #fafafa; padding: 15px; border-radius: 8px; border-left: 3px solid #43a047;">
+//                         <h3 style="color: #388E3C; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">💬 Message</h3>
+//                         <p style="color: #555555; line-height: 1.6; margin: 0; font-size: 15px; background-color: #fafafa; padding: 15px; border-radius: 8px; border-left: 3px solid #4CAF50;">
 //                           ${message.replaceAll('\n', '<br>')}
 //                         </p>
 //                       </td>
@@ -250,7 +250,7 @@
 //                   <table width="100%" cellpadding="0" cellspacing="0" border="0">
 //                     <tr>
 //                       <td align="center">
-//                         <a href="mailto:$email?subject=Re: Your message to Hosta Healthcare" style="display: inline-block; background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%); color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: 500; font-size: 16px; margin: 10px 0;">
+//                         <a href="mailto:$email?subject=Re: Your message to Hosta Healthcare" style="display: inline-block; background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%); color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: 500; font-size: 16px; margin: 10px 0;">
 //                           ↩️ Reply to $name
 //                         </a>
 //                       </td>
@@ -365,12 +365,12 @@
 //       padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
 //       decoration: BoxDecoration(
 //         gradient: LinearGradient(
-//           colors: [Colors.green.shade50, Colors.green.shade100],
+//           colors: [Colors.green.withOpacity(0.1), Colors.green.withOpacity(0.2)],
 //           begin: Alignment.topLeft,
 //           end: Alignment.bottomRight,
 //         ),
 //         borderRadius: BorderRadius.circular(16),
-//         border: Border.all(color: Colors.green.shade200, width: 1),
+//         border: Border.all(color: Colors.green.withOpacity(0.3), width: 1),
 //       ),
 //       child: Row(
 //         children: [
@@ -383,7 +383,7 @@
 //                   style: TextStyle(
 //                     fontSize: isSmallScreen ? 18 : 24,
 //                     fontWeight: FontWeight.bold,
-//                     color: Colors.green.shade700,
+//                     color: Colors.green,
 //                   ),
 //                 ),
 //                 const SizedBox(height: 8),
@@ -399,7 +399,7 @@
 //                 Container(
 //                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
 //                   decoration: BoxDecoration(
-//                     color: Colors.green.shade700,
+//                     color: Colors.green,
 //                     borderRadius: BorderRadius.circular(20),
 //                   ),
 //                   child: Row(
@@ -426,7 +426,7 @@
 //               width: 80,
 //               height: 80,
 //               decoration: BoxDecoration(
-//                 color: Colors.green.shade100,
+//                 color: Colors.green.withOpacity(0.1),
 //                 shape: BoxShape.circle,
 //               ),
 //               child: const Icon(
@@ -463,12 +463,12 @@
 //               Container(
 //                 padding: const EdgeInsets.all(8),
 //                 decoration: BoxDecoration(
-//                   color: Colors.green.shade50,
+//                   color: Colors.green.withOpacity(0.1),
 //                   borderRadius: BorderRadius.circular(10),
 //                 ),
 //                 child: Icon(
 //                   Icons.message_outlined,
-//                   color: Colors.green.shade700,
+//                   color: Colors.green,
 //                   size: 24,
 //                 ),
 //               ),
@@ -580,9 +580,9 @@
 //                 fontSize: isSmallScreen ? 13 : 14,
 //                 color: Colors.grey.shade400,
 //               ),
-//               prefixIcon: Icon(icon, color: isFocused ? Colors.green.shade700 : Colors.grey.shade400, size: 20),
+//               prefixIcon: Icon(icon, color: isFocused ? Colors.green : Colors.grey.shade400, size: 20),
 //               filled: true,
-//               fillColor: isFocused ? Colors.green.shade50 : Colors.grey.shade50,
+//               fillColor: isFocused ? Colors.green.withOpacity(0.05) : Colors.grey.shade50,
 //               contentPadding: EdgeInsets.symmetric(
 //                 horizontal: 16,
 //                 vertical: maxLines > 1 ? 16 : 14,
@@ -597,7 +597,7 @@
 //               ),
 //               focusedBorder: OutlineInputBorder(
 //                 borderRadius: BorderRadius.circular(12),
-//                 borderSide: BorderSide(color: Colors.green.shade700, width: 2),
+//                 borderSide: BorderSide(color: Colors.green, width: 2),
 //               ),
 //             ),
 //           ),
@@ -613,7 +613,7 @@
 //       child: ElevatedButton(
 //         onPressed: isSubmitting ? null : _submitFeedback,
 //         style: ElevatedButton.styleFrom(
-//           backgroundColor: Colors.green.shade700,
+//           backgroundColor: Colors.green,
 //           foregroundColor: Colors.white,
 //           shape: RoundedRectangleBorder(
 //             borderRadius: BorderRadius.circular(14),
@@ -654,11 +654,11 @@
 //       padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
 //       decoration: BoxDecoration(
 //         color: isSuccess 
-//             ? Colors.green.shade50 
-//             : Colors.red.shade50,
+//             ? Colors.green.withOpacity(0.1) 
+//             : Colors.red.withOpacity(0.1),
 //         borderRadius: BorderRadius.circular(12),
 //         border: Border.all(
-//           color: isSuccess ? Colors.green.shade200 : Colors.red.shade200,
+//           color: isSuccess ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
 //           width: 1,
 //         ),
 //       ),
@@ -666,7 +666,7 @@
 //         children: [
 //           Icon(
 //             isSuccess ? Icons.check_circle : Icons.error_outline,
-//             color: isSuccess ? Colors.green.shade700 : Colors.red.shade700,
+//             color: isSuccess ? Colors.green : Colors.red,
 //             size: 22,
 //           ),
 //           const SizedBox(width: 12),
@@ -674,7 +674,7 @@
 //             child: Text(
 //               statusMessage!,
 //               style: TextStyle(
-//                 color: isSuccess ? Colors.green.shade800 : Colors.red.shade800,
+//                 color: isSuccess ? Colors.green : Colors.red,
 //                 fontWeight: FontWeight.w500,
 //                 fontSize: isSmallScreen ? 13 : 14,
 //                 height: 1.4,
@@ -709,12 +709,12 @@
 //               Container(
 //                 padding: const EdgeInsets.all(8),
 //                 decoration: BoxDecoration(
-//                   color: Colors.green.shade50,
+//                   color: Colors.green.withOpacity(0.1),
 //                   borderRadius: BorderRadius.circular(10),
 //                 ),
 //                 child: Icon(
 //                   Icons.bolt_outlined,
-//                   color: Colors.green.shade700,
+//                   color: Colors.green,
 //                   size: 24,
 //                 ),
 //               ),
@@ -797,12 +797,12 @@
 //             width: isSmallScreen ? 56 : 64,
 //             height: isSmallScreen ? 56 : 64,
 //             decoration: BoxDecoration(
-//               color: Colors.green.shade50,
+//               color: Colors.green.withOpacity(0.1),
 //               shape: BoxShape.circle,
 //             ),
 //             child: Icon(
 //               icon,
-//               color: Colors.green.shade700,
+//               color: Colors.green,
 //               size: isSmallScreen ? 26 : 30,
 //             ),
 //           ),
@@ -822,17 +822,11 @@
 // }
 
 
-
-
-
-
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/services/api_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'dart:developer'; // For logging
 
 class Contact extends StatefulWidget {
   const Contact({super.key});
@@ -880,7 +874,6 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _submitFeedback() async {
-    // Validate fields
     if (nameController.text.trim().isEmpty) {
       _showError("Please enter your name");
       return;
@@ -923,7 +916,6 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
 
       final response = await _apiService.sendEmail(emailData);
       
-      // Check if response is successful
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = response.data;
         
@@ -953,10 +945,6 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
         });
       }
     } on DioException catch (e) {
-      log("❌ Dio error: ${e.message}");
-      log("❌ Error type: ${e.type}");
-      log("❌ Response data: ${e.response?.data}");
-      
       String errorMessage = "⚠️ Unable to send message. ";
       final responseData = e.response?.data;
       if (responseData is Map && responseData.containsKey('message')) {
@@ -981,7 +969,6 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
         isSuccess = false;
       });
     } catch (e) {
-      log("❌ Unknown error: $e");
       setState(() {
         statusMessage = "⚠️ ${e.toString().replaceAll('Exception: ', '')}";
         isSuccess = false;
@@ -1001,13 +988,25 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
   }
 
   void _showSuccessSnackBar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('Message sent successfully! 🎉'),
+        content: Text(
+          'Message sent successfully! 🎉',
+          style: TextStyle(fontSize: screenWidth * 0.04),
+        ),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(screenWidth * 0.03),
+        ),
         duration: const Duration(seconds: 3),
+        padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.04,
+          vertical: screenHeight * 0.015,
+        ),
         action: SnackBarAction(
           label: 'OK',
           textColor: Colors.white,
@@ -1106,11 +1105,21 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
     final uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Could not open $url"),
+            content: Text(
+              "Could not open $url",
+              style: TextStyle(fontSize: screenWidth * 0.04),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04,
+              vertical: screenHeight * 0.015,
+            ),
           ),
         );
       }
@@ -1120,12 +1129,18 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final isSmallScreen = screenSize.width < 600;
-    final isTablet = screenSize.width >= 600 && screenSize.width < 1200;
-    final isDesktop = screenSize.width >= 1200;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    final isSmallScreen = screenWidth < 600;
+    final isTablet = screenWidth >= 600 && screenWidth < 1200;
+    final isDesktop = screenWidth >= 1200;
     
-    final horizontalPadding = isDesktop ? screenSize.width * 0.15 : (isTablet ? screenSize.width * 0.08 : screenSize.width * 0.04);
-    final cardPadding = isSmallScreen ? screenSize.width * 0.05 : screenSize.width * 0.04;
+    final horizontalPadding = isDesktop 
+        ? screenWidth * 0.15 
+        : (isTablet ? screenWidth * 0.08 : screenWidth * 0.04);
+    final cardPadding = isSmallScreen 
+        ? screenWidth * 0.05 
+        : screenWidth * 0.04;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -1141,7 +1156,7 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
             boxShadow: [
               BoxShadow(
                 color: Colors.green.withOpacity(0.3),
-                blurRadius: 10,
+                blurRadius: isSmallScreen ? 10 : 16,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -1155,14 +1170,22 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
-                fontSize: isSmallScreen ? 20 : 24,
+                fontSize: isSmallScreen 
+                    ? screenWidth * 0.05 
+                    : (isTablet ? screenWidth * 0.035 : screenWidth * 0.025),
                 letterSpacing: 0.5,
               ),
             ),
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+              icon: Icon(
+                Icons.arrow_back_ios_new, 
+                color: Colors.white,
+                size: isSmallScreen 
+                    ? screenWidth * 0.05 
+                    : screenWidth * 0.04,
+              ),
               onPressed: () => Navigator.pop(context),
-              splashRadius: 24,
+              splashRadius: isSmallScreen ? 24 : 32,
             ),
             centerTitle: true,
           ),
@@ -1173,14 +1196,14 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding,
-            vertical: screenSize.height * 0.02,
+            vertical: screenHeight * 0.02,
           ),
           child: Column(
             children: [
               _buildHeroSection(screenSize, isSmallScreen),
-              const SizedBox(height: 20),
+              SizedBox(height: screenHeight * 0.025),
               _buildContactFormCard(screenSize, isSmallScreen, cardPadding),
-              const SizedBox(height: 20),
+              SizedBox(height: screenHeight * 0.025),
               _buildQuickConnectSection(screenSize, isSmallScreen),
             ],
           ),
@@ -1190,16 +1213,24 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildHeroSection(Size screenSize, bool isSmallScreen) {
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+      padding: EdgeInsets.all(isSmallScreen 
+          ? screenWidth * 0.04 
+          : screenWidth * 0.035),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Colors.green.withOpacity(0.1), Colors.green.withOpacity(0.2)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green.withOpacity(0.3), width: 1),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+        border: Border.all(
+          color: Colors.green.withOpacity(0.3), 
+          width: screenWidth * 0.0025,
+        ),
       ),
       child: Row(
         children: [
@@ -1210,37 +1241,52 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
                 Text(
                   "We're Here to Help!",
                   style: TextStyle(
-                    fontSize: isSmallScreen ? 18 : 24,
+                    fontSize: isSmallScreen 
+                        ? screenWidth * 0.045 
+                        : screenWidth * 0.035,
                     fontWeight: FontWeight.bold,
                     color: Colors.green,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: screenHeight * 0.01),
                 Text(
                   "Have questions or need assistance? Fill out the form below and we'll get back to you within 24 hours.",
                   style: TextStyle(
-                    fontSize: isSmallScreen ? 13 : 15,
+                    fontSize: isSmallScreen 
+                        ? screenWidth * 0.0325 
+                        : screenWidth * 0.025,
                     color: Colors.grey.shade700,
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: screenHeight * 0.015),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.03,
+                    vertical: screenHeight * 0.005,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.05),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.timer, color: Colors.white, size: 16),
-                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.timer, 
+                        color: Colors.white, 
+                        size: isSmallScreen 
+                            ? screenWidth * 0.04 
+                            : screenWidth * 0.03,
+                      ),
+                      SizedBox(width: screenWidth * 0.01),
                       Text(
                         "Response within 24 hrs",
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: isSmallScreen ? 11 : 13,
+                          fontSize: isSmallScreen 
+                              ? screenWidth * 0.0275 
+                              : screenWidth * 0.022,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1252,16 +1298,16 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
           ),
           if (!isSmallScreen)
             Container(
-              width: 80,
-              height: 80,
+              width: screenWidth * 0.1,
+              height: screenWidth * 0.1,
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.support_agent,
                 color: Colors.green,
-                size: 40,
+                size: screenWidth * 0.05,
               ),
             ),
         ],
@@ -1269,17 +1315,24 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _buildContactFormCard(Size screenSize, bool isSmallScreen, double cardPadding) {
+  Widget _buildContactFormCard(
+    Size screenSize, 
+    bool isSmallScreen, 
+    double cardPadding
+  ) {
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.shade200,
-            blurRadius: 20,
+            blurRadius: isSmallScreen ? 16 : 20,
             offset: const Offset(0, 8),
-            spreadRadius: 5,
+            spreadRadius: isSmallScreen ? 3 : 5,
           ),
         ],
       ),
@@ -1290,37 +1343,45 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(isSmallScreen 
+                    ? screenWidth * 0.02 
+                    : screenWidth * 0.015),
                 decoration: BoxDecoration(
                   color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
                 ),
                 child: Icon(
                   Icons.message_outlined,
                   color: Colors.green,
-                  size: 24,
+                  size: isSmallScreen 
+                      ? screenWidth * 0.06 
+                      : screenWidth * 0.045,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: screenWidth * 0.03),
               Text(
                 "Send a Message",
                 style: TextStyle(
-                  fontSize: isSmallScreen ? 18 : 22,
+                  fontSize: isSmallScreen 
+                      ? screenWidth * 0.045 
+                      : screenWidth * 0.035,
                   fontWeight: FontWeight.w700,
                   color: Colors.grey.shade900,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: screenHeight * 0.01),
           Text(
             "Fill in the details below and we'll get back to you soon.",
             style: TextStyle(
-              fontSize: isSmallScreen ? 13 : 15,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.0325 
+                  : screenWidth * 0.025,
               color: Colors.grey.shade600,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: screenHeight * 0.03),
           
           _buildModernInputField(
             label: "Full Name",
@@ -1354,11 +1415,11 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
             screenSize: screenSize,
           ),
           
-          const SizedBox(height: 24),
+          SizedBox(height: screenHeight * 0.03),
           _buildSubmitButton(screenSize, isSmallScreen),
           
           if (statusMessage != null) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: screenHeight * 0.02),
             _buildStatusMessage(isSmallScreen, screenSize),
           ],
         ],
@@ -1377,10 +1438,12 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
     TextInputType? keyboardType,
     int maxLines = 1,
   }) {
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
     final isFocused = focusNode.hasFocus;
     
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: screenHeight * 0.02),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1388,11 +1451,13 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
             label,
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: isSmallScreen ? 14 : 15,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.035 
+                  : screenWidth * 0.028,
               color: Colors.grey.shade800,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: screenHeight * 0.0075),
           TextField(
             controller: controller,
             focusNode: focusNode,
@@ -1400,33 +1465,53 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
             maxLines: maxLines,
             textInputAction: maxLines == 1 ? TextInputAction.next : TextInputAction.newline,
             style: TextStyle(
-              fontSize: isSmallScreen ? 14 : 15,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.035 
+                  : screenWidth * 0.028,
               color: Colors.grey.shade900,
             ),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                fontSize: isSmallScreen ? 13 : 14,
+                fontSize: isSmallScreen 
+                    ? screenWidth * 0.0325 
+                    : screenWidth * 0.025,
                 color: Colors.grey.shade400,
               ),
-              prefixIcon: Icon(icon, color: isFocused ? Colors.green : Colors.grey.shade400, size: 20),
+              prefixIcon: Icon(
+                icon, 
+                color: isFocused ? Colors.green : Colors.grey.shade400, 
+                size: isSmallScreen 
+                    ? screenWidth * 0.05 
+                    : screenWidth * 0.04,
+              ),
               filled: true,
-              fillColor: isFocused ? Colors.green.withOpacity(0.05) : Colors.grey.shade50,
+              fillColor: isFocused 
+                  ? Colors.green.withOpacity(0.05) 
+                  : Colors.grey.shade50,
               contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: maxLines > 1 ? 16 : 14,
+                horizontal: screenWidth * 0.04,
+                vertical: maxLines > 1 
+                    ? screenHeight * 0.02 
+                    : screenHeight * 0.0175,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(screenWidth * 0.03),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
+                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                borderSide: BorderSide(
+                  color: Colors.grey.shade200, 
+                  width: screenWidth * 0.0025,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: Colors.green, width: 2),
+                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                borderSide: BorderSide(
+                  color: Colors.green, 
+                  width: screenWidth * 0.005,
+                ),
               ),
             ),
           ),
@@ -1436,39 +1521,52 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildSubmitButton(Size screenSize, bool isSmallScreen) {
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    
     return SizedBox(
       width: double.infinity,
-      height: isSmallScreen ? 52 : 56,
+      height: isSmallScreen 
+          ? screenHeight * 0.065 
+          : screenHeight * 0.07,
       child: ElevatedButton(
         onPressed: isSubmitting ? null : _submitFeedback,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(screenWidth * 0.035),
           ),
           elevation: 0,
           disabledBackgroundColor: Colors.grey.shade300,
         ),
         child: isSubmitting
             ? SizedBox(
-                height: 24,
-                width: 24,
+                height: screenWidth * 0.06,
+                width: screenWidth * 0.06,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
+                  strokeWidth: screenWidth * 0.006,
                   color: Colors.white,
                 ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.send, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
+                  Icon(
+                    Icons.send, 
+                    color: Colors.white, 
+                    size: isSmallScreen 
+                        ? screenWidth * 0.05 
+                        : screenWidth * 0.04,
+                  ),
+                  SizedBox(width: screenWidth * 0.025),
                   Text(
                     "Send Message",
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: isSmallScreen ? 15 : 16,
+                      fontSize: isSmallScreen 
+                          ? screenWidth * 0.0375 
+                          : screenWidth * 0.03,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -1479,16 +1577,23 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildStatusMessage(bool isSmallScreen, Size screenSize) {
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
+      padding: EdgeInsets.all(isSmallScreen 
+          ? screenWidth * 0.03 
+          : screenWidth * 0.025),
       decoration: BoxDecoration(
         color: isSuccess 
             ? Colors.green.withOpacity(0.1) 
             : Colors.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(screenWidth * 0.03),
         border: Border.all(
-          color: isSuccess ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
-          width: 1,
+          color: isSuccess 
+              ? Colors.green.withOpacity(0.3) 
+              : Colors.red.withOpacity(0.3),
+          width: screenWidth * 0.0025,
         ),
       ),
       child: Row(
@@ -1496,16 +1601,20 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
           Icon(
             isSuccess ? Icons.check_circle : Icons.error_outline,
             color: isSuccess ? Colors.green : Colors.red,
-            size: 22,
+            size: isSmallScreen 
+                ? screenWidth * 0.055 
+                : screenWidth * 0.045,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: screenWidth * 0.03),
           Expanded(
             child: Text(
               statusMessage!,
               style: TextStyle(
                 color: isSuccess ? Colors.green : Colors.red,
                 fontWeight: FontWeight.w500,
-                fontSize: isSmallScreen ? 13 : 14,
+                fontSize: isSmallScreen 
+                    ? screenWidth * 0.0325 
+                    : screenWidth * 0.025,
                 height: 1.4,
               ),
             ),
@@ -1516,61 +1625,74 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildQuickConnectSection(Size screenSize, bool isSmallScreen) {
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 16 : 20),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.shade200,
-            blurRadius: 20,
+            blurRadius: isSmallScreen ? 16 : 20,
             offset: const Offset(0, 8),
-            spreadRadius: 5,
+            spreadRadius: isSmallScreen ? 3 : 5,
           ),
         ],
       ),
-      padding: EdgeInsets.all(isSmallScreen ? 16 : 24),
+      padding: EdgeInsets.all(isSmallScreen 
+          ? screenWidth * 0.04 
+          : screenWidth * 0.035),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(isSmallScreen 
+                    ? screenWidth * 0.02 
+                    : screenWidth * 0.015),
                 decoration: BoxDecoration(
                   color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 8 : 10),
                 ),
                 child: Icon(
                   Icons.bolt_outlined,
                   color: Colors.green,
-                  size: 24,
+                  size: isSmallScreen 
+                      ? screenWidth * 0.06 
+                      : screenWidth * 0.045,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: screenWidth * 0.03),
               Text(
                 "Quick Connect",
                 style: TextStyle(
-                  fontSize: isSmallScreen ? 18 : 22,
+                  fontSize: isSmallScreen 
+                      ? screenWidth * 0.045 
+                      : screenWidth * 0.035,
                   fontWeight: FontWeight.w700,
                   color: Colors.grey.shade900,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: screenHeight * 0.01),
           Text(
             "Connect with us through your preferred channel",
             style: TextStyle(
-              fontSize: isSmallScreen ? 12 : 13,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.03 
+                  : screenWidth * 0.022,
               color: Colors.grey.shade600,
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: screenHeight * 0.025),
           
           Wrap(
-            spacing: isSmallScreen ? 20 : 30,
-            runSpacing: 16,
+            spacing: isSmallScreen ? screenWidth * 0.05 : screenWidth * 0.04,
+            runSpacing: screenHeight * 0.02,
             alignment: WrapAlignment.start,
             children: [
               _buildAppIcon(
@@ -1578,30 +1700,35 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
                 label: "Call",
                 onTap: () => _openUrl("tel:8714412090"),
                 isSmallScreen: isSmallScreen,
+                screenSize: screenSize,
               ),
               _buildAppIcon(
                 icon: FontAwesomeIcons.whatsapp,
                 label: "WhatsApp",
                 onTap: () => _openUrl("https://wa.me/918714412090"),
                 isSmallScreen: isSmallScreen,
+                screenSize: screenSize,
               ),
               _buildAppIcon(
                 icon: FontAwesomeIcons.instagram,
                 label: "Instagram",
                 onTap: () => _openUrl("https://www.instagram.com/hosta_healthcare/?igsh=MnR6d3h0YTJlbXEy"),
                 isSmallScreen: isSmallScreen,
+                screenSize: screenSize,
               ),
               _buildAppIcon(
                 icon: FontAwesomeIcons.facebook,
                 label: "Facebook",
                 onTap: () => _openUrl("https://www.facebook.com/profile.php?id=61568947746890&mibextid=LQQJ4d"),
                 isSmallScreen: isSmallScreen,
+                screenSize: screenSize,
               ),
               _buildAppIcon(
                 icon: Icons.email,
                 label: "Email",
                 onTap: () => _openUrl("mailto:hostahealthcare@gmail.com?subject=Inquiry&body=Hello Hosta,"),
                 isSmallScreen: isSmallScreen,
+                screenSize: screenSize,
               ),
             ],
           ),
@@ -1615,16 +1742,25 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
     required String label,
     required VoidCallback onTap,
     required bool isSmallScreen,
+    required Size screenSize,
   }) {
+    final screenWidth = screenSize.width;
+    final iconSize = isSmallScreen 
+        ? screenWidth * 0.14 
+        : screenWidth * 0.1;
+    final iconInnerSize = isSmallScreen 
+        ? screenWidth * 0.065 
+        : screenWidth * 0.05;
+    
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(50),
+      borderRadius: BorderRadius.circular(screenWidth * 0.125),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: isSmallScreen ? 56 : 64,
-            height: isSmallScreen ? 56 : 64,
+            width: iconSize,
+            height: iconSize,
             decoration: BoxDecoration(
               color: Colors.green.withOpacity(0.1),
               shape: BoxShape.circle,
@@ -1632,14 +1768,16 @@ class _ContactState extends State<Contact> with SingleTickerProviderStateMixin {
             child: Icon(
               icon,
               color: Colors.green,
-              size: isSmallScreen ? 26 : 30,
+              size: iconInnerSize,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: screenSize.height * 0.0075),
           Text(
             label,
             style: TextStyle(
-              fontSize: isSmallScreen ? 11 : 12,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.0275 
+                  : screenWidth * 0.022,
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w500,
             ),

@@ -641,15 +641,28 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                     ),
                   ],
                 ),
-                ElevatedButton.icon(
-                  onPressed: _openUploadModal,
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: const Text('Upload Document'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
+            ElevatedButton.icon(
+  onPressed: () {
+    final patientId =
+        ref.read(documentProvider).currentPatientId;
+
+    if (patientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Only patients who have completed consultation can upload documents.",
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    _openUploadModal();
+  },
+  icon: const Icon(Icons.upload_file, size: 18),
+  label: const Text("Upload Document"),
+)
               ],
             ),
           ),
@@ -1228,3 +1241,9 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     super.dispose();
   }
 }
+
+
+
+
+
+

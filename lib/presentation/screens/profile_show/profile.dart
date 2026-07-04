@@ -121,22 +121,58 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   return null;
 }
 
- Future<void> _navigateToViewProfile() async {
+Future<void> _navigateToViewProfile() async {
   final prefs = await SharedPreferences.getInstance();
   String userId = prefs.getString('userId') ?? '';
 
   if (userId.isEmpty) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const Signin()),
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Login Required"),
+        content: const Text(
+          "Please login to view your profile.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context, false);
+            },
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+            child: const Text("Login"),
+          ),
+        ],
+      ),
     );
+
+    if (shouldLogin == true) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const Signin(),
+        ),
+      );
+
+      // Refresh user after login
+      await _loadUserId();
+    }
+
     return;
   }
 
-  Navigator.push(
+  await Navigator.push(
     context,
-    MaterialPageRoute(builder: (_) => Profile()),
+    MaterialPageRoute(
+      builder: (_) => Profile(),
+    ),
   );
+
+  await _refreshUserData();
 }
 
   void _navigateToSettings() {
@@ -374,7 +410,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 child: Column(
                                   children: [
                                     _buildProfileOption(
-                                      icon: Icons.local_taxi_outlined,
+                                      icon: Icons.local_taxi,
                                       title: 'Ambulance',
                                       subtitle: 'About ambulance',
                                       screenWidth: screenWidth,
@@ -430,7 +466,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
                                     const Divider(height: 0),
                                     _buildProfileOption(
-                                      icon: Icons.water_drop_outlined,
+                                      icon: Icons.water_drop,
                                       title: 'Blood',
                                       subtitle: 'About Blood',
                                       screenWidth: screenWidth,
@@ -496,7 +532,7 @@ if (result == true) {
                                 const Divider(height: 0),
                                 _buildProfileOption(
                                   
-                                  icon: Icons.note_add_outlined,
+                                  icon: Icons.note_add,
                                   title: 'Prescription',
                                   subtitle: 'About prescription',
                                   screenWidth: screenWidth,
@@ -729,7 +765,7 @@ if (result == true) {
                                     const Divider(height: 0),
 
                                     _buildProfileOption(
-                                      icon: Icons.settings_outlined,
+                                      icon: Icons.settings,
                                       title: 'Settings',
                                       subtitle: 'App settings and preferences',
                                       screenWidth: screenWidth,
@@ -739,7 +775,7 @@ if (result == true) {
                                     ],
                                     const Divider(height: 0),
                                     _buildProfileOption(
-                                      icon: Icons.lock_outline,
+                                      icon: Icons.lock,
                                       title: 'Privacy',
                                       subtitle: 'Privacy policy and terms',
                                       screenWidth: screenWidth,
@@ -748,7 +784,7 @@ if (result == true) {
                                     ),
                                     const Divider(height: 0),
                                     _buildProfileOption(
-                                      icon: Icons.info_outline,
+                                      icon: Icons.info,
                                       title: 'About',
                                       subtitle: 'About this app',
                                       screenWidth: screenWidth,
@@ -782,7 +818,7 @@ if (result == true) {
                                 child: Column(
                                   children: [
                                     _buildProfileOption(
-                                      icon: Icons.headset_mic_outlined,
+                                      icon: Icons.headset_mic,
                                       title: 'Contact Us',
                                       subtitle: 'Get help and support',
                                       screenWidth: screenWidth,

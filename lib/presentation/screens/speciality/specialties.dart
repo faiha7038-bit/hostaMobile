@@ -101,19 +101,19 @@ void _refreshSpecialties() {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Icons.refresh,
-              color: Colors.white,
-              size: screenWidth * 0.06,
-            ),
-            onPressed: () {
-              ref.invalidate(specialtiesProvider(searchQuery));
-            },
-            tooltip: 'Refresh',
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: Icon(
+        //       Icons.refresh,
+        //       color: Colors.white,
+        //       size: screenWidth * 0.06,
+        //     ),
+        //     onPressed: () {
+        //       ref.invalidate(specialtiesProvider(searchQuery));
+        //     },
+        //     tooltip: 'Refresh',
+        //   ),
+        // ],
         elevation: 0,
       ),
       body: SafeArea(
@@ -270,7 +270,7 @@ void _refreshSpecialties() {
                         ),
                         child: Text(
                           "Retry",
-                          style: TextStyle(fontSize: screenWidth * 0.035),
+                          style: TextStyle(fontSize: screenWidth * 0.035,color: Colors.white),
                         ),
                       ),
                     ],

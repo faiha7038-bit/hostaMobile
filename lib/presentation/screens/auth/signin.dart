@@ -311,19 +311,26 @@ log("HEADERS => ${response.headers.map}");
   //   }
   // }
   
-  void _showErrorDialog(String message) {
-    log("⚠️ Showing error: $message");
-    
-    if (message.toLowerCase().contains('phone') ||
-        message.toLowerCase().contains('number') ||
-        message.toLowerCase().contains('invalid')) {
-      setState(() {
-        phoneError = message;
-      });
-    } else {
-     // showTopSnackBar(context, message, isError: true);
-    }
+ void _showErrorDialog(String message) {
+  log("⚠️ Showing error: $message");
+
+  if (message.toLowerCase().contains("too many")) {
+    showTopSnackBar(
+      context,
+      "Too many login attempts. Please try again after 15 minutes.",
+      isError: true,
+    );
+    return;
   }
+
+  if (message.toLowerCase().contains('phone') ||
+      message.toLowerCase().contains('number') ||
+      message.toLowerCase().contains('invalid')) {
+    setState(() {
+      phoneError = message;
+    });
+  }
+}
 
   void _showUserNotFoundDialog(String message) {
     showDialog(

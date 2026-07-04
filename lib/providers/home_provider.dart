@@ -45,19 +45,21 @@ class HomeState {
 // ============= NOTIFIER =============
 class HomeNotifier extends StateNotifier<HomeState> {
   Timer? _refreshTimer;
-
+  bool _isInitialized = false;
+bool _fallbackAttempted = false;
   HomeNotifier() : super(HomeState());
 
-  void init() {
-    _checkLocationStatus();
-    _getLocationAndFetchData();
+  Future<void> init() async {
+    if (_isInitialized) return;
+    _isInitialized = true;
+    await _checkLocationStatus();
+    await _getLocationAndFetchData();
     _startAutoRefresh();
   }
 
+  // This method will be called via ref.onDispose
   void dispose() {
-    if (_refreshTimer != null) {
-      _refreshTimer!.cancel();
-    }
+    _refreshTimer?.cancel();
   }
 
   void _startAutoRefresh() {
@@ -94,16 +96,16 @@ class HomeNotifier extends StateNotifier<HomeState> {
       LocationPermission permission = await Geolocator.checkPermission();
 
       state = state.copyWith(
-        locationIssue: !serviceEnabled || 
-                        permission == LocationPermission.denied || 
-                        permission == LocationPermission.deniedForever,
-        hasLocationPermission: serviceEnabled && 
-                                permission != LocationPermission.denied && 
-                                permission != LocationPermission.deniedForever,
+        locationIssue: !serviceEnabled ||
+            permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever,
+        hasLocationPermission: serviceEnabled &&
+            permission != LocationPermission.denied &&
+            permission != LocationPermission.deniedForever,
       );
 
-      if (!serviceEnabled || 
-          permission == LocationPermission.denied || 
+      if (!serviceEnabled ||
+          permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         print("⚠️ Auto-refresh: Location not available - refreshing without location");
         await _fetchCarouselImages(null, null);
@@ -117,17 +119,15 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
       double newLat = position.latitude;
       double newLng = position.longitude;
-      
+
       print("📍 Auto-refresh: New location - lat=$newLat, lng=$newLng");
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble('last_lat', newLat);
       await prefs.setDouble('last_lng', newLng);
-      
+
       state = state.copyWith(lastLat: newLat, lastLng: newLng);
-      
       await _fetchCarouselImages(newLat, newLng);
-      
     } catch (e) {
       print("❌ Auto-refresh error: $e");
       await _fetchCarouselImages(null, null);
@@ -149,16 +149,16 @@ class HomeNotifier extends StateNotifier<HomeState> {
       LocationPermission permission = await Geolocator.checkPermission();
 
       state = state.copyWith(
-        locationIssue: !serviceEnabled || 
-                        permission == LocationPermission.denied || 
-                        permission == LocationPermission.deniedForever,
-        hasLocationPermission: serviceEnabled && 
-                                permission != LocationPermission.denied && 
-                                permission != LocationPermission.deniedForever,
+        locationIssue: !serviceEnabled ||
+            permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever,
+        hasLocationPermission: serviceEnabled &&
+            permission != LocationPermission.denied &&
+            permission != LocationPermission.deniedForever,
       );
 
-      if (!serviceEnabled || 
-          permission == LocationPermission.denied || 
+      if (!serviceEnabled ||
+          permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         print("⚠️ Initial load: Location not available - fetching without location");
         await _fetchCarouselImages(null, null);
@@ -168,15 +168,15 @@ class HomeNotifier extends StateNotifier<HomeState> {
       if (permission == LocationPermission.denied) {
         print("📍 Initial load: Requesting location permission...");
         permission = await Geolocator.requestPermission();
-        
+
         state = state.copyWith(
-          locationIssue: permission == LocationPermission.denied || 
-                          permission == LocationPermission.deniedForever,
-          hasLocationPermission: permission != LocationPermission.denied && 
-                                  permission != LocationPermission.deniedForever,
+          locationIssue: permission == LocationPermission.denied ||
+              permission == LocationPermission.deniedForever,
+          hasLocationPermission: permission != LocationPermission.denied &&
+              permission != LocationPermission.deniedForever,
         );
-        
-        if (permission == LocationPermission.denied || 
+
+        if (permission == LocationPermission.denied ||
             permission == LocationPermission.deniedForever) {
           print("⚠️ Initial load: Permission denied - fetching without location");
           await _fetchCarouselImages(null, null);
@@ -191,7 +191,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
       double lastLat = position.latitude;
       double lastLng = position.longitude;
-      
+
       print("📍 Initial load: Location obtained - lat=$lastLat, lng=$lastLng");
 
       final prefs = await SharedPreferences.getInstance();
@@ -200,67 +200,110 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
       state = state.copyWith(lastLat: lastLat, lastLng: lastLng);
       await _fetchCarouselImages(lastLat, lastLng);
-      
     } catch (e) {
       print("❌ Initial load error: $e - fetching without location");
       await _fetchCarouselImages(null, null);
     }
   }
 
-  Future<void> _fetchCarouselImages(double? lat, double? lng) async {
-    try {
-      if (lat != null && lng != null) {
-        print("🌐 Calling API WITH location: lat=$lat, lng=$lng");
-      } else {
-        print("🌐 Calling API WITHOUT location");
-      }
-      
-      final apiService = ApiService();
-      final response = await apiService.getAllCarousel(
-        latitude: lat,
-        longitude: lng,
-      );
-      
-      print("📡 API Response Status Code: ${response.statusCode}");
-      
-      if (response.statusCode == 200) {
-        if (response.data != null && response.data["data"] != null) {
-          final data = response.data["data"] as List;
-          print("📸 Found ${data.length} carousel items");
-          
-          final images = data
-              .where((item) => item["isActive"] == true && item["imageUrl"] != null)
-              .map<String>((item) => item["imageUrl"].toString())
-              .toList();
-          
+
+
+Future<void> _fetchCarouselImages(double? lat, double? lng) async {
+  try {
+    // Determine if this is a location-based call
+    final bool hasLocation = lat != null && lng != null;
+    if (hasLocation) {
+      print("🌐 Calling API WITH location: lat=$lat, lng=$lng");
+    } else {
+      print("🌐 Calling API WITHOUT location (fallback or initial)");
+    }
+
+    final apiService = ApiService();
+    final response = await apiService.getAllCarousel(
+      latitude: lat,
+      longitude: lng,
+    );
+
+    print("📡 Status Code: ${response.statusCode}");
+    print("📡 Response: ${response.data}");
+
+    if (response.statusCode == 200) {
+      final responseData = response.data;
+
+      if (responseData != null &&
+          responseData is Map<String, dynamic> &&
+          responseData["ads"] != null) {
+
+        final List ads = responseData["ads"] as List;
+        print("📸 Total Ads: ${ads.length}");
+
+        // Extract valid image URLs (isActive == true and non-empty imageUrl)
+        final List<String> images = ads
+            .where((item) =>
+                item["isActive"] == true &&
+                (item["imageUrl"]?.toString().trim() ?? '').isNotEmpty)
+            .map((item) => item["imageUrl"].toString())
+            .toList();
+
+        print("✅ Valid Images Count: ${images.length}");
+        print(images);
+
+        // If we have images, update state and reset fallback flag
+        if (images.isNotEmpty) {
           state = state.copyWith(
             carouselImages: images,
             isLoading: false,
           );
-          
-          print("✅ Successfully loaded ${images.length} active carousel images");
-        } else {
-          print("⚠️ No data in response");
-          state = state.copyWith(
-            carouselImages: [],
-            isLoading: false,
-          );
+          _fallbackAttempted = false; // reset for next time
+          return;
         }
-      } else {
-        print("❌ API returned error status: ${response.statusCode}");
+
+        // ----- FALLBACK LOGIC -----
+        // If we are currently using location and got zero images,
+        // and we haven't tried fallback yet, retry without location.
+        if (hasLocation && !_fallbackAttempted) {
+          print("🔄 No nearby ads with images – falling back to fetch ALL ads without location");
+          _fallbackAttempted = true; // prevent infinite loop
+          // Call the same function with null location
+          await _fetchCarouselImages(null, null);
+          return;
+        }
+
+        // If we reached here (either no location or fallback already tried),
+        // and still no images, set empty list.
+        print("⚠️ No valid carousel images available (fallback exhausted or no location).");
         state = state.copyWith(
           carouselImages: [],
           isLoading: false,
         );
+        _fallbackAttempted = false; // reset for next refresh
+      } else {
+        print("⚠️ 'ads' key not found or invalid response structure.");
+        state = state.copyWith(
+          carouselImages: [],
+          isLoading: false,
+        );
+        _fallbackAttempted = false;
       }
-    } catch (e) {
-      print("❌ ERROR fetching carousel images: $e");
+    } else {
+      print("❌ API Error: ${response.statusCode}");
       state = state.copyWith(
         carouselImages: [],
         isLoading: false,
       );
+      _fallbackAttempted = false;
     }
+  } catch (e, stackTrace) {
+    print("❌ Error fetching carousel images");
+    print(e);
+    print(stackTrace);
+    state = state.copyWith(
+      carouselImages: [],
+      isLoading: false,
+    );
+    _fallbackAttempted = false;
   }
+}
 
   Future<void> openSettings() async {
     await Geolocator.openLocationSettings();
@@ -269,10 +312,13 @@ class HomeNotifier extends StateNotifier<HomeState> {
 
 // ============= PROVIDERS =============
 final homeProvider = StateNotifierProvider<HomeNotifier, HomeState>((ref) {
-  return HomeNotifier();
+  final notifier = HomeNotifier();
+  // Automatically dispose the notifier when the provider is removed
+  ref.onDispose(notifier.dispose);
+  return notifier;
 });
 
-// Products list provider (static)
+// Products list provider (static) – only one definition
 final productsProvider = Provider<List<Map<String, dynamic>>>((ref) => [
   {"name": "Hospitals", "icon": Icons.local_hospital, "page": null},
   {"name": "Doctors", "icon": Icons.medical_services_outlined, "page": null},
