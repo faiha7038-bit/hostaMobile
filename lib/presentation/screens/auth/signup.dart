@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/common/top_snackbar.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 import '../../../services/api_service.dart';
 import 'signin.dart';
 
@@ -251,42 +252,34 @@ class _SignupState extends State<Signup> {
                 ),
                 SizedBox(height: spacing),
 
-                // Phone Field
-                TextFormField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: "Phone Number",
-                    labelStyle: TextStyle(
-                      fontSize: labelFontSize,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.phone,
-                      size: fieldIconSize,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(fieldRadius),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: contentPaddingH,
-                      vertical: contentPaddingV,
-                    ),
-                  ),
-                  style: TextStyle(
-                    fontSize: labelFontSize,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return "Please enter phone number";
-                    }
-
-                    if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(value.trim())) {
-                      return "Enter a valid phone number";
-                    }
-
-                    return null;
-                  },
-                ),
+              
+  IntlPhoneField(
+  initialCountryCode: 'IN',
+  decoration: InputDecoration(
+    labelText: "Phone Number",
+    counterText: "", 
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(fieldRadius),
+    ),
+    contentPadding: EdgeInsets.symmetric(
+      horizontal: contentPaddingH,
+      vertical: contentPaddingV,
+    ),
+  ),
+  style: TextStyle(
+    fontSize: labelFontSize,
+  ),
+  invalidNumberMessage: "Enter a valid phone number",
+  onChanged: (phone) {
+    phoneController.text = phone.number;
+  },
+  validator: (phone) {
+    if (phone == null || phone.number.isEmpty) {
+      return "Please enter phone number";
+    }
+    return null;
+  },
+),
                 SizedBox(height: spacing),
 
                 // Password Field

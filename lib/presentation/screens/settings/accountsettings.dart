@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/common/top_snackbar.dart';
+import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/account_stng_provider.dart';
 import '../../../presentation/widgets/bottomnav.dart';
 
@@ -28,7 +30,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
             ),
           ),
           content: Text(
-            "Are you sure you want to delete your account? This action cannot be undone.",
+            "Are you sure you want to delete your account? Your account will be deactivated and blacklisted ",
             style: TextStyle(
               fontSize: screenWidth * 0.04,
               height: 1.4,
@@ -66,57 +68,48 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     );
   }
 
-  Future<void> _deleteAccount() async {
-    final success = await ref.read(accountStateProvider.notifier).deleteAccount(context);
-    
-    if (!mounted) return;
-    
-    if (success) {
-      _showSuccessMessage();
-      _navigateToBottomNav();
-    } else {
-      _showErrorMessage();
-    }
+ Future<void> _deleteAccount() async {
+  final success = await ref.read(accountStateProvider.notifier).deleteAccount(context);
+
+  if (!mounted) return;
+
+  if (success) {
+    _showSuccessMessage();
+
+    ref.read(accountStateProvider.notifier).reset();
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const Signin(),
+      ),
+      (route) => false,
+    );
+  } else {
+    _showErrorMessage();
   }
+}
 
   void _showSuccessMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ' Your Account has been Blacklisted ',
-          style: TextStyle(fontSize: MediaQuery.of(context).size.width * 0.04),
-        ),
-        backgroundColor: Colors.green,
-      ),
-    );
+   showTopSnackBar(
+  context,
+  "Your account has been blacklisted. You can rejoin within 30 days.",
+  isError: true,
+);
   }
 
   void _showErrorMessage() {
     final errorMessage = ref.read(accountStateProvider).errorMessage;
     final screenWidth = MediaQuery.of(context).size.width;
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          errorMessage ?? 'Failed to delete account. Please try again.',
-          style: TextStyle(fontSize: screenWidth * 0.04),
-        ),
-        backgroundColor: Colors.red,
-      ),
-    );
+   showTopSnackBar(
+    context,
+    errorMessage ?? "Failed to delete your account. Please try again.",
+    isError: true,
+  );
   }
 
-  void _navigateToBottomNav() {
-    // Reset state before navigation
-    ref.read(accountStateProvider.notifier).reset();
-    
-    // Navigate to BottomNav page and remove all previous routes
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const Bottomnav()),
-      (route) => false,
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -157,16 +150,16 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
               width: double.infinity,
               padding: EdgeInsets.all(screenWidth * 0.04),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                border: Border.all(color: Colors.orange, width: screenWidth * 0.0025),
+                border: Border.all(color: Colors.red, width: screenWidth * 0.0025),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
                     Icons.warning_amber_rounded,
-                    color: Colors.orange,
+                    color: Colors.red,
                     size: screenWidth * 0.06,
                   ),
                   SizedBox(height: screenHeight * 0.01),
@@ -175,7 +168,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: screenWidth * 0.04,
-                      color: Colors.orange,
+                      color: Colors.red.shade900,
                     ),
                   ),
                   SizedBox(height: screenHeight * 0.005),
@@ -197,24 +190,24 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
             Center(
               child: Column(
                 children: [
-                  Text(
-                    'Delete Your Account',
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.045,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.01),
-                  Text(
-                    'This action will remove all your data and cannot be undone',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.035,
-                      color: Colors.black,
-                      height: 1.3,
-                    ),
-                  ),
+                  // Text(
+                  //   'Delete Your Account',
+                  //   style: TextStyle(
+                  //     fontSize: screenWidth * 0.045,
+                  //     fontWeight: FontWeight.bold,
+                  //     color: Colors.red,
+                  //   ),
+                  // ),
+                  //SizedBox(height: screenHeight * 0.01),
+                  // Text(
+                  //   'This action will remove all your data and cannot be undone',
+                  //   textAlign: TextAlign.center,
+                  //   style: TextStyle(
+                  //     fontSize: screenWidth * 0.035,
+                  //     color: Colors.black,
+                  //     height: 1.3,
+                  //   ),
+                  // ),
                   SizedBox(height: screenHeight * 0.025),
                   
                   if (isDeleting)
