@@ -54,7 +54,6 @@ class AlarmService {
       await file.writeAsBytes(byteData.buffer.asUint8List());
       return filePath;
     } catch (e) {
-      print('Error copying sound: $e');
       return assetPath;
     }
   }
@@ -76,10 +75,7 @@ class AlarmService {
 
   //  try {
   //     final data = await rootBundle.load(soundPath);
-  //     print('✅ Sound file loaded: $soundPath');
-  //   } catch (e) {
-  //     print('❌ Sound file NOT found: $soundPath');
-  //     print('Using default path: $defaultAlarmPath');
+  //   } catch (e) {  
   //     soundPath = defaultAlarmPath;
   //   }
     
@@ -87,7 +83,6 @@ class AlarmService {
 
     try {
       actualSoundPath = await _getSoundFilePath(soundPath);
-      print('🎵 Using sound: $actualSoundPath');
     } catch (e) {
       actualSoundPath = soundPath;
     }
