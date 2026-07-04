@@ -31,14 +31,14 @@ class _SettingsPageState extends State<SettingsPage> {
   });
 }
 Future<void> logout(BuildContext context) async {
-  print("LOGOUT CLICKED");
+ 
 
   final navigator = Navigator.of(context, rootNavigator: true);
 
   try {
     await apiService.logout();
   } catch (e) {
-    print("LOGOUT API ERROR (ignoring): $e");
+
   }
 
   // Clear ALL stored data (optional)
@@ -49,7 +49,7 @@ Future<void> logout(BuildContext context) async {
   // If you have other storage like Hive, clear those as well
   // await Hive.box('donorsBox').clear();
 
-  print("ALL DATA CLEARED");
+
 
   // Navigate to Signin and remove all history
   navigator.pushAndRemoveUntil(
@@ -60,7 +60,7 @@ Future<void> logout(BuildContext context) async {
 
 // Future<void> _(BuildContext context) async {
   void _confirmLogout(BuildContext context) {
-    print("confirmLogout called");
+
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     
