@@ -66,7 +66,9 @@ class HomeNotifier extends StateNotifier<HomeState> {
       await _refreshLocationAndData();
     });
   }
-
+Future<void> refreshAds() async {
+  await _fetchCarouselImages(state.lastLat, state.lastLng);
+}
   Future<void> _checkLocationStatus() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     LocationPermission permission = await Geolocator.checkPermission();
@@ -216,13 +218,15 @@ class HomeNotifier extends StateNotifier<HomeState> {
               .map((item) {
             final image = item["imageUrl"].toString().trim();
 
-           
+         
+
             if (image.startsWith("http://") || image.startsWith("https://")) {
               return image;
             }
 
            
             return "$s3BaseUrl$image";
+            
           }).toList();
 
           if (images.isNotEmpty) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:hosta/presentation/screens/reminder/medicine_reminder.dart';
 import 'package:hosta/providers/home_provider.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'dart:async';
@@ -20,6 +21,7 @@ class Home extends ConsumerStatefulWidget {
 }
 
 class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
+  late Function(dynamic) _onAdEvent;
   final List<Map<String, dynamic>> products = [
     {
       "name": "Hospitals",
@@ -58,14 +60,35 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
         ref.read(homeProvider.notifier).init();
       }
     });
+     _setupSocket();
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
+@override
+void dispose() {
+  WidgetsBinding.instance.removeObserver(this);
 
+  SocketService().removeListener("AD_CREATED", _onAdEvent);
+  SocketService().removeListener("AD_UPDATED", _onAdEvent);
+  SocketService().removeListener("AD_DELETED", _onAdEvent);
+
+  super.dispose();
+}
+void _setupSocket() {
+  _onAdEvent = (_) {
+    if (!mounted) return;
+
+    ref.read(homeProvider.notifier).refreshAds();
+  };
+
+  SocketService().addListener(
+    [
+      'AD_CREATED',
+      'AD_UPDATED',
+      'AD_DELETED',
+    ],
+    _onAdEvent,
+  );
+}
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {

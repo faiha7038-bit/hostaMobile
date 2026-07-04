@@ -143,7 +143,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
         padding: EdgeInsets.all(screenWidth * 0.05),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          children: [ 
             // Warning message at the top
             Container(
               width: double.infinity,

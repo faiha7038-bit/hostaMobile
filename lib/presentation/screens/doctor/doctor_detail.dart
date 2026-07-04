@@ -1563,7 +1563,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          backgroundColor: Colors.green,
+                         
                           content: Text(
                             "You can review only after your consultation is completed.",
                             style: TextStyle(
