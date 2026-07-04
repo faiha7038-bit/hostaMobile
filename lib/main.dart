@@ -136,7 +136,7 @@ class MyApp extends StatelessWidget {
           },
         ),
       ),
-      home: const Bottomnav(),
+      home:Bottomnav(),
     );
   }
 }

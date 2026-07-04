@@ -1,9 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/alarm.service.dart';
 import 'package:hosta/providers/reminder_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 
 class ReminderScreen extends ConsumerStatefulWidget {
   const ReminderScreen({super.key});
@@ -24,14 +24,14 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
       await Permission.scheduleExactAlarm.request();
     }
   }
-    @override
+  
+  @override
   void initState() {
     super.initState();
-   _permissionFuture = requestPermissions();
+    _permissionFuture = requestPermissions();
   }
 
   void _goBack() => Navigator.of(context).pop();
-
 
   Future<void> pickTime() async {
     final picked = await showTimePicker(
@@ -90,41 +90,28 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
   }
 
   Future<void> setReminder() async {
-    print("🔥 BUTTON PRESSED");
-    
     final state = ref.read(reminderStateProvider);
     final medicineName = state.medicineController.text.trim();
     final selectedTimes = state.selectedTimes;
     
     if (medicineName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a medicine name'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnackBar('Please enter a medicine name', Colors.red);
       return;
     }
 
     if (selectedTimes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please add at least one reminder time'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnackBar('Please add at least one reminder time', Colors.red);
       return;
     }
 
     try {
-//  final reminder = state.toMedicineReminder();
-//  final soundPath = state.selectedSoundPath;
-  final selectedSoundId = state.selectedSoundId;
+      final selectedSoundId = state.selectedSoundId;
       final alarmSounds = ref.read(alarmSoundsProvider);
       final selectedSound = alarmSounds.firstWhere(
         (sound) => sound.id == selectedSoundId,
         orElse: () => alarmSounds.first,
       );
+      
       for (int i = 0; i < selectedTimes.length; i++) {
         final alarmId =
             (DateTime.now().millisecondsSinceEpoch ~/ 1000) % 2147483647 + i;
@@ -134,461 +121,422 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
           medicineName: medicineName,
           hour: selectedTimes[i].hour,
           minute: selectedTimes[i].minute,
-           soundPath: selectedSound.path,
+          soundPath: selectedSound.path,
         );
       }
 
-      print("✅ ALARM SET SUCCESS");
-       //print("Reminder saved: ${reminder.toJson()}");
-
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Reminders set successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      _showSnackBar('✅ Reminders set successfully!', Colors.green);
 
-      // Clear form after successful submission
       ref.read(reminderStateProvider.notifier).clearForm();
       Navigator.of(context).pop();
 
     } catch (e) {
-      print("❌ ERROR: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error setting reminder: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showSnackBar('Error setting reminder: $e', Colors.red);
       }
     }
   }
-    // void _showSoundSelectionDialog() {
-    // final alarmSounds = ref.read(alarmSoundsProvider);
-    // final currentSoundId = ref.read(reminderStateProvider).selectedSoundId;
 
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) => AlertDialog(
-  //       title: const Text('Select Alarm Sound'),
-  //       content: SizedBox(
-  //         width: double.maxFinite,
-  //         child: ListView.builder(
-  //           shrinkWrap: true,
-  //           itemCount: alarmSounds.length,
-  //           itemBuilder: (context, index) {
-  //             final sound = alarmSounds[index];
-  //             final isSelected = sound.id == currentSoundId;
-              
-  //             return ListTile(
-  //               leading: Icon(
-  //                 isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-  //                 color: isSelected ? Colors.green : Colors.grey,
-  //               ),
-  //               title: Text(sound.name),
-  //               trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
-  //               onTap: () {
-  //                 ref.read(reminderStateProvider.notifier).setSelectedSound(sound.id,sound.path);
-  //                 Navigator.pop(context);
-  //                 ScaffoldMessenger.of(context).showSnackBar(
-  //                   SnackBar(
-  //                     content: Text('Selected: ${sound.name}'),
-  //                     duration: const Duration(seconds: 2),
-  //                   ),
-  //                 );
-  //               },
-  //             );
-  //           },
-  //         ),
-  //       ),
-  //       actions: [
-  //         TextButton(
-  //           onPressed: () => Navigator.pop(context),
-  //           child: const Text('Cancel'),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
+  void _showSnackBar(String message, Color color) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: TextStyle(
+            fontSize: screenWidth * 0.04,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(screenWidth * 0.03),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.04,
+          vertical: screenHeight * 0.015,
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(reminderStateProvider);
     final weekDays = ref.watch(weekDaysProvider);
-      final alarmSounds = ref.watch(alarmSoundsProvider);
+    final alarmSounds = ref.watch(alarmSoundsProvider);
     final currentSound = alarmSounds.firstWhere(
       (sound) => sound.id == state.selectedSoundId,
       orElse: () => alarmSounds.first,
     );
-    // Get screen dimensions
+    
     final screenSize = MediaQuery.of(context).size;
     final screenHeight = screenSize.height;
     final screenWidth = screenSize.width;
+    final isSmallScreen = screenWidth < 600;
+    final isTablet = screenWidth >= 600 && screenWidth < 1200;
+    final isDesktop = screenWidth >= 1200;
     
-    // Responsive values
-    final horizontalPadding = screenWidth * 0.04; // 4% of screen width
-    final verticalPadding = screenHeight * 0.02; // 2% of screen height
-    final inputHeight = screenHeight * 0.07; // 7% of screen height (min 50, max 65)
-    final avatarRadius = screenWidth * 0.045; // Responsive avatar size
-    final cardPadding = screenWidth * 0.04;
+    final horizontalPadding = isSmallScreen 
+        ? screenWidth * 0.04 
+        : (isTablet ? screenWidth * 0.06 : screenWidth * 0.08);
+    final verticalPadding = screenHeight * 0.02;
+    final inputHeight = isSmallScreen 
+        ? screenHeight * 0.07 
+        : (isTablet ? screenHeight * 0.065 : screenHeight * 0.06);
+    final avatarRadius = isSmallScreen 
+        ? screenWidth * 0.045 
+        : (isTablet ? screenWidth * 0.035 : screenWidth * 0.028);
+    final cardPadding = isSmallScreen 
+        ? screenWidth * 0.04 
+        : screenWidth * 0.035;
     final spacingSmall = screenHeight * 0.015;
     final spacingMedium = screenHeight * 0.025;
     final spacingLarge = screenHeight * 0.035;
-    final buttonPadding = screenHeight * 0.02;
-    final fontSizeTitle = screenWidth * 0.045;
-    final fontSizeBody = screenWidth * 0.04;
-    final fontSizeSmall = screenWidth * 0.035;
+    final buttonPadding = isSmallScreen 
+        ? screenHeight * 0.02 
+        : screenHeight * 0.025;
+    final fontSizeTitle = isSmallScreen 
+        ? screenWidth * 0.05 
+        : (isTablet ? screenWidth * 0.04 : screenWidth * 0.032);
+    final fontSizeBody = isSmallScreen 
+        ? screenWidth * 0.04 
+        : (isTablet ? screenWidth * 0.032 : screenWidth * 0.025);
+    final fontSizeSmall = isSmallScreen 
+        ? screenWidth * 0.035 
+        : (isTablet ? screenWidth * 0.028 : screenWidth * 0.022);
 
-      return Scaffold(
+    return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title:  Text('Medicine Reminder', style: TextStyle(
+        title: Text(
+          'Medicine Reminder',
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontSize: screenWidth * 0.05,
-          ),),
+            fontSize: fontSizeTitle,
+          ),
+        ),
         backgroundColor: Colors.green,
-        // elevation: 0,
-        // foregroundColor: Colors.white,
-        // ✅ FIX: Instant back — no lag, no canPop check needed
-       leading: IconButton(
+        leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new,
             color: Colors.white,
-            size: screenWidth * 0.055,
+            size: isSmallScreen 
+                ? screenWidth * 0.055 
+                : (isTablet ? screenWidth * 0.04 : screenWidth * 0.032),
           ),
           onPressed: () => Navigator.pop(context),
         ),
+        toolbarHeight: isSmallScreen 
+            ? kToolbarHeight 
+            : (isTablet 
+                ? kToolbarHeight * 1.1 
+                : kToolbarHeight * 1.2),
+        elevation: isSmallScreen ? 0 : 2,
       ),
       
-      body: Padding(
-        padding: EdgeInsets.all(horizontalPadding),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Medicine name ──
-              _buildInput(
-                controller: state.medicineController,
-                hint: 'Medicine name',
-                icon: Icons.medication, 
-                height: inputHeight,
-                fontSize: fontSizeBody,
-                onChanged: (value) {
-                  ref.read(reminderStateProvider.notifier).updateMedicineName(value);
-                },
-              ),
-              SizedBox(height: spacingSmall),
-
-              // ── Notes ──
-              _buildInput(
-                controller: state.notesController,
-                hint: 'Add notes',
-                icon: Icons.notes, 
-                height: inputHeight,
-                fontSize: fontSizeBody,
-                onChanged: (value) {
-                  ref.read(reminderStateProvider.notifier).updateNotes(value);
-                },
-              ),
-              SizedBox(height: spacingMedium),
-
-              // ── Time picker ──
-              Text(
-                'Reminder Time',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: fontSizeBody,
-                ),
-              ),
-              SizedBox(height: spacingSmall),
-              GestureDetector(
-                onTap: pickTime,
-                child: _card(
-                  padding: cardPadding,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        state.selectedTime == null
-                            ? 'Select time'
-                            : formatTime(state.selectedTime!),
-                        style: TextStyle(
-                          color: state.selectedTime == null
-                              ? Colors.grey
-                              : Colors.black,
-                          fontSize: fontSizeBody,
-                        ),
-                      ),
-                      const Icon(Icons.access_time, color: Colors.green),
-                    ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: isDesktop ? screenWidth * 0.7 : screenWidth,
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(horizontalPadding),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Medicine name ──
+                  _buildInput(
+                    controller: state.medicineController,
+                    hint: 'Medicine name',
+                    icon: Icons.medication, 
+                    height: inputHeight,
+                    fontSize: fontSizeBody,
+                    onChanged: (value) {
+                      ref.read(reminderStateProvider.notifier).updateMedicineName(value);
+                    },
+                    isSmallScreen: isSmallScreen,
                   ),
-                ),
-              ),
-              SizedBox(height: spacingSmall),
-              ElevatedButton(
-                onPressed: addTime,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade100,
-                  foregroundColor: Colors.green,
-                  elevation: 0,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth * 0.04,
-                    vertical: screenHeight * 0.012,
-                  ), 
-                ),
-                child: Text(
-                  '+ Add Time',
-                  style: TextStyle(fontSize: fontSizeBody),
-                ),
-              ),
-              SizedBox(height: spacingSmall),
+                  SizedBox(height: spacingSmall),
 
-              // ── Added times list ──
-              Wrap(
-                spacing: screenWidth * 0.02,
-                runSpacing: screenHeight * 0.01,
-                children: state.selectedTimes.map((time) {
-                  return Chip(
-                    label: Text(
-                      formatTime(time),
-                      style: TextStyle(fontSize: fontSizeSmall),
+                  // ── Notes ──
+                  _buildInput(
+                    controller: state.notesController,
+                    hint: 'Add notes',
+                    icon: Icons.notes, 
+                    height: inputHeight,
+                    fontSize: fontSizeBody,
+                    onChanged: (value) {
+                      ref.read(reminderStateProvider.notifier).updateNotes(value);
+                    },
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  SizedBox(height: spacingMedium),
+
+                  // ── Time picker ──
+                  Text(
+                    'Reminder Time',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: fontSizeBody,
                     ),
-                    deleteIcon: Icon(Icons.close, size: fontSizeBody * 1.2),
-                    onDeleted: () => removeTime(time),
-                    backgroundColor: Colors.green,
-                    labelStyle: const TextStyle(color: Colors.white),
-                  );
-                }).toList(),
-              ),
-//               Container(
-//   padding: EdgeInsets.symmetric(
-//     horizontal: screenWidth * 0.03,
-//     vertical: screenHeight * 0.015,
-//   ),
-//   decoration: BoxDecoration(
-//     color: Colors.grey.shade50,
-//     borderRadius: BorderRadius.circular(10),
-//     border: Border.all(color: Colors.grey.shade300),
-//   ),
-//   child: Row(
-//     children: [
-//       Icon(
-//         Icons.music_note,
-//         color: Colors.green,
-//         size: fontSizeBody * 1.2,
-//       ),
-//       SizedBox(width: screenWidth * 0.02),
-//       Text(
-//         'Alarm Sound: Default',
-//         style: TextStyle(
-//           fontSize: fontSizeBody,
-//           fontWeight: FontWeight.w500,
-//         ),
-//       ),
-//     ],
-//   ),
-// ),
-              //  _card(
-              //   padding: cardPadding,
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     children: [
-              //       Text(
-              //         'Alarm Sound',
-              //         style: TextStyle(
-              //           fontWeight: FontWeight.w500,
-              //           fontSize: fontSizeBody,
-              //         ),
-              //       ),
-              //         SizedBox(height: spacingSmall),
-              //       GestureDetector(
-              //         onTap: _showSoundSelectionDialog,
-              //         child: Container(
-              //           padding: EdgeInsets.symmetric(
-              //             horizontal: screenWidth * 0.03,
-              //             vertical: screenHeight * 0.015,
-              //           ),
-              //           decoration: BoxDecoration(
-              //             color: Colors.grey.shade50,
-              //             borderRadius: BorderRadius.circular(10),
-              //             border: Border.all(color: Colors.grey.shade300),
-              //           ),
-              //           child: Row(
-              //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              //             children: [
-              //               Row(
-              //                 children: [
-              //                   Icon(
-              //                     Icons.music_note,
-              //                     color: Colors.green,
-              //                     size: fontSizeBody * 1.2,
-              //                   ),
-              //                     SizedBox(width: screenWidth * 0.02),
-              //                   Text(
-              //                     currentSound.name,
-              //                     style: TextStyle(
-              //                       fontSize: fontSizeBody,
-              //                       fontWeight: FontWeight.w500,
-              //                     ),
-              //                   ),
-              //                 ],
-              //               ),
-              //               Icon(
-              //                 Icons.arrow_drop_down,
-              //                 color: Colors.grey,
-              //                 size: fontSizeBody * 1.5,
-              //               ),
-              //             ],
-              //           ),
-              //            ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-           /////   SizedBox(height: spacingMedium),
-              // ── Days of week ──
-              _card(
-                padding: cardPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Days of Week',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: fontSizeBody,
-                      ),
-                    ),
-                    SizedBox(height: spacingSmall),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(7, (index) {
-                        final isSelected = state.selectedDays.contains(index);
-                        return GestureDetector(
-                          onTap: () {
-                            ref.read(reminderStateProvider.notifier).toggleDay(index);
-                          },
-                          child: CircleAvatar(
-                            radius: avatarRadius,
-                            backgroundColor: isSelected
-                                ? Colors.green
-                                : Colors.grey.shade200,
-                            child: Text(
-                              weekDays[index][0],
-                              style: TextStyle(
-                                fontSize: avatarRadius * 0.8,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.black54,
-                              ),
+                  ),
+                  SizedBox(height: spacingSmall),
+                  
+                  GestureDetector(
+                    onTap: pickTime,
+                    child: _card(
+                      padding: cardPadding,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            state.selectedTime == null
+                                ? 'Select time'
+                                : formatTime(state.selectedTime!),
+                            style: TextStyle(
+                              color: state.selectedTime == null
+                                  ? Colors.grey
+                                  : Colors.black,
+                              fontSize: fontSizeBody,
                             ),
                           ),
-                        );
-                      }),
+                          Icon(
+                            Icons.access_time,
+                            color: Colors.green,
+                            size: isSmallScreen 
+                                ? screenWidth * 0.055 
+                                : screenWidth * 0.045,
+                          ),
+                        ],
+                      ),
+                      isSmallScreen: isSmallScreen,
                     ),
-                  ],
-                ),
-              ),
-              SizedBox(height: spacingMedium),
+                  ),
+                  SizedBox(height: spacingSmall),
+                  
+                  ElevatedButton(
+                    onPressed: addTime,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade100,
+                      foregroundColor: Colors.green,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.04,
+                        vertical: screenHeight * 0.012,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          isSmallScreen ? 12 : 14,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      '+ Add Time',
+                      style: TextStyle(
+                        fontSize: fontSizeBody,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: spacingSmall),
 
-              // ── Start / End date ──
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: pickStartDate,
-                      child: _card(
-                        padding: cardPadding,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Start Date',
-                              style: TextStyle(
-                                fontSize: fontSizeSmall,
-                                color: Colors.grey,
+                  // ── Added times list ──
+                  Wrap(
+                    spacing: screenWidth * 0.02,
+                    runSpacing: screenHeight * 0.01,
+                    children: state.selectedTimes.map((time) {
+                      return Chip(
+                        label: Text(
+                          formatTime(time),
+                          style: TextStyle(
+                            fontSize: fontSizeSmall,
+                          ),
+                        ),
+                        deleteIcon: Icon(
+                          Icons.close,
+                          size: fontSizeBody * 1.2,
+                        ),
+                        onDeleted: () => removeTime(time),
+                        backgroundColor: Colors.green,
+                        labelStyle: const TextStyle(
+                          color: Colors.white,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.02,
+                          vertical: screenHeight * 0.005,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            isSmallScreen ? 8 : 10,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  
+                  SizedBox(height: spacingMedium),
+
+                  // ── Days of week ──
+                  _card(
+                    padding: cardPadding,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Days of Week',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: fontSizeBody,
+                          ),
+                        ),
+                        SizedBox(height: spacingSmall),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: List.generate(7, (index) {
+                            final isSelected = state.selectedDays.contains(index);
+                            return GestureDetector(
+                              onTap: () {
+                                ref.read(reminderStateProvider.notifier).toggleDay(index);
+                              },
+                              child: Container(
+                                width: avatarRadius * 2.2,
+                                height: avatarRadius * 2.2,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.green
+                                      : Colors.grey.shade200,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    weekDays[index][0],
+                                    style: TextStyle(
+                                      fontSize: avatarRadius * 0.9,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ),
                               ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  SizedBox(height: spacingMedium),
+
+                  // ── Start / End date ──
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: pickStartDate,
+                          child: _card(
+                            padding: cardPadding,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Start Date',
+                                  style: TextStyle(
+                                    fontSize: fontSizeSmall,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                SizedBox(height: screenHeight * 0.005),
+                                Text(
+                                  state.startDate == null
+                                      ? 'Select'
+                                      : '${state.startDate!.day}/${state.startDate!.month}/${state.startDate!.year}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: fontSizeBody,
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(height: screenHeight * 0.005),
-                            Text(
-                              state.startDate == null
-                                  ? 'Select'
-                                  : '${state.startDate!.day}/${state.startDate!.month}/${state.startDate!.year}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: fontSizeBody,
-                              ),
+                            isSmallScreen: isSmallScreen,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.025),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: pickEndDate,
+                          child: _card(
+                            padding: cardPadding,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'End Date',
+                                  style: TextStyle(
+                                    fontSize: fontSizeSmall,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                SizedBox(height: screenHeight * 0.005),
+                                Text(
+                                  state.endDate == null
+                                      ? 'None'
+                                      : '${state.endDate!.day}/${state.endDate!.month}/${state.endDate!.year}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: fontSizeBody,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                            isSmallScreen: isSmallScreen,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: spacingLarge),
+
+                  // ── Set Reminder button ──
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: setReminder,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: EdgeInsets.all(buttonPadding),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            isSmallScreen ? 12 : 14,
+                          ),
+                        ),
+                        elevation: isSmallScreen ? 2 : 4,
+                      ),
+                      child: Text(
+                        'Next',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: fontSizeBody * 1.1,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
-                  SizedBox(width: screenWidth * 0.025),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: pickEndDate,
-                      child: _card(
-                        padding: cardPadding,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'End Date',
-                              style: TextStyle(
-                                fontSize: fontSizeSmall,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            SizedBox(height: screenHeight * 0.005),
-                            Text(
-                              state.endDate == null
-                                  ? 'None'
-                                  : '${state.endDate!.day}/${state.endDate!.month}/${state.endDate!.year}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: fontSizeBody,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  SizedBox(height: spacingLarge),
                 ],
               ),
-              SizedBox(height: spacingLarge),
-
-              // ── Set Reminder button ──
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: setReminder,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: EdgeInsets.all(buttonPadding),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  child: Text(
-                    'Next',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: fontSizeBody * 1.1,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: spacingLarge),
-            ],
+            ),
           ),
         ),
       ),
@@ -596,7 +544,11 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
   }
 
   // ── HELPERS ───────────────────────────────────
-  Widget _card({required Widget child, required double padding}) {
+  Widget _card({
+    required Widget child,
+    required double padding,
+    required bool isSmallScreen,
+  }) {
     final screenWidth = MediaQuery.of(context).size.width;
     
     return Container(
@@ -604,11 +556,11 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
       padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 15 : 18),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
+            blurRadius: isSmallScreen ? 6 : 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -624,17 +576,22 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
     required double height,
     required double fontSize,
     required Function(String) onChanged,
+    required bool isSmallScreen,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return Container(
       height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.035,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 15 : 18),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
+            blurRadius: isSmallScreen ? 6 : 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -649,15 +606,20 @@ class _ReminderScreenState extends ConsumerState<ReminderScreen> {
             size: fontSize * 1.2,
           ),
           hintText: hint,
-          hintStyle: TextStyle(fontSize: fontSize),
+          hintStyle: TextStyle(
+            fontSize: fontSize,
+            color: Colors.grey[400],
+          ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 14,
+          contentPadding: EdgeInsets.symmetric(
+            vertical: screenWidth * 0.035,
           ),
         ),
-        style: TextStyle(fontSize: fontSize),
+        style: TextStyle(
+          fontSize: fontSize,
+          color: Colors.black87,
+        ),
       ),
     );
   }
 }
-

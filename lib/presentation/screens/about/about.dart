@@ -29,7 +29,7 @@ class About extends StatelessWidget {
     final double tinySpacing = screenHeight * 0.005;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.green,
         elevation: 0,
@@ -195,7 +195,7 @@ class About extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.all(screenWidth * 0.04),
                   decoration: BoxDecoration(
-                    color: Colors.green[50],
+                    color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.green),
                   ),
@@ -256,7 +256,7 @@ class About extends StatelessWidget {
                     width: _clamp(screenWidth * 0.15, 50, 80),
                     height: _clamp(screenWidth * 0.15, 50, 80),
                     decoration: BoxDecoration(
-                      color: Colors.green[50],
+                      color: Colors.green.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -301,11 +301,7 @@ class About extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(headerPadding),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.green[400]!, Colors.green[700]!],
-        ),
+        color: Colors.green,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -325,8 +321,8 @@ class About extends StatelessWidget {
             ),
             child: Icon(
               Icons.health_and_safety,
-              size: iconSize,
-              color: Colors.green[700],
+              size: screenWidth * 0.12,
+              color: Colors.green,
             ),
           ),
           SizedBox(height: screenHeight * 0.015),
@@ -367,7 +363,7 @@ class About extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, color: Colors.green[700], size: iconSize),
+            Icon(icon, color: Colors.green, size: 24),
             SizedBox(width: 8),
             Text(
               title,
@@ -439,13 +435,13 @@ class FeatureCard extends StatelessWidget {
           Container(
             padding: EdgeInsets.all(_clamp(screenWidth * 0.025, 6, 14)),
             decoration: BoxDecoration(
-              color: Colors.green[50],
+              color: Colors.green.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
-              size: iconSize,
-              color: Colors.green[700],
+              size: screenWidth * 0.08,
+              color: Colors.green,
             ),
           ),
           SizedBox(height: screenHeight * 0.01),

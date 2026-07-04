@@ -44,9 +44,6 @@ class FirebaseMsg {
         provisional: false,
         criticalAlert: true,
       );
-
-    
-
       _token = await _getFcmToken();
     
 

@@ -113,7 +113,6 @@ class Prescription {
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       
-    
       patientAge: json['age']?.toString(),        
       patientGender: json['gender']?.toString(), 
       patientPhone: json['contact']?.toString(),  

@@ -1,4 +1,3 @@
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,98 +22,99 @@ class _PatientDetailsScreenState extends ConsumerState<PatientDetailsScreen> {
   int? hospitalId;
   int? selectedPatientIndex = 0;
   String? errorMessage;
-bool _listenerAdded = false;
-late Function(dynamic) _onPatientEvent;
+  bool _listenerAdded = false;
+  late Function(dynamic) _onPatientEvent;
+
   @override
   void initState() {
     super.initState();
-  _loadPatientData();
+    _loadPatientData();
     _setupSocketListener();
   }
-@override
-void dispose() {
-  SocketService().removeListener(
-    "PATIENT_REGISTERED",
-    _onPatientEvent,
-  );
 
-  SocketService().removeListener(
-    "PATIENT_UPDATED",
-    _onPatientEvent,
-  );
+  @override
+  void dispose() {
+    SocketService().removeListener(
+      "PATIENT_REGISTERED",
+      _onPatientEvent,
+    );
 
-  SocketService().removeListener(
-    "PATIENT_DELETED",
-    _onPatientEvent,
-  );
+    SocketService().removeListener(
+      "PATIENT_UPDATED",
+      _onPatientEvent,
+    );
 
-  super.dispose();
-}
-  // ==================== DATE FORMATTING METHODS ====================
-  void _setupSocketListener() {
-  if (_listenerAdded) return;
+    SocketService().removeListener(
+      "PATIENT_DELETED",
+      _onPatientEvent,
+    );
 
-  _listenerAdded = true;
-
- _onPatientEvent = (data) async {
-  log("PATIENT EVENT => $data");
-
-  await Future.delayed(const Duration(milliseconds: 500));
-
-  if (mounted) {
-    await _refreshPatientData();
+    super.dispose();
   }
-};
-  SocketService().addListener(
-    [
-      'PATIENT_REGISTERED',
-      'PATIENT_UPDATED',
-      'PATIENT_DELETED',
-    ],
-    _onPatientEvent,
-  );
-}
 
+  void _setupSocketListener() {
+    if (_listenerAdded) return;
 
-Future<void> _loadPatientData() async {
-  try {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
+    _listenerAdded = true;
 
-    final prefs = await SharedPreferences.getInstance();
-    userId = prefs.getString("userId");
+    _onPatientEvent = (data) async {
+      await Future.delayed(const Duration(milliseconds: 500));
 
-    if (userId == null || userId!.isEmpty) {
+      if (mounted) {
+        await _refreshPatientData();
+      }
+    };
+    
+    SocketService().addListener(
+      [
+        'PATIENT_REGISTERED',
+        'PATIENT_UPDATED',
+        'PATIENT_DELETED',
+      ],
+      _onPatientEvent,
+    );
+  }
+
+  Future<void> _loadPatientData() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      userId = prefs.getString("userId");
+
+      if (userId == null || userId!.isEmpty) {
+        setState(() {
+          isLoading = false;
+          errorMessage = "Please login first";
+        });
+        return;
+      }
+
+      final response = await ApiService().getPatients(
+        userId: int.parse(userId!),
+      );
+
+      patientsList = List<Map<String, dynamic>>.from(
+        response.data['data'] ?? [],
+      );
+
+      currentPatient = patientsList.isNotEmpty ? patientsList.first : {};
+
       setState(() {
         isLoading = false;
-        errorMessage = "Please login first";
+        errorMessage = patientsList.isEmpty ? "No patients found" : null;
       });
-      return;
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
     }
-
-    final response = await ApiService().getPatients(
-      userId: int.parse(userId!),
-    );
-
-    patientsList = List<Map<String, dynamic>>.from(
-      response.data['data'] ?? [],
-    );
-
-    currentPatient = patientsList.isNotEmpty ? patientsList.first : {};
-
-    setState(() {
-      isLoading = false;
-      errorMessage = patientsList.isEmpty ? "No patients found" : null;
-    });
-  } catch (e) {
-    setState(() {
-      isLoading = false;
-      errorMessage = e.toString();
-    });
   }
-}
+
   String _formatDate(String dateString) {
     if (dateString.isEmpty) return 'Not Available';
     try {
@@ -139,12 +139,9 @@ Future<void> _loadPatientData() async {
     return n.toString().padLeft(2, '0');
   }
 
- 
-
-
-Future<void> _refreshPatientData() async {
-  await _loadPatientData();
-}
+  Future<void> _refreshPatientData() async {
+    await _loadPatientData();
+  }
 
   String _getValue(String key, {String defaultValue = ''}) {
     try {
@@ -216,6 +213,9 @@ Future<void> _refreshPatientData() async {
     final screenSize = MediaQuery.of(context).size;
     final screenHeight = screenSize.height;
     final screenWidth = screenSize.width;
+    final isSmallScreen = screenWidth < 600;
+    final isMediumScreen = screenWidth >= 600 && screenWidth < 1024;
+    final isLargeScreen = screenWidth >= 1024;
 
     return Scaffold(
       appBar: AppBar(
@@ -224,67 +224,131 @@ Future<void> _refreshPatientData() async {
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: screenWidth * 0.05,
+            fontSize: isSmallScreen 
+                ? screenWidth * 0.05 
+                : isMediumScreen 
+                    ? screenWidth * 0.035 
+                    : screenWidth * 0.025,
           ),
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF28A745),
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: screenWidth * 0.06),
+          icon: Icon(
+            Icons.arrow_back, 
+            color: Colors.white, 
+            size: isSmallScreen 
+                ? screenWidth * 0.06 
+                : isMediumScreen 
+                    ? screenWidth * 0.04 
+                    : screenWidth * 0.03,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
+        toolbarHeight: isSmallScreen 
+            ? kToolbarHeight 
+            : isMediumScreen 
+                ? kToolbarHeight * 1.1 
+                : kToolbarHeight * 1.2,
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                strokeWidth: isSmallScreen ? 4 : 6,
+              ),
+            )
           : errorMessage != null
               ? _buildErrorWidget(screenWidth, screenHeight)
               : RefreshIndicator(
                   onRefresh: _refreshPatientData,
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    child: Column(
-                      children: [
-                        // Patient Dropdown Selector
-                        if (patientsList.length > 1)
-                          _buildPatientDropdown(screenWidth, screenHeight),
-                        
-                        if (patientsList.length > 1)
-                          SizedBox(height: screenHeight * 0.015),
-                        
-                        // Patient Header - Without Green Background and Person Icon
-                        _buildPatientHeader(screenWidth, screenHeight),
-                        
-                        if (_hasValue('patientId') || _hasValue('id'))
-                          SizedBox(height: screenHeight * 0.025),
-                        
-                        if (_hasValue('patientId') || _hasValue('id'))
-                          _buildPatientIdSection(screenWidth, screenHeight),
-                        
-                        SizedBox(height: screenHeight * 0.025),
-                        
-                        _buildPersonalInfoSection(screenWidth, screenHeight),
-                        
-                        if (_hasLocation() || _hasValue('addressLine'))
-                          SizedBox(height: screenHeight * 0.025),
-                        
-                        if (_hasLocation() || _hasValue('addressLine'))
-                          _buildLocationSection(screenWidth, screenHeight),
-                        
-                        SizedBox(height: screenHeight * 0.025),
-                        
-                        _buildStatusSection(screenWidth, screenHeight),
-                        
-                        SizedBox(height: screenHeight * 0.03),
-                      ],
-                    ),
+                    child: isLargeScreen
+                        ? _buildLargeScreenLayout(screenWidth, screenHeight)
+                        : _buildSmallMediumScreenLayout(screenWidth, screenHeight),
                   ),
                 ),
     );
   }
 
-  // Patient Dropdown Widget
+  Widget _buildSmallMediumScreenLayout(double screenWidth, double screenHeight) {
+    return Column(
+      children: [
+        if (patientsList.length > 1)
+          _buildPatientDropdown(screenWidth, screenHeight),
+        
+        if (patientsList.length > 1)
+          SizedBox(height: screenHeight * 0.015),
+        
+        _buildPatientHeader(screenWidth, screenHeight),
+        
+        if (_hasValue('patientId') || _hasValue('id'))
+          SizedBox(height: screenHeight * 0.025),
+        
+        if (_hasValue('patientId') || _hasValue('id'))
+          _buildPatientIdSection(screenWidth, screenHeight),
+        
+        SizedBox(height: screenHeight * 0.025),
+        
+        _buildPersonalInfoSection(screenWidth, screenHeight),
+        
+        if (_hasLocation() || _hasValue('addressLine'))
+          SizedBox(height: screenHeight * 0.025),
+        
+        if (_hasLocation() || _hasValue('addressLine'))
+          _buildLocationSection(screenWidth, screenHeight),
+        
+        SizedBox(height: screenHeight * 0.025),
+        
+        _buildStatusSection(screenWidth, screenHeight),
+        
+        SizedBox(height: screenHeight * 0.03),
+      ],
+    );
+  }
+
+  Widget _buildLargeScreenLayout(double screenWidth, double screenHeight) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left Panel - Patient List
+        Expanded(
+          flex: 1,
+          child: Column(
+            children: [
+              if (patientsList.length > 1)
+                _buildPatientDropdown(screenWidth, screenHeight),
+              _buildPatientHeader(screenWidth, screenHeight),
+            ],
+          ),
+        ),
+        SizedBox(width: screenWidth * 0.03),
+        // Right Panel - Patient Details
+        Expanded(
+          flex: 2,
+          child: Column(
+            children: [
+              if (_hasValue('patientId') || _hasValue('id'))
+                _buildPatientIdSection(screenWidth, screenHeight),
+              SizedBox(height: screenHeight * 0.02),
+              _buildPersonalInfoSection(screenWidth, screenHeight),
+              if (_hasLocation() || _hasValue('addressLine'))
+                SizedBox(height: screenHeight * 0.02),
+              if (_hasLocation() || _hasValue('addressLine'))
+                _buildLocationSection(screenWidth, screenHeight),
+              SizedBox(height: screenHeight * 0.02),
+              _buildStatusSection(screenWidth, screenHeight),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPatientDropdown(double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 600;
+    
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: screenWidth * 0.04,
@@ -312,17 +376,23 @@ Future<void> _refreshPatientData() async {
               child: Icon(
                 Icons.arrow_drop_down,
                 color: const Color(0xFF28A745),
-                size: screenWidth * 0.07,
+                size: isSmallScreen 
+                    ? screenWidth * 0.07 
+                    : screenWidth * 0.05,
               ),
             ),
-            iconSize: screenWidth * 0.07,
+            iconSize: isSmallScreen 
+                ? screenWidth * 0.07 
+                : screenWidth * 0.05,
             padding: EdgeInsets.symmetric(
               horizontal: screenWidth * 0.04,
               vertical: screenHeight * 0.01,
             ),
             dropdownColor: Colors.white,
             style: TextStyle(
-              fontSize: screenWidth * 0.04,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.04 
+                  : screenWidth * 0.03,
               color: Colors.black87,
               fontWeight: FontWeight.w500,
             ),
@@ -337,15 +407,25 @@ Future<void> _refreshPatientData() async {
                 child: Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.all(screenWidth * 0.02),
+                      padding: EdgeInsets.all(
+                        isSmallScreen 
+                            ? screenWidth * 0.02 
+                            : screenWidth * 0.015,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF28A745).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                        borderRadius: BorderRadius.circular(
+                          isSmallScreen 
+                              ? screenWidth * 0.02 
+                              : screenWidth * 0.015,
+                        ),
                       ),
                       child: Icon(
                         Icons.person,
                         color: const Color(0xFF28A745),
-                        size: screenWidth * 0.04,
+                        size: isSmallScreen 
+                            ? screenWidth * 0.04 
+                            : screenWidth * 0.03,
                       ),
                     ),
                     SizedBox(width: screenWidth * 0.03),
@@ -357,7 +437,9 @@ Future<void> _refreshPatientData() async {
                           Text(
                             patientName,
                             style: TextStyle(
-                              fontSize: screenWidth * 0.04,
+                              fontSize: isSmallScreen 
+                                  ? screenWidth * 0.04 
+                                  : screenWidth * 0.03,
                               fontWeight: FontWeight.w600,
                               color: selectedPatientIndex == index 
                                   ? const Color(0xFF28A745) 
@@ -368,7 +450,9 @@ Future<void> _refreshPatientData() async {
                             Text(
                               patientId,
                               style: TextStyle(
-                                fontSize: screenWidth * 0.03,
+                                fontSize: isSmallScreen 
+                                    ? screenWidth * 0.03 
+                                    : screenWidth * 0.025,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -379,7 +463,9 @@ Future<void> _refreshPatientData() async {
                       Icon(
                         Icons.check_circle,
                         color: const Color(0xFF28A745),
-                        size: screenWidth * 0.05,
+                        size: isSmallScreen 
+                            ? screenWidth * 0.05 
+                            : screenWidth * 0.04,
                       ),
                   ],
                 ),
@@ -399,15 +485,25 @@ Future<void> _refreshPatientData() async {
                 return Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.all(screenWidth * 0.015),
+                      padding: EdgeInsets.all(
+                        isSmallScreen 
+                            ? screenWidth * 0.015 
+                            : screenWidth * 0.01,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF28A745).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                        borderRadius: BorderRadius.circular(
+                          isSmallScreen 
+                              ? screenWidth * 0.02 
+                              : screenWidth * 0.015,
+                        ),
                       ),
                       child: Icon(
                         Icons.person,
                         color: const Color(0xFF28A745),
-                        size: screenWidth * 0.035,
+                        size: isSmallScreen 
+                            ? screenWidth * 0.035 
+                            : screenWidth * 0.025,
                       ),
                     ),
                     SizedBox(width: screenWidth * 0.025),
@@ -415,7 +511,9 @@ Future<void> _refreshPatientData() async {
                       child: Text(
                         patientName,
                         style: TextStyle(
-                          fontSize: screenWidth * 0.04,
+                          fontSize: isSmallScreen 
+                              ? screenWidth * 0.04 
+                              : screenWidth * 0.03,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF28A745),
                         ),
@@ -425,7 +523,9 @@ Future<void> _refreshPatientData() async {
                     Text(
                       '${selectedPatientIndex! + 1}/${patientsList.length}',
                       style: TextStyle(
-                        fontSize: screenWidth * 0.03,
+                        fontSize: isSmallScreen 
+                            ? screenWidth * 0.03 
+                            : screenWidth * 0.025,
                         color: Colors.grey[600],
                       ),
                     ),
@@ -440,6 +540,8 @@ Future<void> _refreshPatientData() async {
   }
 
   Widget _buildErrorWidget(double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 600;
+    
     return Center(
       child: Padding(
         padding: EdgeInsets.all(screenWidth * 0.08),
@@ -449,23 +551,29 @@ Future<void> _refreshPatientData() async {
             Icon(
               Icons.person_add,
               color: Colors.grey,
-              size: screenWidth * 0.15,
+              size: isSmallScreen 
+                  ? screenWidth * 0.15 
+                  : screenWidth * 0.1,
             ),
             SizedBox(height: screenHeight * 0.03),
             Text(
               'No Patient Details Found',
               style: TextStyle(
-                fontSize: screenWidth * 0.05,
+                fontSize: isSmallScreen 
+                    ? screenWidth * 0.05 
+                    : screenWidth * 0.035,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey,
               ),
             ),
             SizedBox(height: screenHeight * 0.02),
             Text(
-               'Please book a doctor appointment first',
+              'Please book a doctor appointment first',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: screenWidth * 0.04,
+                fontSize: isSmallScreen 
+                    ? screenWidth * 0.04 
+                    : screenWidth * 0.03,
                 color: Colors.grey[700],
               ),
             ),
@@ -476,15 +584,23 @@ Future<void> _refreshPatientData() async {
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(screenWidth * 0.025),
               ),
-          
             ),
             SizedBox(height: screenHeight * 0.03),
             ElevatedButton.icon(
               onPressed: _refreshPatientData,
-              icon: Icon(Icons.refresh, size: screenWidth * 0.05),
+              icon: Icon(
+                Icons.refresh, 
+                size: isSmallScreen 
+                    ? screenWidth * 0.05 
+                    : screenWidth * 0.04,
+              ),
               label: Text(
                 'Try again',
-                style: TextStyle(fontSize: screenWidth * 0.04),
+                style: TextStyle(
+                  fontSize: isSmallScreen 
+                      ? screenWidth * 0.04 
+                      : screenWidth * 0.03,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF28A745),
@@ -504,25 +620,26 @@ Future<void> _refreshPatientData() async {
     );
   }
 
-  // Updated Patient Header - Without Green Background and Person Icon
   Widget _buildPatientHeader(double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 600;
+    
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Patient Name
           Text(
             _getValue('name').isEmpty ? 'Patient Name' : _getValue('name'),
             style: TextStyle(
               color: Colors.black87,
-              fontSize: screenWidth * 0.06,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.06 
+                  : screenWidth * 0.045,
               fontWeight: FontWeight.bold,
             ),
           ),
           SizedBox(height: screenHeight * 0.005),
           
-          // Patient ID and other info chips
           Wrap(
             alignment: WrapAlignment.start,
             spacing: screenWidth * 0.025,
@@ -546,16 +663,14 @@ Future<void> _refreshPatientData() async {
                   label: _getValue('gender'),
                   screenWidth: screenWidth,
                 ),
-              // Status Chip
               _buildStatusChip(screenWidth),
             ],
           ),
           SizedBox(height: screenHeight * 0.005),
           
-          // Divider
           Divider(
             height: screenHeight * 0.02,
-            thickness: 1,
+            thickness: screenWidth * 0.0025,
             color: Colors.grey[200],
           ),
         ],
@@ -563,12 +678,13 @@ Future<void> _refreshPatientData() async {
     );
   }
 
-  // Light Info Chip (Without Green Background)
   Widget _buildInfoChipLight({
     required IconData icon,
     required String label,
     required double screenWidth,
   }) {
+    final isSmallScreen = screenWidth < 600;
+    
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: screenWidth * 0.03,
@@ -579,7 +695,7 @@ Future<void> _refreshPatientData() async {
         borderRadius: BorderRadius.circular(screenWidth * 0.05),
         border: Border.all(
           color: Colors.grey[300]!,
-          width: 0.5,
+          width: screenWidth * 0.0025,
         ),
       ),
       child: Row(
@@ -588,14 +704,18 @@ Future<void> _refreshPatientData() async {
           Icon(
             icon,
             color: Colors.grey[600],
-            size: screenWidth * 0.035,
+            size: isSmallScreen 
+                ? screenWidth * 0.035 
+                : screenWidth * 0.025,
           ),
           SizedBox(width: screenWidth * 0.01),
           Text(
             label,
             style: TextStyle(
               color: Colors.grey[700],
-              fontSize: screenWidth * 0.03,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.03 
+                  : screenWidth * 0.025,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -604,9 +724,10 @@ Future<void> _refreshPatientData() async {
     );
   }
 
-  // Status Chip
   Widget _buildStatusChip(double screenWidth) {
     final isActive = currentPatient['isActive'] == true;
+    final isSmallScreen = screenWidth < 600;
+    
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: screenWidth * 0.03,
@@ -617,7 +738,7 @@ Future<void> _refreshPatientData() async {
         borderRadius: BorderRadius.circular(screenWidth * 0.05),
         border: Border.all(
           color: isActive ? Colors.green[300]! : Colors.red[300]!,
-          width: 0.5,
+          width: screenWidth * 0.0025,
         ),
       ),
       child: Row(
@@ -626,14 +747,18 @@ Future<void> _refreshPatientData() async {
           Icon(
             isActive ? Icons.verified : Icons.block,
             color: isActive ? Colors.green[700] : Colors.red[700],
-            size: screenWidth * 0.035,
+            size: isSmallScreen 
+                ? screenWidth * 0.035 
+                : screenWidth * 0.025,
           ),
           SizedBox(width: screenWidth * 0.01),
           Text(
             isActive ? 'Active' : 'Inactive',
             style: TextStyle(
               color: isActive ? Colors.green[700] : Colors.red[700],
-              fontSize: screenWidth * 0.03,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.03 
+                  : screenWidth * 0.025,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -643,20 +768,26 @@ Future<void> _refreshPatientData() async {
   }
 
   Widget _buildPatientIdSection(double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 600;
+    
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenWidth * 0.025),
-          side: BorderSide(color: Colors.grey[200]!, width: 1),
+          side: BorderSide(color: Colors.grey[200]!, width: screenWidth * 0.0025),
         ),
         child: Padding(
           padding: EdgeInsets.all(screenWidth * 0.04),
           child: Row(
             children: [
               Container(
-                padding: EdgeInsets.all(screenWidth * 0.02),
+                padding: EdgeInsets.all(
+                  isSmallScreen 
+                      ? screenWidth * 0.02 
+                      : screenWidth * 0.015,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF28A745).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(screenWidth * 0.025),
@@ -664,7 +795,9 @@ Future<void> _refreshPatientData() async {
                 child: Icon(
                   Icons.qr_code,
                   color: const Color(0xFF28A745),
-                  size: screenWidth * 0.06,
+                  size: isSmallScreen 
+                      ? screenWidth * 0.06 
+                      : screenWidth * 0.05,
                 ),
               ),
               SizedBox(width: screenWidth * 0.03),
@@ -675,14 +808,18 @@ Future<void> _refreshPatientData() async {
                     Text(
                       'Patient ID',
                       style: TextStyle(
-                        fontSize: screenWidth * 0.032,
+                        fontSize: isSmallScreen 
+                            ? screenWidth * 0.032 
+                            : screenWidth * 0.025,
                         color: Colors.grey[600],
                       ),
                     ),
                     Text(
                       _getValue('patientId').isEmpty ? 'Not Available' : _getValue('patientId'),
                       style: TextStyle(
-                        fontSize: screenWidth * 0.04,
+                        fontSize: isSmallScreen 
+                            ? screenWidth * 0.04 
+                            : screenWidth * 0.032,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xFF28A745),
                       ),
@@ -703,7 +840,9 @@ Future<void> _refreshPatientData() async {
                   child: Text(
                     'ID: ${_getValue('id')}',
                     style: TextStyle(
-                      fontSize: screenWidth * 0.032,
+                      fontSize: isSmallScreen 
+                          ? screenWidth * 0.032 
+                          : screenWidth * 0.025,
                       color: const Color(0xFF28A745),
                       fontWeight: FontWeight.w500,
                     ),
@@ -717,6 +856,8 @@ Future<void> _refreshPatientData() async {
   }
 
   Widget _buildSectionHeader(String title, IconData icon, double screenWidth) {
+    final isSmallScreen = screenWidth < 600;
+    
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: screenWidth * 0.03,
@@ -729,7 +870,11 @@ Future<void> _refreshPatientData() async {
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(screenWidth * 0.02),
+            padding: EdgeInsets.all(
+              isSmallScreen 
+                  ? screenWidth * 0.02 
+                  : screenWidth * 0.015,
+            ),
             decoration: BoxDecoration(
               color: const Color(0xFF28A745),
               borderRadius: BorderRadius.circular(screenWidth * 0.025),
@@ -737,14 +882,18 @@ Future<void> _refreshPatientData() async {
             child: Icon(
               icon,
               color: Colors.white,
-              size: screenWidth * 0.045,
+              size: isSmallScreen 
+                  ? screenWidth * 0.045 
+                  : screenWidth * 0.035,
             ),
           ),
           SizedBox(width: screenWidth * 0.025),
           Text(
             title,
             style: TextStyle(
-              fontSize: screenWidth * 0.04,
+              fontSize: isSmallScreen 
+                  ? screenWidth * 0.04 
+                  : screenWidth * 0.032,
               fontWeight: FontWeight.bold,
               color: const Color(0xFF28A745),
             ),
@@ -755,6 +904,8 @@ Future<void> _refreshPatientData() async {
   }
 
   Widget _buildPersonalInfoSection(double screenWidth, double screenHeight) {
+    final isSmallScreen = screenWidth < 600;
+    
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
       child: Column(
@@ -766,7 +917,7 @@ Future<void> _refreshPatientData() async {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(screenWidth * 0.025),
-              side: BorderSide(color: Colors.grey[200]!, width: 1),
+              side: BorderSide(color: Colors.grey[200]!, width: screenWidth * 0.0025),
             ),
             child: Padding(
               padding: EdgeInsets.all(screenWidth * 0.04),
@@ -796,7 +947,6 @@ Future<void> _refreshPatientData() async {
                       screenWidth: screenWidth,
                     ),
                   ],
-                  // ========== FIXED: Date of Birth formatting ==========
                   if (_hasValue('dob')) ...[
                     _buildDivider(screenWidth),
                     _buildInfoRow(
@@ -806,8 +956,6 @@ Future<void> _refreshPatientData() async {
                       screenWidth: screenWidth,
                     ),
                   ],
-                  // ========== END FIX ==========
-                  
                   if (_hasValue('gender')) ...[
                     _buildDivider(screenWidth),
                     _buildInfoRow(
@@ -874,7 +1022,7 @@ Future<void> _refreshPatientData() async {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(screenWidth * 0.025),
-              side: BorderSide(color: Colors.grey[200]!, width: 1),
+              side: BorderSide(color: Colors.grey[200]!, width: screenWidth * 0.0025),
             ),
             child: Padding(
               padding: EdgeInsets.all(screenWidth * 0.04),
@@ -929,7 +1077,7 @@ Future<void> _refreshPatientData() async {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(screenWidth * 0.025),
-              side: BorderSide(color: Colors.grey[200]!, width: 1),
+              side: BorderSide(color: Colors.grey[200]!, width: screenWidth * 0.0025),
             ),
             child: Padding(
               padding: EdgeInsets.all(screenWidth * 0.04),
@@ -942,7 +1090,6 @@ Future<void> _refreshPatientData() async {
                     screenWidth: screenWidth,
                   ),
                   _buildDivider(screenWidth),
-                  // ========== FIXED: Created At formatting ==========
                   _buildInfoRow(
                     icon: Icons.calendar_today,
                     label: 'Created At',
@@ -951,8 +1098,6 @@ Future<void> _refreshPatientData() async {
                         : _formatDateTime(_getValue('createdAt')),
                     screenWidth: screenWidth,
                   ),
-                  // ========== END FIX ==========
-                  // ========== FIXED: Updated At formatting ==========
                   if (_hasValue('updatedAt')) ...[
                     _buildDivider(screenWidth),
                     _buildInfoRow(
@@ -962,7 +1107,6 @@ Future<void> _refreshPatientData() async {
                       screenWidth: screenWidth,
                     ),
                   ],
-                  // ========== END FIX ==========
                 ],
               ),
             ),
@@ -978,12 +1122,18 @@ Future<void> _refreshPatientData() async {
     required String value,
     required double screenWidth,
   }) {
+    final isSmallScreen = screenWidth < 600;
+    
     return Padding(
       padding: EdgeInsets.symmetric(vertical: screenWidth * 0.02),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(screenWidth * 0.015),
+            padding: EdgeInsets.all(
+              isSmallScreen 
+                  ? screenWidth * 0.015 
+                  : screenWidth * 0.01,
+            ),
             decoration: BoxDecoration(
               color: const Color(0xFF28A745).withOpacity(0.1),
               borderRadius: BorderRadius.circular(screenWidth * 0.02),
@@ -991,17 +1141,23 @@ Future<void> _refreshPatientData() async {
             child: Icon(
               icon,
               color: const Color(0xFF28A745),
-              size: screenWidth * 0.04,
+              size: isSmallScreen 
+                  ? screenWidth * 0.04 
+                  : screenWidth * 0.035,
             ),
           ),
           SizedBox(width: screenWidth * 0.03),
           SizedBox(
-            width: screenWidth * 0.28,
+            width: isSmallScreen 
+                ? screenWidth * 0.28 
+                : screenWidth * 0.22,
             child: Text(
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                fontSize: screenWidth * 0.035,
+                fontSize: isSmallScreen 
+                    ? screenWidth * 0.035 
+                    : screenWidth * 0.028,
                 color: Colors.grey[700],
               ),
             ),
@@ -1010,7 +1166,9 @@ Future<void> _refreshPatientData() async {
             child: Text(
               value,
               style: TextStyle(
-                fontSize: screenWidth * 0.035,
+                fontSize: isSmallScreen 
+                    ? screenWidth * 0.035 
+                    : screenWidth * 0.028,
                 color: Colors.black87,
                 fontWeight: FontWeight.w400,
               ),
@@ -1025,7 +1183,7 @@ Future<void> _refreshPatientData() async {
   Widget _buildDivider(double screenWidth) {
     return Divider(
       height: 0,
-      thickness: 0.5,
+      thickness: screenWidth * 0.0025,
       color: Colors.grey[300],
     );
   }

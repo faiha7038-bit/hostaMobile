@@ -22,6 +22,15 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
   String? _errorMessage;
   int _currentPage = 1;
   final int _limit = 10;
+  
+  // Date filter variables
+  DateTime? _selectedStartDate;
+  DateTime? _selectedEndDate;
+  bool _isFiltering = false;
+  
+  // Search variable
+  String _searchQuery = '';
+  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -29,6 +38,12 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
     _apiService = ApiService();
     _apiService.init();
     _loadPrescriptions();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadPrescriptions() async {
@@ -44,20 +59,6 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
         limit: _limit,
       );
 
-      if (response.data.isNotEmpty) {
-        final first = response.data.first;
-        print('=== PRESCRIPTION DATA ===');
-        print('ID: ${first.id}');
-        print('Patient Name: ${first.patientName}');
-        print('Patient ID: ${first.patientId}');
-         print('patientAge: ${first.patientAge}');
-         print('patientGender: ${first.patientGender}');
-         print('patientPhone: ${first.patientPhone}');
-        print('Hospital: ${first.hospitalName}');
-        print('Doctor: ${first.prescribedBy}');
-        print('=========================');
-      }
-
       setState(() {
         _response = response;
         _isLoading = false;
@@ -72,6 +73,113 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
 
   Future<void> _refreshData() async {
     await _loadPrescriptions();
+  }
+
+  // Get filtered prescriptions based on date range and search query
+  List<Prescription> _getFilteredPrescriptions() {
+    if (_response == null) return [];
+    
+    List<Prescription> filtered = _response!.data;
+    
+    // Apply date filter
+    if (_selectedStartDate != null || _selectedEndDate != null) {
+      filtered = filtered.where((prescription) {
+        final prescriptionDate = DateTime.parse(prescription.createdAt);
+        
+        bool matchesStart = true;
+        bool matchesEnd = true;
+        
+        if (_selectedStartDate != null) {
+          final startDate = DateTime(_selectedStartDate!.year, _selectedStartDate!.month, _selectedStartDate!.day);
+          final pDate = DateTime(prescriptionDate.year, prescriptionDate.month, prescriptionDate.day);
+          matchesStart = pDate.isAtSameMomentAs(startDate) || pDate.isAfter(startDate);
+        }
+        
+        if (_selectedEndDate != null) {
+          final endDate = DateTime(_selectedEndDate!.year, _selectedEndDate!.month, _selectedEndDate!.day);
+          final pDate = DateTime(prescriptionDate.year, prescriptionDate.month, prescriptionDate.day);
+          matchesEnd = pDate.isAtSameMomentAs(endDate) || pDate.isBefore(endDate);
+        }
+        
+        return matchesStart && matchesEnd;
+      }).toList();
+    }
+    
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((prescription) {
+        final query = _searchQuery.toLowerCase();
+        return (prescription.patientName?.toLowerCase().contains(query) ?? false) ||
+               (prescription.hospitalName?.toLowerCase().contains(query) ?? false) ||
+               (prescription.prescribedBy?.toLowerCase().contains(query) ?? false) ||
+               (prescription.patientId.toString().contains(query)) ||
+               (prescription.complaint.toLowerCase().contains(query));
+      }).toList();
+    }
+    
+    return filtered;
+  }
+
+  // Clear date filters
+  void _clearDateFilter() {
+    setState(() {
+      _selectedStartDate = null;
+      _selectedEndDate = null;
+      _isFiltering = false;
+    });
+  }
+
+  // Show date picker dialog
+  Future<void> _selectDateRange(BuildContext context) async {
+    final DateTime? pickedStart = await showDatePicker(
+      context: context,
+      initialDate: _selectedStartDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Colors.green,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedStart != null) {
+      final DateTime? pickedEnd = await showDatePicker(
+        context: context,
+        initialDate: _selectedEndDate ?? pickedStart,
+        firstDate: pickedStart,
+        lastDate: DateTime.now(),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: Colors.green,
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (pickedEnd != null) {
+        setState(() {
+          _selectedStartDate = pickedStart;
+          _selectedEndDate = pickedEnd;
+          _isFiltering = true;
+        });
+      }
+    }
   }
 
   @override
@@ -103,16 +211,193 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: const Color(0xFF2B6CB0),
-                strokeWidth: screenWidth * 0.015,
+      body: Column(
+        children: [
+          // ============================================
+          // SEARCH BAR WITH CALENDAR ICON
+          // ============================================
+          _buildSearchBar(screenWidth, screenHeight, isTablet),
+          
+          // ============================================
+          // MAIN CONTENT
+          // ============================================
+          Expanded(
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.green,
+                      strokeWidth: screenWidth * 0.015,
+                    ),
+                  )
+                : _errorMessage != null
+                    ? _buildErrorWidget(screenWidth, screenHeight)
+                    : _buildContent(screenWidth, screenHeight, isTablet),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================
+  // SEARCH BAR WITH CALENDAR ICON
+  // ============================================
+  Widget _buildSearchBar(double screenWidth, double screenHeight, bool isTablet) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.04,
+        vertical: screenHeight * 0.012,
+      ),
+      color: Colors.white,
+      child: Row(
+        children: [
+          // Search Bar with Calendar Icon
+          Expanded(
+            child: Container(
+              height: isTablet ? screenHeight * 0.065 : screenHeight * 0.055,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F7FA),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _isFiltering ? Colors.green : const Color(0xFFE2E8F0),
+                  width: _isFiltering ? 2 : 1,
+                ),
               ),
-            )
-          : _errorMessage != null
-              ? _buildErrorWidget(screenWidth, screenHeight)
-              : _buildContent(screenWidth, screenHeight, isTablet),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: _isFiltering 
+                      ? 'Search filtered results...' 
+                      : 'Search prescriptions...',
+                  hintStyle: TextStyle(
+                    fontSize: isTablet ? screenWidth * 0.018 : screenWidth * 0.032,
+                    color: const Color(0xFFA0AEC0),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: _isFiltering ? Colors.green : const Color(0xFFA0AEC0),
+                    size: isTablet ? screenWidth * 0.025 : screenWidth * 0.045,
+                  ),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Calendar Icon - Large Green
+                      Container(
+                        margin: EdgeInsets.only(right: screenWidth * 0.01),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.calendar_month,
+                            color: Colors.green,
+                            size: isTablet ? screenWidth * 0.035 : screenWidth * 0.055,
+                          ),
+                          onPressed: () => _selectDateRange(context),
+                          padding: EdgeInsets.all(isTablet ? screenWidth * 0.01 : screenWidth * 0.015),
+                          constraints: BoxConstraints(
+                            minWidth: isTablet ? screenWidth * 0.055 : screenWidth * 0.09,
+                            minHeight: isTablet ? screenWidth * 0.055 : screenWidth * 0.09,
+                          ),
+                        ),
+                      ),
+                      // Clear Button (if search has text)
+                      if (_searchQuery.isNotEmpty)
+                        IconButton(
+                          icon: Icon(
+                            Icons.clear,
+                            color: const Color(0xFFA0AEC0),
+                            size: isTablet ? screenWidth * 0.02 : screenWidth * 0.04,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _searchQuery = '';
+                              _searchController.clear();
+                            });
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(
+                            minWidth: isTablet ? screenWidth * 0.035 : screenWidth * 0.06,
+                          ),
+                        ),
+                    ],
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.025,
+                    vertical: screenHeight * 0.005,
+                  ),
+                  isDense: true,
+                ),
+                style: TextStyle(
+                  fontSize: isTablet ? screenWidth * 0.02 : screenWidth * 0.035,
+                  color: const Color(0xFF1A202C),
+                ),
+              ),
+            ),
+          ),
+          
+          // Filter Status Badge
+          if (_isFiltering || _searchQuery.isNotEmpty) ...[
+            SizedBox(width: screenWidth * 0.02),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.02,
+                vertical: screenHeight * 0.005,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.green.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${_getFilteredPrescriptions().length}',
+                    style: TextStyle(
+                      fontSize: isTablet ? screenWidth * 0.015 : screenWidth * 0.025,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.green,
+                    ),
+                  ),
+                  if (_isFiltering) ...[
+                    SizedBox(width: screenWidth * 0.01),
+                    Icon(
+                      Icons.calendar_month,
+                      color: Colors.green,
+                      size: isTablet ? screenWidth * 0.015 : screenWidth * 0.025,
+                    ),
+                  ],
+                  if (_searchQuery.isNotEmpty) ...[
+                    SizedBox(width: screenWidth * 0.01),
+                    Icon(
+                      Icons.search,
+                      color: Colors.green,
+                      size: isTablet ? screenWidth * 0.015 : screenWidth * 0.025,
+                    ),
+                  ],
+                  if (_isFiltering)
+                    GestureDetector(
+                      onTap: _clearDateFilter,
+                      child: Padding(
+                        padding: EdgeInsets.only(left: screenWidth * 0.01),
+                        child: Icon(
+                          Icons.close,
+                          color: Colors.green,
+                          size: isTablet ? screenWidth * 0.015 : screenWidth * 0.025,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -151,7 +436,7 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
           ElevatedButton(
             onPressed: _loadPrescriptions,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2B6CB0),
+              backgroundColor: Colors.green,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(
                 horizontal: screenWidth * 0.08,
@@ -178,27 +463,59 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
     double screenHeight,
     bool isTablet,
   ) {
-    if (_response == null || _response!.data.isEmpty) {
+    final filteredData = _getFilteredPrescriptions();
+    
+    if (filteredData.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.medication_outlined,
+              (_isFiltering || _searchQuery.isNotEmpty) ? Icons.filter_alt_off : Icons.medication_outlined,
               size: screenWidth * 0.15,
               color: Colors.grey.shade400,
             ),
             SizedBox(height: screenHeight * 0.02),
             Text(
-              'No Prescriptions Found',
+              (_isFiltering || _searchQuery.isNotEmpty) 
+                  ? 'No prescriptions found matching your search' 
+                  : 'No Prescriptions Found',
               style: TextStyle(
                 fontSize: screenWidth * 0.05,
                 fontWeight: FontWeight.w500,
                 color: Colors.grey.shade600,
               ),
             ),
-            SizedBox(height: screenHeight * 0.01),
-           
+            if (!_isFiltering && _searchQuery.isEmpty) ...[
+              SizedBox(height: screenHeight * 0.01),
+              Text(
+                'Pull down to refresh',
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: screenWidth * 0.035,
+                ),
+              ),
+            ],
+            if (_isFiltering || _searchQuery.isNotEmpty) ...[
+              SizedBox(height: screenHeight * 0.02),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _clearDateFilter();
+                    _searchQuery = '';
+                    _searchController.clear();
+                  });
+                },
+                child: Text(
+                  'Clear All Filters',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: screenWidth * 0.035,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       );
@@ -206,11 +523,12 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
 
     return RefreshIndicator(
       onRefresh: _refreshData,
+      color: Colors.green,
       child: ListView.builder(
         padding: EdgeInsets.all(screenWidth * 0.04),
-        itemCount: _response!.data.length,
+        itemCount: filteredData.length,
         itemBuilder: (context, index) {
-          final prescription = _response!.data[index];
+          final prescription = filteredData[index];
           return Padding(
             padding: EdgeInsets.only(bottom: screenHeight * 0.02),
             child: _buildPrescriptionCard(
@@ -234,17 +552,6 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
     double screenHeight,
     bool isTablet,
   ) {
-    print('=== Prescription Data Debug ===');
-    print('ID: ${p.id}');
-    print('Patient Name: ${p.patientName}');
-    print('Patient Name is null? ${p.patientName == null}');
-    print('Patient Name is empty? ${p.patientName == ""}');
-    print('Patient ID: ${p.patientId}');
-    print('Patient Age: ${p.patientAge}');
-    print('Patient Gender: ${p.patientGender}');
-    print('Patient Phone: ${p.patientPhone}');
-    print('===============================');
-
     final bgColor = p.canvasBg != null && p.canvasBg != 'white'
         ? _parseColor(p.canvasBg!)
         : Colors.white;
@@ -448,7 +755,6 @@ class _PrescriptionListScreenState extends State<PrescriptionListScreen> {
                               : p.patientAge != null 
                               ? '${p.patientAge} yrs' 
                               : p.patientGender ?? 'N/A', 
-                             // : 'N/A',
                           style: TextStyle(
                             fontSize: isTablet ? screenWidth * 0.02 : screenWidth * 0.035,
                             fontWeight: FontWeight.w500,
@@ -765,7 +1071,7 @@ if (p.medications.isNotEmpty) ...[
                     child: Text(
                       med.instructions.isNotEmpty
                           ? med.instructions
-                          : 'N/A',
+                          : '  ',
                       style: const TextStyle(
                         fontSize: 11,
                         fontStyle: FontStyle.italic,
