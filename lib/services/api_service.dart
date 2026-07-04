@@ -352,7 +352,7 @@ class ApiService {
   Future<Response> getAllCarousel({double? latitude, double? longitude}) async {
     final Map<String, dynamic> queryParams = {};
 
-    // Only add location parameters if they are provided
+    
     if (latitude != null && longitude != null) {
       queryParams['lat'] = latitude.toString();
       queryParams['lng'] = longitude.toString();
