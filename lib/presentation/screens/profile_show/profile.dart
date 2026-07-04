@@ -415,7 +415,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 _buildProfileOption(
                                   icon: Icons.local_taxi,
                                   title: 'Ambulance',
-                                  subtitle: 'About Your Registered Ambulance',
+                                  subtitle: 'About Your Registered Ambulances',
                                   screenWidth: screenWidth,
                                   screenHeight: screenHeight,
                                   optionIconSize: optionIconSize,

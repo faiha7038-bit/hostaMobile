@@ -192,13 +192,7 @@ class _OtpVerificationState extends ConsumerState<OtpVerification> {
         isVerifying = false;
       });
     }
-    // } catch (e) {
-    //   log("Error: $e");
-    //   setState(() {
-    //     otpError = "Something went wrong. Please try again.";
-    //     isVerifying = false;
-    //   });
-    // }
+ 
   }
 
   @override
@@ -206,7 +200,7 @@ class _OtpVerificationState extends ConsumerState<OtpVerification> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    // Clamped responsive values for all UI dimensions
+   
     final double dialogRadius = _clamp(screenWidth * 0.06, 16, 32);
     final double dialogPadding = _clamp(screenWidth * 0.05, 16, 32);
     final double iconContainerSize = _clamp(screenWidth * 0.13, 40, 70);

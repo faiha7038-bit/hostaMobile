@@ -175,7 +175,7 @@ class _HomeState extends ConsumerState<Home> with WidgetsBindingObserver {
                 );
               },
               errorBuilder: (context, error, stackTrace) {
-                debugPrint("Image Error: $error");
+                
                 return Container(
                   color: Colors.grey.shade200,
                   child: const Center(

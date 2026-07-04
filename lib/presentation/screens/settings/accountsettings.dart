@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/account_stng_provider.dart';
-import '../../../presentation/widgets/bottomnav.dart';
 
 class AccountSettingsPage extends ConsumerStatefulWidget {
   const AccountSettingsPage({super.key});
@@ -190,24 +189,24 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
             Center(
               child: Column(
                 children: [
-                  // Text(
-                  //   'Delete Your Account',
-                  //   style: TextStyle(
-                  //     fontSize: screenWidth * 0.045,
-                  //     fontWeight: FontWeight.bold,
-                  //     color: Colors.red,
-                  //   ),
-                  // ),
-                  //SizedBox(height: screenHeight * 0.01),
-                  // Text(
-                  //   'This action will remove all your data and cannot be undone',
-                  //   textAlign: TextAlign.center,
-                  //   style: TextStyle(
-                  //     fontSize: screenWidth * 0.035,
-                  //     color: Colors.black,
-                  //     height: 1.3,
-                  //   ),
-                  // ),
+                  Text(
+                    'Delete Your Account',
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.045,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.01),
+                  Text(
+                    'This action will also affect all patients associated with your account.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.035,
+                      color: Colors.black,
+                      height: 1.3,
+                    ),
+                  ),
                   SizedBox(height: screenHeight * 0.025),
                   
                   if (isDeleting)
