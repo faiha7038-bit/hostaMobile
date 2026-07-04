@@ -232,7 +232,7 @@ Future<void> logout(BuildContext context) async {
             // Logout Button
            InkWell(
   onTap: () {
-    debugPrint("Logout tapped");
+    
     _confirmLogout(context);
   },
               child: Container(

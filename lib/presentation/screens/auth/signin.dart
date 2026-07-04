@@ -405,6 +405,7 @@ class _SigninState extends State<Signin> {
                   IntlPhoneField(
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
+                       counterText: "", 
                       labelStyle: TextStyle(
                         color:
                             phoneError != null ? Colors.red : Colors.grey[600],
