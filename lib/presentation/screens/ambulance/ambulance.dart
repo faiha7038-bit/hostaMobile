@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/common/login_dialoge.dart';
 import 'package:hosta/presentation/screens/ambulance/register.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/providers/ambulance-provider.dart';
@@ -19,242 +19,187 @@ class Ambulance extends ConsumerStatefulWidget {
   ConsumerState<Ambulance> createState() => _AmbulanceState();
 }
 
-
 class _AmbulanceState extends ConsumerState<Ambulance> {
   Timer? _debounce;
-final TextEditingController _searchController = TextEditingController();
-StreamSubscription? _connectivitySubscription;
-String? userId;
-late Function(dynamic) _onAmbulanceEvent;
-List<dynamic> _filterOfflineData(
-  List<dynamic> list,
-  
-) {
-  final query = ref
-      .read(searchQueryProvider)
-      .toLowerCase();
+  final TextEditingController _searchController = TextEditingController();
+  StreamSubscription? _connectivitySubscription;
+  String? userId;
+  late Function(dynamic) _onAmbulanceEvent;
 
-  final country =
-      ref.read(selectedCountryProvider);
+  // Helper to clamp responsive values
+  double _clamp(double value, double min, double max) =>
+      value.clamp(min, max) as double;
 
-  final state =
-      ref.read(selectedStateProvider);
+  List<dynamic> _filterOfflineData(
+    List<dynamic> list,
+  ) {
+    final query = ref.read(searchQueryProvider).toLowerCase();
 
-  final district =
-      ref.read(selectedDistrictProvider);
+    final country = ref.read(selectedCountryProvider);
 
-  final place =
-      ref.read(selectedPlaceProvider);
+    final state = ref.read(selectedStateProvider);
 
-  return list.where((amb) {
+    final district = ref.read(selectedDistrictProvider);
 
-    final address =
-        amb['address'] ?? {};
+    final place = ref.read(selectedPlaceProvider);
 
-    final serviceName =
-        (amb['serviceName'] ?? '')
-            .toString()
-            .toLowerCase();
+    return list.where((amb) {
+      final address = amb['address'] ?? {};
 
-    final vehicleType =
-        (amb['vehicleType'] ?? '')
-            .toString()
-            .toLowerCase();
+      final serviceName = (amb['serviceName'] ?? '').toString().toLowerCase();
 
-    final ambCountry =
-        (address['country'] ?? '')
-            .toString()
-            .toLowerCase();
+      final vehicleType = (amb['vehicleType'] ?? '').toString().toLowerCase();
 
-    final ambState =
-        (address['state'] ?? '')
-            .toString()
-            .toLowerCase();
+      final ambCountry = (address['country'] ?? '').toString().toLowerCase();
 
-    final ambDistrict =
-        (address['district'] ?? '')
-            .toString()
-            .toLowerCase();
+      final ambState = (address['state'] ?? '').toString().toLowerCase();
 
-    final ambPlace =
-        (address['place'] ?? '')
-            .toString()
-            .toLowerCase();
+      final ambDistrict = (address['district'] ?? '').toString().toLowerCase();
 
-    final matchesSearch =
-        query.isEmpty ||
-        serviceName.contains(query) ||
-        vehicleType.contains(query);
+      final ambPlace = (address['place'] ?? '').toString().toLowerCase();
 
-    final matchesCountry =
-        country.isEmpty ||
-        ambCountry ==
-            country.toLowerCase();
+      final matchesSearch = query.isEmpty ||
+          serviceName.contains(query) ||
+          vehicleType.contains(query);
 
-    final matchesState =
-        state.isEmpty ||
-        ambState ==
-            state.toLowerCase();
+      final matchesCountry =
+          country.isEmpty || ambCountry == country.toLowerCase();
 
-    final matchesDistrict =
-        district.isEmpty ||
-        ambDistrict ==
-            district.toLowerCase();
+      final matchesState = state.isEmpty || ambState == state.toLowerCase();
 
-    final matchesPlace =
-        place.isEmpty ||
-        ambPlace ==
-            place.toLowerCase();
+      final matchesDistrict =
+          district.isEmpty || ambDistrict == district.toLowerCase();
 
-    return matchesSearch &&
-        matchesCountry &&
-        matchesState &&
-        matchesDistrict &&
-        matchesPlace;
+      final matchesPlace = place.isEmpty || ambPlace == place.toLowerCase();
 
-  }).toList();
-}
+      return matchesSearch &&
+          matchesCountry &&
+          matchesState &&
+          matchesDistrict &&
+          matchesPlace;
+    }).toList();
+  }
+
   @override
-void dispose() {
-  _debounce?.cancel();
-  _searchController.dispose();
-  _connectivitySubscription?.cancel();
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    _connectivitySubscription?.cancel();
     SocketService().removeListener("AMBULANCE_REGISTERED", _onAmbulanceEvent);
-  SocketService().removeListener("AMBULANCE_UPDATED", _onAmbulanceEvent);
-  SocketService().removeListener("AMBULANCE_DELETED", _onAmbulanceEvent);
-  super.dispose();
-}
+    SocketService().removeListener("AMBULANCE_UPDATED", _onAmbulanceEvent);
+    SocketService().removeListener("AMBULANCE_DELETED", _onAmbulanceEvent);
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-       await _checkInternet();
+      await _checkInternet();
       _fetchAmbulances();
-       _refreshAmbulanceId();
-       _loadUser();
-       _setupSocketListener();
-     
+      _refreshAmbulanceId();
+      _loadUser();
+      _setupSocketListener();
 
-     _connectivitySubscription =
-    Connectivity().onConnectivityChanged.listen((results) {
+      _connectivitySubscription =
+          Connectivity().onConnectivityChanged.listen((results) {
+        final hasInternet = !results.contains(ConnectivityResult.none);
 
-  final hasInternet =
-      !results.contains(ConnectivityResult.none);
-
-  ref.read(isOfflineProvider.notifier).state =
-      !hasInternet;
-
-  log("Offline Status: ${!hasInternet}");
-});
-
-});
-  
+        ref.read(isOfflineProvider.notifier).state = !hasInternet;
+      });
+    });
   }
+
   void _setupSocketListener() {
-  _onAmbulanceEvent = (_) async {
-    if (!mounted) return;
+    _onAmbulanceEvent = (_) async {
+      if (!mounted) return;
 
-    log("🚑 Ambulance Changed - Refetching");
+      ref.invalidate(ambulanceListProvider);
+      ref.invalidate(allAmbulancesProvider);
 
-    ref.invalidate(ambulanceListProvider);
-    ref.invalidate(allAmbulancesProvider);
+      await _fetchAmbulances(showLoader: false);
+      await _refreshAmbulanceId();
+    };
 
-    await _fetchAmbulances(showLoader: false);
-    await _refreshAmbulanceId();
-  };
+    SocketService().addListener(
+      [
+        'AMBULANCE_REGISTERED',
+        'AMBULANCE_UPDATED',
+        'AMBULANCE_DELETED',
+      ],
+      _onAmbulanceEvent,
+    );
+  }
 
-  SocketService().addListener(
-    [
-      'AMBULANCE_REGISTERED',
-      'AMBULANCE_UPDATED',
-      'AMBULANCE_DELETED',
-    ],
-    _onAmbulanceEvent,
-  );
-}
   Future<void> _loadUser() async {
-  final prefs = await SharedPreferences.getInstance();
-  setState(() {
-    userId = prefs.getString('userId');
-  });
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = prefs.getString('userId');
+    });
   }
-Future<void> _checkInternet() async {
-  final results = await Connectivity().checkConnectivity();
 
-  final hasInternet =
-      !results.contains(ConnectivityResult.none);
+  Future<void> _checkInternet() async {
+    final results = await Connectivity().checkConnectivity();
 
-  ref.read(isOfflineProvider.notifier).state =
-      !hasInternet;
+    final hasInternet = !results.contains(ConnectivityResult.none);
 
-  log("Initial Offline Status: ${!hasInternet}");
-}
-// Inside _AmbulanceState
-
-Future<void> _fetchAmbulances({bool showLoader = true}) async {
-  try {
-    if (showLoader) ref.read(isLoadingProvider.notifier).state = true;
-    await ref.read(ambulanceListProvider.notifier).fetchAmbulances();
-    await _refreshAmbulanceId();   // <-- Add this line
-  } catch (e) {
-    // ...
-  } finally {
-    if (showLoader) ref.read(isLoadingProvider.notifier).state = false;
+    ref.read(isOfflineProvider.notifier).state = !hasInternet;
   }
-}
 
-Future<void> _refreshAmbulanceId() async {
-  
-  final prefs = await SharedPreferences.getInstance();
+  Future<void> _fetchAmbulances({bool showLoader = true}) async {
+    try {
+      if (showLoader) ref.read(isLoadingProvider.notifier).state = true;
+      await ref.read(ambulanceListProvider.notifier).fetchAmbulances();
+      await _refreshAmbulanceId();
+    } catch (e) {
+      // ...
+    } finally {
+      if (showLoader) ref.read(isLoadingProvider.notifier).state = false;
+    }
+  }
 
-  String? ambulanceId =
-      prefs.getString('ambulanceId');
-log("userId => $userId");
-log("ambulanceId => $ambulanceId");
-  bool hasRegistered =
-      prefs.getBool('ambulanceRegistered') ?? false;
+  Future<void> _refreshAmbulanceId() async {
+    final prefs = await SharedPreferences.getInstance();
 
-  log("ambulanceId => $ambulanceId");
-  log("ambulanceRegistered => $hasRegistered");
+    String? ambulanceId = prefs.getString('ambulanceId');
 
-ref.read(ambulanceIdProvider.notifier).state =
-    prefs.getString('ambulanceId');
+    bool hasRegistered = prefs.getBool('ambulanceRegistered') ?? false;
 
-  ref.read(ambulanceIdProvider.notifier).state =
-      ambulanceId ?? '';
+    ref.read(ambulanceIdProvider.notifier).state =
+        prefs.getString('ambulanceId');
 
-  log("provider value => $ambulanceId");
-}
-
+    ref.read(ambulanceIdProvider.notifier).state = ambulanceId ?? '';
+  }
 
   Future<void> _callNumber(String phone) async {
-  if (phone.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Invalid phone number')),
-    );
-    return;
-  }
-
-  var status = await Permission.phone.request();
-
-  if (status.isGranted) {
-    bool? res = await FlutterPhoneDirectCaller.callNumber(phone);
-
-    if (res != true) {
+    if (phone.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Call failed')),
+        const SnackBar(content: Text('Invalid phone number')),
+      );
+      return;
+    }
+
+    var status = await Permission.phone.request();
+
+    if (status.isGranted) {
+      bool? res = await FlutterPhoneDirectCaller.callNumber(phone);
+
+      if (res != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Call failed')),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phone permission denied')),
       );
     }
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Phone permission denied')),
-    );
   }
-}
 
   Future<void> _openMap(double lat, double lon) async {
-    final uri = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
+    final uri =
+        Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lon");
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
@@ -265,10 +210,7 @@ ref.read(ambulanceIdProvider.notifier).state =
   }
 
   void _refreshData() {
-   
     _fetchAmbulances();
-   //  _refreshAmbulanceId();
-    
   }
 
   String _normalize(String? value) {
@@ -277,17 +219,14 @@ ref.read(ambulanceIdProvider.notifier).state =
     return trimmed[0].toUpperCase() + trimmed.substring(1).toLowerCase();
   }
 
-  // Extract distinct countries from current ambulance list
   List<String> getFilteredCountries() {
-   // final ambulanceList = ref.read(ambulanceListProvider);
-final isOffline =
-    ref.watch(isOfflineProvider);
+    final isOffline = ref.watch(isOfflineProvider);
 
-final ambulanceList = isOffline
-    ? _filterOfflineData(
-        ref.watch(allAmbulancesProvider),
-      )
-    : ref.watch(ambulanceListProvider);
+    final ambulanceList = isOffline
+        ? _filterOfflineData(
+            ref.watch(allAmbulancesProvider),
+          )
+        : ref.watch(ambulanceListProvider);
     final countries = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -301,11 +240,11 @@ final ambulanceList = isOffline
   List<String> getFilteredStates(String country) {
     if (country.isEmpty) return [];
     final normalizedCountry = _normalize(country);
-   final isOffline = ref.read(isOfflineProvider);
+    final isOffline = ref.read(isOfflineProvider);
 
-final ambulanceList = isOffline
-    ? ref.read(allAmbulancesProvider)
-    : ref.read(ambulanceListProvider);
+    final ambulanceList = isOffline
+        ? ref.read(allAmbulancesProvider)
+        : ref.read(ambulanceListProvider);
     final states = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -326,9 +265,9 @@ final ambulanceList = isOffline
     final normalizedState = _normalize(state);
     final isOffline = ref.read(isOfflineProvider);
 
-final ambulanceList = isOffline
-    ? ref.read(allAmbulancesProvider)
-    : ref.read(ambulanceListProvider);
+    final ambulanceList = isOffline
+        ? ref.read(allAmbulancesProvider)
+        : ref.read(ambulanceListProvider);
     final districts = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -336,7 +275,8 @@ final ambulanceList = isOffline
       final ambulanceCountry = _normalize(rawCountry);
       final rawState = address['state']?.toString().trim() ?? '';
       final ambulanceState = _normalize(rawState);
-      if (ambulanceCountry == normalizedCountry && ambulanceState == normalizedState) {
+      if (ambulanceCountry == normalizedCountry &&
+          ambulanceState == normalizedState) {
         final rawDistrict = address['district']?.toString().trim() ?? '';
         final district = _normalize(rawDistrict);
         if (district.isNotEmpty) districts.add(district);
@@ -345,16 +285,17 @@ final ambulanceList = isOffline
     return districts.toList()..sort();
   }
 
-  List<String> getFilteredPlaces(String country, String state, String district) {
+  List<String> getFilteredPlaces(
+      String country, String state, String district) {
     if (country.isEmpty || state.isEmpty || district.isEmpty) return [];
     final normalizedCountry = _normalize(country);
     final normalizedState = _normalize(state);
     final normalizedDistrict = _normalize(district);
-  final isOffline = ref.read(isOfflineProvider);
+    final isOffline = ref.read(isOfflineProvider);
 
-final ambulanceList = isOffline
-    ? ref.read(allAmbulancesProvider)
-    : ref.read(ambulanceListProvider);
+    final ambulanceList = isOffline
+        ? ref.read(allAmbulancesProvider)
+        : ref.read(ambulanceListProvider);
     final places = <String>{};
     for (final ambulance in ambulanceList) {
       final address = ambulance['address'] ?? {};
@@ -377,28 +318,48 @@ final ambulanceList = isOffline
 
   @override
   Widget build(BuildContext context) {
-    
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isLoading = ref.watch(isLoadingProvider);
-  final isOffline = ref.watch(isOfflineProvider);
+    final isOffline = ref.watch(isOfflineProvider);
 
-final ambulanceList = isOffline
-    ? _filterOfflineData(
-        ref.watch(allAmbulancesProvider),
-      )
-    : ref.watch(ambulanceListProvider); // already filtered by backend
+    final ambulanceList = isOffline
+        ? _filterOfflineData(
+            ref.watch(allAmbulancesProvider),
+          )
+        : ref.watch(ambulanceListProvider);
     final ambulanceId = ref.watch(ambulanceIdProvider);
-    log("ambulanceId${ambulanceId}");
 
-  log("userId => $userId");
-  log("ambulanceId => $ambulanceId");
-  log("ambulanceList count => ${ambulanceList.length}");
-final hasMyAmbulance = ambulanceList.any(
-  (amb) => amb['userId']?.toString() == userId,
-);
+    final hasMyAmbulance = ambulanceList.any(
+      (amb) => amb['userId']?.toString() == userId,
+    );
 
-log("hasMyAmbulance => $hasMyAmbulance");
+    // Responsive values
+    final double titleSize = _clamp(screenWidth * 0.05, 16, 24);
+    final double iconSize = _clamp(screenWidth * 0.055, 20, 32);
+    final double searchHintSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double searchPrefixSize = _clamp(screenWidth * 0.06, 20, 32);
+    final double searchRadius = _clamp(screenWidth * 0.03, 10, 20);
+    final double smallPaddingH = screenWidth * 0.04;
+    final double smallPaddingV = screenHeight * 0.0125;
+    final double mediumPaddingH = screenWidth * 0.03;
+    final double mediumPaddingV = screenHeight * 0.01;
+    final double cardRadius = _clamp(screenWidth * 0.03, 8, 18);
+    final double elevation = _clamp(screenWidth * 0.0075, 2, 8);
+    final double iconSizeBig = _clamp(screenWidth * 0.075, 30, 50);
+    final double iconSizeCall = _clamp(screenWidth * 0.07, 28, 44);
+    final double fontSizeBody = _clamp(screenWidth * 0.04, 14, 22);
+    final double fontSizeSmall = _clamp(screenWidth * 0.0325, 12, 18);
+    final double fontSizeExtraSmall = _clamp(screenWidth * 0.03, 11, 16);
+    final double buttonPaddingH = screenWidth * 0.04;
+    final double buttonPaddingV = screenHeight * 0.015;
+    final double clearIconSize = _clamp(screenWidth * 0.05, 20, 30);
+    final double modalRadius = _clamp(screenWidth * 0.05, 20, 40);
+    final double dropdownRadius = _clamp(screenWidth * 0.025, 8, 16);
+    final double dropdownFontSize = _clamp(screenWidth * 0.035, 13, 18);
+    final double modalTitleSize = _clamp(screenWidth * 0.045, 18, 28);
+    final double dividerThickness = _clamp(screenWidth * 0.0025, 0.5, 2);
+
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
@@ -407,7 +368,7 @@ log("hasMyAmbulance => $hasMyAmbulance");
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontSize: screenWidth * 0.05,
+            fontSize: titleSize,
           ),
         ),
         centerTitle: true,
@@ -416,142 +377,117 @@ log("hasMyAmbulance => $hasMyAmbulance");
           icon: Icon(
             Icons.arrow_back_ios_new,
             color: Colors.white,
-            size: screenWidth * 0.055,
+            size: iconSize,
           ),
           onPressed: () => Navigator.pop(context),
         ),
-     
       ),
       body: isLoading
           ? Center(
               child: CircularProgressIndicator(
                 color: Colors.green,
-                strokeWidth: screenWidth * 0.008,
+                strokeWidth: _clamp(screenWidth * 0.008, 2, 6),
               ),
             )
           : Column(
               children: [
                 Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth * 0.04,
-                    vertical: screenHeight * 0.0125,
+                    horizontal: smallPaddingH,
+                    vertical: smallPaddingV,
                   ),
                   child: Row(
                     children: [
                       Expanded(
-                        child:
-                      TextField(
-  controller: _searchController,
-  onChanged: (value) {
-    if (_debounce?.isActive ?? false) {
-      _debounce!.cancel();
-    }
-_debounce = Timer(const Duration(milliseconds: 500), () async {
+                          child: TextField(
+                        controller: _searchController,
+                        onChanged: (value) {
+                          if (_debounce?.isActive ?? false) {
+                            _debounce!.cancel();
+                          }
+                          _debounce = Timer(const Duration(milliseconds: 500),
+                              () async {
+                            ref.read(searchQueryProvider.notifier).state =
+                                value.trim();
 
-  ref.read(searchQueryProvider.notifier).state =
-      value.trim();
-
-  await _fetchAmbulances(showLoader: false);
-
-});
-  },
-  decoration: InputDecoration(
-    hintText: "Search ambulance service...",
-    hintStyle: TextStyle(fontSize: screenWidth * 0.035),
-    prefixIcon: Icon(
-      Icons.search,
-      color: Colors.grey,
-      size: screenWidth * 0.06,
-    ),
-    filled: true,
-    fillColor: Colors.grey[100],
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(screenWidth * 0.03),
-      borderSide: BorderSide.none,
-    ),
-    contentPadding: EdgeInsets.symmetric(
-      vertical: screenHeight * 0.0125,
-    ),
-  ),
-)
-                      ),
+                            await _fetchAmbulances(showLoader: false);
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: "Search ambulance service...",
+                          hintStyle: TextStyle(fontSize: searchHintSize),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Colors.grey,
+                            size: searchPrefixSize,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(searchRadius),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: smallPaddingV,
+                          ),
+                        ),
+                      )),
                       SizedBox(width: screenWidth * 0.02),
-                 if (!isOffline &&
-    (userId == null || !hasMyAmbulance))
+                      if (!isOffline && (userId == null || !hasMyAmbulance))
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.04,
-                              vertical: screenHeight * 0.015,
+                              horizontal: buttonPaddingH,
+                              vertical: buttonPaddingV,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                              borderRadius: BorderRadius.circular(
+                                  _clamp(screenWidth * 0.025, 8, 16)),
                             ),
                           ),
-onPressed: () async {
-  final prefs = await SharedPreferences.getInstance();
-  final userId = prefs.getString('userId');
+                          onPressed: () async {
+                            final prefs = await SharedPreferences.getInstance();
+                            final userId = prefs.getString('userId');
 
-  if (userId == null) {
-    final shouldLogin = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Login Required"),
-          content: const Text(
-            "You need to login to register an ambulance.",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false); // Cancel
-              },
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context, true); // Login
-              },
-              child: const Text("Login"),
-            ),
-          ],
-        );
-      },
-    );
+                            if (userId == null) {
+                              final shouldLogin =
+                                  await showLoginRequiredDialog(context);
 
-    if (shouldLogin == true) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const Signin(),
-        ),
-      );
-    }
+                              if (shouldLogin == true) {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const Signin(),
+                                  ),
+                                );
+                              }
 
-    return;
-  }
+                              return;
+                            }
 
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const AmbulanceRegister(),
-    ),
-  );
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AmbulanceRegister(),
+                              ),
+                            );
 
-  if (result != null && result["refresh"] == true) {
-    ref.invalidate(ambulanceListProvider);
-    ref.invalidate(allAmbulancesProvider);
+                            if (result != null && result["refresh"] == true) {
+                              ref.invalidate(ambulanceListProvider);
+                              ref.invalidate(allAmbulancesProvider);
 
-    await _fetchAmbulances(showLoader: true);
-  }
-},
-                          child: Text("Register", style: TextStyle(color: Colors.white)),
+                              await _fetchAmbulances(showLoader: true);
+                            }
+                          },
+                          child: Text("Register",
+                              style: TextStyle(color: Colors.white)),
                         ),
                     ],
                   ),
                 ),
-                _buildLocationAndClearButton(context, screenWidth, screenHeight),
+                _buildLocationAndClearButton(
+                    context, screenWidth, screenHeight),
                 Expanded(
                   child: ambulanceList.isEmpty
                       ? Center(
@@ -560,26 +496,18 @@ onPressed: () async {
                             children: [
                               Icon(
                                 Icons.search_off,
-                                size: screenWidth * 0.15,
+                                size: _clamp(screenWidth * 0.15, 60, 100),
                                 color: Colors.grey,
                               ),
                               SizedBox(height: screenHeight * 0.02),
                               Text(
                                 "No ambulances found",
                                 style: TextStyle(
-                                  fontSize: screenWidth * 0.04,
+                                  fontSize: fontSizeBody,
                                   color: Colors.grey,
                                 ),
                               ),
                               SizedBox(height: screenHeight * 0.01),
-                              // Text(
-                              //   "Try adjusting your filters",
-                              //   style: TextStyle(
-                              //     fontSize: screenWidth * 0.035,
-                              //     color: Colors.grey,
-                              //   ),
-                              //   textAlign: TextAlign.center,
-                              // ),
                               SizedBox(height: screenHeight * 0.025),
                               ElevatedButton(
                                 onPressed: _refreshData,
@@ -594,7 +522,8 @@ onPressed: () async {
                                   "Try Again",
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: screenWidth * 0.035,
+                                    fontSize:
+                                        _clamp(screenWidth * 0.035, 14, 20),
                                   ),
                                 ),
                               ),
@@ -603,18 +532,21 @@ onPressed: () async {
                         )
                       : ListView.builder(
                           itemCount: ambulanceList.length,
-                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.03),
                           itemBuilder: (context, index) {
                             final amb = ambulanceList[index];
                             final address = amb['address'] ?? {};
 
                             return Card(
-                              margin: EdgeInsets.symmetric(vertical: screenHeight * 0.01),
+                              margin: EdgeInsets.symmetric(
+                                  vertical: screenHeight * 0.01),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(screenWidth * 0.03)),
-                              elevation: screenWidth * 0.0075,
+                                  borderRadius:
+                                      BorderRadius.circular(cardRadius)),
+                              elevation: elevation,
                               child: Padding(
-                                padding: EdgeInsets.all(screenWidth * 0.03),
+                                padding: EdgeInsets.all(mediumPaddingH),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -623,46 +555,51 @@ onPressed: () async {
                                         color: Colors.green.shade50,
                                         shape: BoxShape.circle,
                                       ),
-                                      padding: EdgeInsets.all(screenWidth * 0.03),
+                                      padding: EdgeInsets.all(
+                                          _clamp(screenWidth * 0.03, 8, 16)),
                                       child: Icon(
                                         Icons.local_hospital,
                                         color: Colors.green,
-                                        size: screenWidth * 0.075,
+                                        size: iconSizeBig,
                                       ),
                                     ),
                                     SizedBox(width: screenWidth * 0.03),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             amb["serviceName"] ?? "Unknown",
                                             style: TextStyle(
-                                              fontSize: screenWidth * 0.04,
+                                              fontSize: fontSizeBody,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                          SizedBox(height: screenHeight * 0.005),
+                                          SizedBox(
+                                              height: screenHeight * 0.005),
                                           Text(
                                             "${address["place"] ?? ""}",
                                             style: TextStyle(
                                                 color: Colors.grey,
-                                                fontSize: screenWidth * 0.0325),
+                                                fontSize: fontSizeSmall),
                                           ),
-                                          SizedBox(height: screenHeight * 0.0025),
+                                          SizedBox(
+                                              height: screenHeight * 0.0025),
                                           Text(
                                             "${address["district"] ?? ""}, ${address["state"] ?? ""}, ${address["country"] ?? ""}",
                                             style: TextStyle(
-                                                fontSize: screenWidth * 0.03,
+                                                fontSize: fontSizeExtraSmall,
                                                 color: Colors.black45),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          SizedBox(height: screenHeight * 0.005),
+                                          SizedBox(
+                                              height: screenHeight * 0.005),
                                           Text(
                                             "${amb["vehicleType"] ?? "N/A"}",
                                             style: TextStyle(
-                                                fontSize: screenWidth * 0.0325,
+                                                fontSize: fontSizeSmall,
                                                 color: Colors.black87),
                                           ),
                                         ],
@@ -677,22 +614,27 @@ onPressed: () async {
                                           icon: Icon(
                                             Icons.call,
                                             color: Colors.green,
-                                            size: screenWidth * 0.07,
+                                            size: iconSizeCall,
                                           ),
                                         ),
-                                        if (amb["latitude"] != null && amb["longitude"] != null)
+                                        if (amb["latitude"] != null &&
+                                            amb["longitude"] != null)
                                           IconButton(
                                             onPressed: () {
                                               double lat = double.tryParse(
-                                                      amb["latitude"].toString()) ?? 0;
+                                                      amb["latitude"]
+                                                          .toString()) ??
+                                                  0;
                                               double lon = double.tryParse(
-                                                      amb["longitude"].toString()) ?? 0;
+                                                      amb["longitude"]
+                                                          .toString()) ??
+                                                  0;
                                               _openMap(lat, lon);
                                             },
                                             icon: Icon(
                                               Icons.location_on,
                                               color: Colors.red,
-                                              size: screenWidth * 0.07,
+                                              size: iconSizeCall,
                                             ),
                                           ),
                                       ],
@@ -709,26 +651,37 @@ onPressed: () async {
     );
   }
 
-  Widget _buildLocationAndClearButton(BuildContext context, double screenWidth, double screenHeight) {
+  Widget _buildLocationAndClearButton(
+      BuildContext context, double screenWidth, double screenHeight) {
+    final double clearIconSize = _clamp(screenWidth * 0.05, 20, 30);
+    final double fontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double borderWidth = _clamp(screenWidth * 0.0025, 0.5, 2);
+    final double radius = _clamp(screenWidth * 0.025, 8, 16);
+
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenHeight * 0.005),
+      padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.04, vertical: screenHeight * 0.005),
       child: Row(
         children: [
           Expanded(
             child: InkWell(
-              onTap: () => _openLocationFilter(context, screenWidth, screenHeight),
+              onTap: () =>
+                  _openLocationFilter(context, screenWidth, screenHeight),
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03, vertical: screenHeight * 0.0125),
+                padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth * 0.03,
+                    vertical: screenHeight * 0.0125),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300, width: screenWidth * 0.0025),
-                  borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                  border: Border.all(
+                      color: Colors.grey.shade300, width: borderWidth),
+                  borderRadius: BorderRadius.circular(radius),
                 ),
                 child: Text(
                   ref.watch(selectedCountryProvider).isEmpty
                       ? "Select Location"
                       : "${ref.watch(selectedCountryProvider)} > ${ref.watch(selectedStateProvider)} > ${ref.watch(selectedDistrictProvider)} > ${ref.watch(selectedPlaceProvider)}",
                   style: TextStyle(
-                    fontSize: screenWidth * 0.035,
+                    fontSize: fontSize,
                     color: Colors.black54,
                   ),
                   maxLines: 1,
@@ -746,12 +699,12 @@ onPressed: () async {
               ref.read(searchQueryProvider.notifier).state = '';
               _fetchAmbulances();
             },
-            icon: Icon(Icons.clear, color: Colors.red, size: screenWidth * 0.05),
+            icon: Icon(Icons.clear, color: Colors.red, size: clearIconSize),
             label: Text(
               "Clear",
               style: TextStyle(
                 color: Colors.red,
-                fontSize: screenWidth * 0.035,
+                fontSize: fontSize,
               ),
             ),
           ),
@@ -760,24 +713,34 @@ onPressed: () async {
     );
   }
 
-  void _openLocationFilter(BuildContext context, double screenWidth, double screenHeight) {
+  void _openLocationFilter(
+      BuildContext context, double screenWidth, double screenHeight) {
     String tempCountry = ref.read(selectedCountryProvider);
     String tempState = ref.read(selectedStateProvider);
     String tempDistrict = ref.read(selectedDistrictProvider);
     String tempPlace = ref.read(selectedPlaceProvider);
 
+    final double modalRadius = _clamp(screenWidth * 0.05, 20, 40);
+    final double fontSize = _clamp(screenWidth * 0.035, 13, 18);
+    final double titleSize = _clamp(screenWidth * 0.045, 18, 28);
+    final double dropdownRadius = _clamp(screenWidth * 0.025, 8, 16);
+    final double dividerThickness = _clamp(screenWidth * 0.0025, 0.5, 2);
+    final double buttonFontSize = _clamp(screenWidth * 0.04, 14, 22);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(screenWidth * 0.05)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(modalRadius)),
       ),
       builder: (context) {
         return StatefulBuilder(builder: (context, setModalState) {
           final countries = getFilteredCountries();
           final filteredStates = getFilteredStates(tempCountry);
-          final filteredDistricts = getFilteredDistricts(tempCountry, tempState);
-          final filteredPlaces = getFilteredPlaces(tempCountry, tempState, tempDistrict);
+          final filteredDistricts =
+              getFilteredDistricts(tempCountry, tempState);
+          final filteredPlaces =
+              getFilteredPlaces(tempCountry, tempState, tempDistrict);
 
           return Padding(
             padding: EdgeInsets.all(screenWidth * 0.04),
@@ -790,20 +753,20 @@ onPressed: () async {
                     child: Text(
                       "Select Location",
                       style: TextStyle(
-                        fontSize: screenWidth * 0.045,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   SizedBox(height: screenHeight * 0.02),
-                  Divider(thickness: screenWidth * 0.0025),
+                  Divider(thickness: dividerThickness),
                   DropdownButtonFormField<String>(
                     value: tempCountry.isEmpty ? null : tempCountry,
                     decoration: InputDecoration(
                       labelText: "Country *",
-                      labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                      labelStyle: TextStyle(fontSize: fontSize),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                        borderRadius: BorderRadius.circular(dropdownRadius),
                       ),
                       filled: true,
                       fillColor: Colors.white,
@@ -815,12 +778,14 @@ onPressed: () async {
                     items: [
                       const DropdownMenuItem(
                         value: '',
-                        child: Text("Select Country", style: TextStyle(color: Colors.grey)),
+                        child: Text("Select Country",
+                            style: TextStyle(color: Colors.grey)),
                       ),
                       ...countries.map((country) {
                         return DropdownMenuItem(
                           value: country,
-                          child: Text(country, style: TextStyle(fontSize: screenWidth * 0.035)),
+                          child: Text(country,
+                              style: TextStyle(fontSize: fontSize)),
                         );
                       }).toList(),
                     ],
@@ -839,9 +804,9 @@ onPressed: () async {
                       value: tempState.isEmpty ? null : tempState,
                       decoration: InputDecoration(
                         labelText: "State *",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                        labelStyle: TextStyle(fontSize: fontSize),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(dropdownRadius),
                         ),
                         filled: true,
                         fillColor: Colors.white,
@@ -853,12 +818,14 @@ onPressed: () async {
                       items: [
                         const DropdownMenuItem(
                           value: '',
-                          child: Text("Select State", style: TextStyle(color: Colors.grey)),
+                          child: Text("Select State",
+                              style: TextStyle(color: Colors.grey)),
                         ),
                         ...filteredStates.map((state) {
                           return DropdownMenuItem(
                             value: state,
-                            child: Text(state, style: TextStyle(fontSize: screenWidth * 0.035)),
+                            child: Text(state,
+                                style: TextStyle(fontSize: fontSize)),
                           );
                         }).toList(),
                       ],
@@ -877,9 +844,9 @@ onPressed: () async {
                       value: tempDistrict.isEmpty ? null : tempDistrict,
                       decoration: InputDecoration(
                         labelText: "District *",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                        labelStyle: TextStyle(fontSize: fontSize),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(dropdownRadius),
                         ),
                         filled: true,
                         fillColor: Colors.white,
@@ -891,12 +858,14 @@ onPressed: () async {
                       items: [
                         const DropdownMenuItem(
                           value: '',
-                          child: Text("Select District", style: TextStyle(color: Colors.grey)),
+                          child: Text("Select District",
+                              style: TextStyle(color: Colors.grey)),
                         ),
                         ...filteredDistricts.map((district) {
                           return DropdownMenuItem(
                             value: district,
-                            child: Text(district, style: TextStyle(fontSize: screenWidth * 0.035)),
+                            child: Text(district,
+                                style: TextStyle(fontSize: fontSize)),
                           );
                         }).toList(),
                       ],
@@ -909,14 +878,16 @@ onPressed: () async {
                     ),
                     SizedBox(height: screenHeight * 0.02),
                   ],
-                  if (tempCountry.isNotEmpty && tempState.isNotEmpty && tempDistrict.isNotEmpty) ...[
+                  if (tempCountry.isNotEmpty &&
+                      tempState.isNotEmpty &&
+                      tempDistrict.isNotEmpty) ...[
                     DropdownButtonFormField<String>(
                       value: tempPlace.isEmpty ? null : tempPlace,
                       decoration: InputDecoration(
                         labelText: "Place",
-                        labelStyle: TextStyle(fontSize: screenWidth * 0.035),
+                        labelStyle: TextStyle(fontSize: fontSize),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                          borderRadius: BorderRadius.circular(dropdownRadius),
                         ),
                         filled: true,
                         fillColor: Colors.white,
@@ -928,12 +899,14 @@ onPressed: () async {
                       items: [
                         const DropdownMenuItem(
                           value: '',
-                          child: Text("Select Place", style: TextStyle(color: Colors.grey)),
+                          child: Text("Select Place",
+                              style: TextStyle(color: Colors.grey)),
                         ),
                         ...filteredPlaces.map((place) {
                           return DropdownMenuItem(
                             value: place,
-                            child: Text(place, style: TextStyle(fontSize: screenWidth * 0.035)),
+                            child: Text(place,
+                                style: TextStyle(fontSize: fontSize)),
                           );
                         }).toList(),
                       ],
@@ -948,25 +921,31 @@ onPressed: () async {
                   SizedBox(height: screenHeight * 0.03),
                   ElevatedButton(
                     onPressed: () {
-                      ref.read(selectedCountryProvider.notifier).state = tempCountry;
-                      ref.read(selectedStateProvider.notifier).state = tempState;
-                      ref.read(selectedDistrictProvider.notifier).state = tempDistrict;
-                      ref.read(selectedPlaceProvider.notifier).state = tempPlace;
+                      ref.read(selectedCountryProvider.notifier).state =
+                          tempCountry;
+                      ref.read(selectedStateProvider.notifier).state =
+                          tempState;
+                      ref.read(selectedDistrictProvider.notifier).state =
+                          tempDistrict;
+                      ref.read(selectedPlaceProvider.notifier).state =
+                          tempPlace;
                       Navigator.pop(context);
-                      _fetchAmbulances();  // apply filters
+                      _fetchAmbulances();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
-                      padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
+                      padding:
+                          EdgeInsets.symmetric(vertical: screenHeight * 0.02),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                        borderRadius: BorderRadius.circular(
+                            _clamp(screenWidth * 0.03, 10, 20)),
                       ),
                     ),
                     child: Text(
                       "Apply Filter",
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: screenWidth * 0.04,
+                        fontSize: buttonFontSize,
                       ),
                     ),
                   ),

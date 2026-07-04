@@ -1,6 +1,4 @@
-
 import 'dart:async';
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
@@ -8,6 +6,10 @@ import 'package:hosta/presentation/screens/hospital/widgets/specialities.dart';
 import 'package:hosta/services/socket-service.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../services/api_service.dart';
+
+// Helper to clamp responsive values between safe limits
+double _clamp(double value, double min, double max) =>
+    value.clamp(min, max) as double;
 
 class Hospitals extends StatefulWidget {
   final String type;
@@ -20,12 +22,12 @@ class Hospitals extends StatefulWidget {
 class _HospitalsState extends State<Hospitals> {
   final ScrollController _scrollController = ScrollController();
 
-int currentPage = 1;
-bool hasNextPage = true;
-bool isLoadingMore = false;
-late Function(dynamic) _onHospitalEvent;
+  int currentPage = 1;
+  bool hasNextPage = true;
+  bool isLoadingMore = false;
+  late Function(dynamic) _onHospitalEvent;
   bool isLoading = true;
-  bool isSearching=true;
+  bool isSearching = true;
   List<dynamic> hospitals = [];
   Timer? _debounce;
 
@@ -34,126 +36,115 @@ late Function(dynamic) _onHospitalEvent;
   bool filterOpenNow = false;
   Position? userPosition;
 
- @override
-void initState() {
-  super.initState();
-
-  _fetchHospitals();
-_setupSocket();
-  _scrollController.addListener(() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200 &&
-        !isLoadingMore &&
-        hasNextPage) {
-      _loadMoreHospitals();
-    }
-  });
-}
-@override
-void dispose() {
-  _scrollController.dispose();
-  _debounce?.cancel();
-   SocketService().removeListener("HOSPITAL_REGISTERED", _onHospitalEvent);
-  SocketService().removeListener("HOSPITAL_UPDATED", _onHospitalEvent);
-  SocketService().removeListener("HOSPITAL_BLACKLISTED", _onHospitalEvent);
-  super.dispose();
-}
-void _setupSocket() {
-  _onHospitalEvent = (_) {
-    log("🔄 Refetch Hospitals");
-
-    if (!mounted) return;
-
-    setState(() {
-      hospitals.clear();
-      currentPage = 1;
-      hasNextPage = true;
-    });
-
+  @override
+  void initState() {
+    super.initState();
     _fetchHospitals();
-  };
-
-  SocketService().addListener(
-    [
-      'HOSPITAL_REGISTERED',
-      'HOSPITAL_UPDATED',
-      'HOSPITAL_BLACKLISTED',
-    ],
-    _onHospitalEvent,
-  );
-}
-Future<void> _loadMoreHospitals() async {
-  if (isLoadingMore || !hasNextPage) return;
-if (!mounted) return;
-  setState(() => isLoadingMore = true);
-
-  await _fetchHospitals(
-    query: searchQuery,
-    page: currentPage + 1,
-    loadMore: true,
-  );
-if (!mounted) return;
-  setState(() => isLoadingMore = false);
-}
-Future<void> _fetchHospitals({
-  String query = '',
-  int page = 1,
-  bool loadMore = false,
-}) async {
-  try {
-    if (!loadMore) {
-      if (query.isEmpty) {
-        if (!mounted) return;
-        setState(() => isLoading = true);
-      } else {
-        if (!mounted) return;
-        setState(() => isSearching = true);
+    _setupSocket();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >=
+              _scrollController.position.maxScrollExtent - 200 &&
+          !isLoadingMore &&
+          hasNextPage) {
+        _loadMoreHospitals();
       }
-    }
-
-    final response = await ApiService().getAllHospitals(
-      query,
-      page: page,
-      limit: 10,
-    );
-
-    List allHospitals = [];
-
-    if (response.data is Map &&
-        response.data['data'] is List) {
-      allHospitals = response.data['data'];
-    }
-
-    final pagination = response.data['pagination'];
-
-    final filtered = allHospitals.where((hospital) {
-      final hospitalType =
-          hospital['type']?.toString().toLowerCase() ?? '';
-
-      return hospitalType ==
-          widget.type.toLowerCase();
-    }).toList();
-if (!mounted) return;
-    setState(() {
-      hospitals = loadMore
-          ? [...hospitals, ...filtered]
-          : filtered;
-
-      currentPage = pagination['currentPage'];
-      hasNextPage = pagination['hasNextPage'];
-
-      isLoading = false;
-      isSearching = false;
-    });
-  } catch (e) {
-    if (!mounted) return;
-    setState(() {
-      isLoading = false;
-      isSearching = false;
-      isLoadingMore = false;
     });
   }
-}
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _debounce?.cancel();
+    SocketService().removeListener("HOSPITAL_REGISTERED", _onHospitalEvent);
+    SocketService().removeListener("HOSPITAL_UPDATED", _onHospitalEvent);
+    SocketService().removeListener("HOSPITAL_BLACKLISTED", _onHospitalEvent);
+    super.dispose();
+  }
+
+  void _setupSocket() {
+    _onHospitalEvent = (_) {
+      if (!mounted) return;
+      setState(() {
+        hospitals.clear();
+        currentPage = 1;
+        hasNextPage = true;
+      });
+      _fetchHospitals();
+    };
+    SocketService().addListener(
+      [
+        'HOSPITAL_REGISTERED',
+        'HOSPITAL_UPDATED',
+        'HOSPITAL_BLACKLISTED',
+      ],
+      _onHospitalEvent,
+    );
+  }
+
+  Future<void> _loadMoreHospitals() async {
+    if (isLoadingMore || !hasNextPage) return;
+    if (!mounted) return;
+    setState(() => isLoadingMore = true);
+    await _fetchHospitals(
+      query: searchQuery,
+      page: currentPage + 1,
+      loadMore: true,
+    );
+    if (!mounted) return;
+    setState(() => isLoadingMore = false);
+  }
+
+  Future<void> _fetchHospitals({
+    String query = '',
+    int page = 1,
+    bool loadMore = false,
+  }) async {
+    try {
+      if (!loadMore) {
+        if (query.isEmpty) {
+          if (!mounted) return;
+          setState(() => isLoading = true);
+        } else {
+          if (!mounted) return;
+          setState(() => isSearching = true);
+        }
+      }
+
+      final response = await ApiService().getAllHospitals(
+        query,
+        page: page,
+        limit: 10,
+      );
+
+      List allHospitals = [];
+
+      if (response.data is Map && response.data['data'] is List) {
+        allHospitals = response.data['data'];
+      }
+
+      final pagination = response.data['pagination'];
+
+      final filtered = allHospitals.where((hospital) {
+        final hospitalType = hospital['type']?.toString().toLowerCase() ?? '';
+        return hospitalType == widget.type.toLowerCase();
+      }).toList();
+      if (!mounted) return;
+      setState(() {
+        hospitals = loadMore ? [...hospitals, ...filtered] : filtered;
+        currentPage = pagination['currentPage'];
+        hasNextPage = pagination['hasNextPage'];
+        isLoading = false;
+        isSearching = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        isSearching = false;
+        isLoadingMore = false;
+      });
+    }
+  }
 
   Future<void> _ensureLocationEnabled() async {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -186,46 +177,46 @@ if (!mounted) return;
   }
 
   void _showLocationDialog(String message, double screenWidth) {
+    final double titleSize = _clamp(screenWidth * 0.045, 16, 24);
+    final double contentSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double buttonSize = _clamp(screenWidth * 0.04, 14, 22);
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(
           "Location Required",
-          style: TextStyle(fontSize: screenWidth * 0.045),
+          style: TextStyle(fontSize: titleSize),
         ),
         content: Text(
           message,
-          style: TextStyle(fontSize: screenWidth * 0.04),
+          style: TextStyle(fontSize: contentSize),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               "OK",
-              style: TextStyle(fontSize: screenWidth * 0.04),
+              style: TextStyle(fontSize: buttonSize),
             ),
           ),
         ],
       ),
     );
   }
+
   bool _isOpenNow(Map<String, dynamic> hospital) {
-  // 1. working_hours_clinic (morning/evening sessions)
-  if (hospital["working_hours_clinic"] is List && (hospital["working_hours_clinic"] as List).isNotEmpty) {
-    return _isOpenNowNewFormat(hospital);
+    if (hospital["working_hours_clinic"] is List && (hospital["working_hours_clinic"] as List).isNotEmpty) {
+      return _isOpenNowNewFormat(hospital);
+    }
+    if (hospital["working_hours_clinic_nobreak"] is List && (hospital["working_hours_clinic_nobreak"] as List).isNotEmpty) {
+      return _isOpenNowNoBreak(hospital);
+    }
+    if (hospital["working_hours_general"] is List && (hospital["working_hours_general"] as List).isNotEmpty) {
+      return _isOpenNowGeneral(hospital);
+    }
+    return false;
   }
-  // 2. working_hours_clinic_nobreak (simple open/close)
-  if (hospital["working_hours_clinic_nobreak"] is List && (hospital["working_hours_clinic_nobreak"] as List).isNotEmpty) {
-    return _isOpenNowNoBreak(hospital);
-  }
-  // 3. working_hours_general
-  if (hospital["working_hours_general"] is List && (hospital["working_hours_general"] as List).isNotEmpty) {
-    return _isOpenNowGeneral(hospital);
-  }
-  return false;
-}
-
-
 
   bool _isOpenNowNewFormat(Map<String, dynamic> hospital) {
     final workingHoursClinic = hospital["working_hours_clinic"] as List<dynamic>?;
@@ -294,60 +285,63 @@ if (!mounted) return;
 
     return false;
   }
-bool _isOpenNowGeneral(Map<String, dynamic> hospital) {
-  final hours = hospital["working_hours_general"] as List<dynamic>?;
-  if (hours == null || hours.isEmpty) return false;
 
-  final now = DateTime.now();
-  final today = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][now.weekday - 1];
+  bool _isOpenNowGeneral(Map<String, dynamic> hospital) {
+    final hours = hospital["working_hours_general"] as List<dynamic>?;
+    if (hours == null || hours.isEmpty) return false;
 
-  final todayEntry = hours.firstWhere(
-    (entry) => entry["day"].toString().toLowerCase() == today.toLowerCase(),
-    orElse: () => null,
-  );
-  if (todayEntry == null || todayEntry["is_holiday"] == true) return false;
+    final now = DateTime.now();
+    final today = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][now.weekday - 1];
 
-  String open = todayEntry["opening_time"] ?? "";
-  String close = todayEntry["closing_time"] ?? "";
-  if (open.isEmpty || close.isEmpty) return false;
+    final todayEntry = hours.firstWhere(
+      (entry) => entry["day"].toString().toLowerCase() == today.toLowerCase(),
+      orElse: () => null,
+    );
+    if (todayEntry == null || todayEntry["is_holiday"] == true) return false;
 
-  int nowMinutes = now.hour * 60 + now.minute;
-  int openMinutes = _parseTimeToMinutes(open);
-  int closeMinutes = _parseTimeToMinutes(close);
+    String open = todayEntry["opening_time"] ?? "";
+    String close = todayEntry["closing_time"] ?? "";
+    if (open.isEmpty || close.isEmpty) return false;
 
-  if (closeMinutes < openMinutes) {
-    return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
-  } else {
-    return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+    int nowMinutes = now.hour * 60 + now.minute;
+    int openMinutes = _parseTimeToMinutes(open);
+    int closeMinutes = _parseTimeToMinutes(close);
+
+    if (closeMinutes < openMinutes) {
+      return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
+    } else {
+      return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+    }
   }
-}
-bool _isOpenNowNoBreak(Map<String, dynamic> hospital) {
-  final hours = hospital["working_hours_clinic_nobreak"] as List<dynamic>?;
-  if (hours == null || hours.isEmpty) return false;
 
-  final now = DateTime.now();
-  final today = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"][now.weekday - 1];
+  bool _isOpenNowNoBreak(Map<String, dynamic> hospital) {
+    final hours = hospital["working_hours_clinic_nobreak"] as List<dynamic>?;
+    if (hours == null || hours.isEmpty) return false;
 
-  final todayEntry = hours.firstWhere(
-    (entry) => entry["day"].toString().toLowerCase() == today.toLowerCase(),
-    orElse: () => null,
-  );
-  if (todayEntry == null || todayEntry["is_holiday"] == true) return false;
+    final now = DateTime.now();
+    final today = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][now.weekday - 1];
 
-  String open = todayEntry["opening_time"] ?? "";
-  String close = todayEntry["closing_time"] ?? "";
-  if (open.isEmpty || close.isEmpty) return false;
+    final todayEntry = hours.firstWhere(
+      (entry) => entry["day"].toString().toLowerCase() == today.toLowerCase(),
+      orElse: () => null,
+    );
+    if (todayEntry == null || todayEntry["is_holiday"] == true) return false;
 
-  int nowMinutes = now.hour * 60 + now.minute;
-  int openMinutes = _parseTimeToMinutes(open);
-  int closeMinutes = _parseTimeToMinutes(close);
+    String open = todayEntry["opening_time"] ?? "";
+    String close = todayEntry["closing_time"] ?? "";
+    if (open.isEmpty || close.isEmpty) return false;
 
-  if (closeMinutes < openMinutes) {
-    return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
-  } else {
-    return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+    int nowMinutes = now.hour * 60 + now.minute;
+    int openMinutes = _parseTimeToMinutes(open);
+    int closeMinutes = _parseTimeToMinutes(close);
+
+    if (closeMinutes < openMinutes) {
+      return nowMinutes >= openMinutes || nowMinutes <= closeMinutes;
+    } else {
+      return nowMinutes >= openMinutes && nowMinutes <= closeMinutes;
+    }
   }
-}
+
   String _formatTime(String time24) {
     try {
       final parts = time24.split(":");
@@ -361,21 +355,22 @@ bool _isOpenNowNoBreak(Map<String, dynamic> hospital) {
       return time24;
     }
   }
+
   int _parseTimeToMinutes(String time) {
-  try {
-    String t = time.trim().toUpperCase();
-    bool isPM = t.contains("PM");
-    t = t.replaceAll(RegExp(r'[AP]M'), '').trim();
-    var parts = t.split(":");
-    int hour = int.parse(parts[0]);
-    int minute = int.parse(parts[1]);
-    if (isPM && hour != 12) hour += 12;
-    if (!isPM && hour == 12) hour = 0;
-    return hour * 60 + minute;
-  } catch (_) {
-    return 0;
+    try {
+      String t = time.trim().toUpperCase();
+      bool isPM = t.contains("PM");
+      t = t.replaceAll(RegExp(r'[AP]M'), '').trim();
+      var parts = t.split(":");
+      int hour = int.parse(parts[0]);
+      int minute = int.parse(parts[1]);
+      if (isPM && hour != 12) hour += 12;
+      if (!isPM && hour == 12) hour = 0;
+      return hour * 60 + minute;
+    } catch (_) {
+      return 0;
+    }
   }
-}
 
   double? _calculateDistance(double lat, double lon) {
     if (userPosition == null) return null;
@@ -388,56 +383,58 @@ bool _isOpenNowNoBreak(Map<String, dynamic> hospital) {
         1000;
   }
 
-  void _navigateToHospitalDetails(  hospital) {
-    log("$hospital");
+  void _navigateToHospitalDetails(hospital) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => HospitalDetailsPage(
-          hospitalId: hospital["id"].toString()
-          //hospital: hospital,
+          hospitalId: hospital["id"].toString(),
         ),
       ),
     );
   }
 
-  // ========== FIXED SEARCH LOGIC - HANDLES ADDRESS MAP ==========
-  // bool _matchesSearchQuery(Map<String, dynamic> hospital) {
-  //   if (searchQuery.isEmpty) return true;
-
-  //   final cleanQuery = searchQuery.replaceAll(' ', '').toLowerCase();
-  //   final hospitalName = (hospital["name"] ?? '')
-  //       .toString()
-  //       .replaceAll(' ', '')
-  //       .toLowerCase();
-
-  //   // Convert address (Map or String) to plain string for searching
-  //   String getAddressString(dynamic addr) {
-  //     if (addr == null) return '';
-  //     if (addr is String) return addr;
-  //     if (addr is Map) {
-  //       final parts = <String>[];
-  //       if (addr['place'] != null) parts.add(addr['place'].toString());
-  //       if (addr['district'] != null) parts.add(addr['district'].toString());
-  //       if (addr['state'] != null) parts.add(addr['state'].toString());
-  //       return parts.join(' ');
-  //     }
-  //     return '';
-  //   }
-
-  //   final rawAddress = getAddressString(hospital["address"]);
-  //   final hospitalAddress = rawAddress.replaceAll(' ', '').toLowerCase();
-
-  //   return hospitalName.contains(cleanQuery) ||
-  //       hospitalAddress.contains(cleanQuery);
-  // }
-
-  // ========== BUILD METHODS ==========
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+
+    // Responsive clamped values
+    final double loadingStrokeWidth = _clamp(screenWidth * 0.008, 2, 6);
+    final double appBarTitleSize = _clamp(screenWidth * 0.05, 16, 24);
+    final double backIconSize = _clamp(screenWidth * 0.055, 20, 32);
+    final double searchBoxPaddingHoriz = _clamp(screenWidth * 0.04, 12, 24);
+    final double searchBoxPaddingVert = _clamp(screenHeight * 0.015, 8, 20);
+    final double searchHintSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double searchIconSize = _clamp(screenWidth * 0.06, 20, 32);
+    final double searchRadius = _clamp(screenWidth * 0.03, 8, 16);
+    final double searchContentPadV = _clamp(screenHeight * 0.0125, 8, 16);
+    final double filterChipFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double filterChipLabelSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double resultsFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double listPadding = _clamp(screenWidth * 0.03, 8, 16);
+    final double cardMarginBottom = _clamp(screenHeight * 0.015, 8, 20);
+    final double cardRadius = _clamp(screenWidth * 0.035, 10, 20);
+    final double cardShadowBlur = _clamp(screenWidth * 0.0075, 2, 6);
+    final double imageHeight = _clamp(screenHeight * 0.22, 120, 280);
+    final double cardPadding = _clamp(screenWidth * 0.03, 8, 16);
+    final double nameFontSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double distanceFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double addressFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double statusIconSize = _clamp(screenWidth * 0.025, 10, 16);
+    final double statusFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double bookButtonPaddingV = _clamp(screenHeight * 0.015, 8, 16);
+    final double bookButtonPaddingH = _clamp(screenWidth * 0.06, 16, 32);
+    final double bookButtonRadius = _clamp(screenWidth * 0.03, 8, 16);
+    final double bookButtonFontSize = _clamp(screenWidth * 0.038, 12, 20);
+    final double emptyIconSize = _clamp(screenWidth * 0.16, 60, 120);
+    final double emptyTitleSize = _clamp(screenWidth * 0.045, 16, 24);
+    final double emptySubtitleSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double clearButtonSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double bottomSheetRadius = _clamp(screenWidth * 0.05, 12, 24);
+    final double bottomSheetHeaderFontSize = _clamp(screenWidth * 0.045, 16, 24);
+    final double bottomSheetSubFontSize = _clamp(screenWidth * 0.033, 12, 18);
+    final double closeIconSize = _clamp(screenWidth * 0.06, 24, 40);
 
     if (isLoading) {
       return Scaffold(
@@ -445,57 +442,28 @@ bool _isOpenNowNoBreak(Map<String, dynamic> hospital) {
         body: Center(
           child: CircularProgressIndicator(
             color: Colors.green,
-            strokeWidth: screenWidth * 0.008,
+            strokeWidth: loadingStrokeWidth,
           ),
         ),
       );
     }
-List<dynamic> filteredHospitals = hospitals.where((hospital) {
-  final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
-  return matchesOpen;
-}).toList();
-    // List<dynamic> filteredHospitals = hospitals.where((hospital) {
-    //   final matchesSearch = _matchesSearchQuery(hospital);
-    //   final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
-    //   return matchesSearch && matchesOpen;
-    // }).toList();
-if (filterNearest && userPosition != null) {
-  filteredHospitals.sort((a, b) {
 
-    final aLat =
-        double.tryParse(a["latitude"].toString()) ?? 0.0;
-    final aLon =
-        double.tryParse(a["longitude"].toString()) ?? 0.0;
+    List<dynamic> filteredHospitals = hospitals.where((hospital) {
+      final matchesOpen = !filterOpenNow || _isOpenNow(hospital);
+      return matchesOpen;
+    }).toList();
 
-    final bLat =
-        double.tryParse(b["latitude"].toString()) ?? 0.0;
-    final bLon =
-        double.tryParse(b["longitude"].toString()) ?? 0.0;
-
-    final aDist =
-        _calculateDistance(aLat, aLon) ?? double.infinity;
-
-    final bDist =
-        _calculateDistance(bLat, bLon) ?? double.infinity;
-
-    return aDist.compareTo(bDist);
-  });
-}
-    // if (filterNearest && userPosition != null) {
-    //   filteredHospitals.sort((a, b) {
-    //     final aDist = _calculateDistance(
-    //           (a["latitude"] ?? 0).toDouble(),
-    //           (a["longitude"] ?? 0).toDouble(),
-    //         ) ??
-    //         double.infinity;
-    //     final bDist = _calculateDistance(
-    //           (b["latitude"] ?? 0).toDouble(),
-    //           (b["longitude"] ?? 0).toDouble(),
-    //         ) ??
-    //         double.infinity;
-    //     return aDist.compareTo(bDist);
-    //   });
-    // }
+    if (filterNearest && userPosition != null) {
+      filteredHospitals.sort((a, b) {
+        final aLat = double.tryParse(a["latitude"].toString()) ?? 0.0;
+        final aLon = double.tryParse(a["longitude"].toString()) ?? 0.0;
+        final bLat = double.tryParse(b["latitude"].toString()) ?? 0.0;
+        final bLon = double.tryParse(b["longitude"].toString()) ?? 0.0;
+        final aDist = _calculateDistance(aLat, aLon) ?? double.infinity;
+        final bDist = _calculateDistance(bLat, bLon) ?? double.infinity;
+        return aDist.compareTo(bDist);
+      });
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
@@ -506,7 +474,7 @@ if (filterNearest && userPosition != null) {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontSize: screenWidth * 0.05,
+            fontSize: appBarTitleSize,
           ),
         ),
         centerTitle: true,
@@ -514,7 +482,7 @@ if (filterNearest && userPosition != null) {
           icon: Icon(
             Icons.arrow_back_ios_new,
             color: Colors.white,
-            size: screenWidth * 0.055,
+            size: backIconSize,
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -526,59 +494,48 @@ if (filterNearest && userPosition != null) {
             // Search Box
             Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.04,
-                vertical: screenHeight * 0.015,
+                horizontal: searchBoxPaddingHoriz,
+                vertical: searchBoxPaddingVert,
               ),
               child: TextField(
                 onChanged: (value) {
                   if (!mounted) return;
-  setState(() {
-    searchQuery = value;
-  });
-
-  if (_debounce?.isActive ?? false) {
-    _debounce!.cancel();
-  }
-
-  _debounce = Timer(
-    const Duration(milliseconds: 500),
-    () {
-      _fetchHospitals(query: value);
-    },
-  );
-},
-//                 onChanged: (value) async {
-//   setState(() {
-//     searchQuery = value;
-//   });
-
-//   await _fetchHospitals(query: value);
-// },
-                // onChanged: (value) => setState(() => searchQuery = value),
+                  setState(() {
+                    searchQuery = value;
+                  });
+                  if (_debounce?.isActive ?? false) {
+                    _debounce!.cancel();
+                  }
+                  _debounce = Timer(
+                    const Duration(milliseconds: 500),
+                    () {
+                      _fetchHospitals(query: value);
+                    },
+                  );
+                },
                 decoration: InputDecoration(
                   hintText: "Search hospitals...",
-                  hintStyle: TextStyle(fontSize: screenWidth * 0.035),
+                  hintStyle: TextStyle(fontSize: searchHintSize),
                   prefixIcon: Icon(
                     Icons.search,
                     color: Colors.grey,
-                    size: screenWidth * 0.06,
+                    size: searchIconSize,
                   ),
                   filled: true,
                   fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                    borderRadius: BorderRadius.circular(searchRadius),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: screenHeight * 0.0125),
+                  contentPadding: EdgeInsets.symmetric(vertical: searchContentPadV),
                 ),
               ),
             ),
             // Filter Chips
             Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.04,
-                vertical: screenHeight * 0.01,
+                horizontal: searchBoxPaddingHoriz,
+                vertical: _clamp(screenHeight * 0.01, 4, 16),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -586,13 +543,14 @@ if (filterNearest && userPosition != null) {
                   FilterChip(
                     label: Text(
                       "Nearest",
-                      style: TextStyle(fontSize: screenWidth * 0.035),
+                      style: TextStyle(fontSize: filterChipFontSize),
                     ),
                     selected: filterNearest,
                     selectedColor: Colors.green,
                     labelStyle: TextStyle(
-                        color: filterNearest ? Colors.white : Colors.black,
-                        fontSize: screenWidth * 0.035),
+                      color: filterNearest ? Colors.white : Colors.black,
+                      fontSize: filterChipLabelSize,
+                    ),
                     onSelected: (val) async {
                       if (val) {
                         await _ensureLocationEnabled();
@@ -607,13 +565,14 @@ if (filterNearest && userPosition != null) {
                   FilterChip(
                     label: Text(
                       "Open Now",
-                      style: TextStyle(fontSize: screenWidth * 0.035),
+                      style: TextStyle(fontSize: filterChipFontSize),
                     ),
                     selected: filterOpenNow,
                     selectedColor: Colors.green,
                     labelStyle: TextStyle(
-                        color: filterOpenNow ? Colors.white : Colors.black,
-                        fontSize: screenWidth * 0.035),
+                      color: filterOpenNow ? Colors.white : Colors.black,
+                      fontSize: filterChipLabelSize,
+                    ),
                     onSelected: (val) =>
                         setState(() => filterOpenNow = val),
                   ),
@@ -623,14 +582,14 @@ if (filterNearest && userPosition != null) {
             // Results Count
             if (searchQuery.isNotEmpty)
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                padding: EdgeInsets.symmetric(horizontal: searchBoxPaddingHoriz),
                 child: Row(
                   children: [
                     Text(
                       "${filteredHospitals.length} result${filteredHospitals.length == 1 ? '' : 's'} for \"$searchQuery\"",
                       style: TextStyle(
                         color: Colors.grey,
-                        fontSize: screenWidth * 0.035,
+                        fontSize: resultsFontSize,
                       ),
                     ),
                   ],
@@ -639,35 +598,63 @@ if (filterNearest && userPosition != null) {
             // List
             Expanded(
               child: filteredHospitals.isEmpty
-                  ? _buildEmptyState(screenWidth, screenHeight)
+                  ? _buildEmptyState(
+                      screenWidth,
+                      screenHeight,
+                      emptyIconSize,
+                      emptyTitleSize,
+                      emptySubtitleSize,
+                      clearButtonSize,
+                      searchQuery,
+                    )
                   : ListView.builder(
-                    controller: _scrollController,
-                      padding: EdgeInsets.all(screenWidth * 0.03),
-                      itemCount: filteredHospitals.length +
-    (isLoadingMore ? 1 : 0),
+                      controller: _scrollController,
+                      padding: EdgeInsets.all(listPadding),
+                      itemCount: filteredHospitals.length + (isLoadingMore ? 1 : 0),
                       itemBuilder: (context, index) {
-
-  if (index == filteredHospitals.length) {
-    return const Padding(
-      padding: EdgeInsets.all(16),
-      child: Center(
-        child: CircularProgressIndicator(
-          color: Colors.green,
-        ),
-      ),
-    );
-  }
-
-  return InkWell(
-                        onTap: () => _navigateToHospitalDetails(
-                            filteredHospitals[index]),
-                        child: _buildHospitalCard(filteredHospitals[index],
-                            screenWidth, screenHeight),
-                      
-                      );
-                      }
+                        if (index == filteredHospitals.length) {
+                          return Padding(
+                            padding: EdgeInsets.all(_clamp(screenWidth * 0.04, 8, 16)),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.green,
+                                strokeWidth: loadingStrokeWidth,
+                              ),
+                            ),
+                          );
+                        }
+                        return InkWell(
+                          onTap: () => _navigateToHospitalDetails(
+                              filteredHospitals[index]),
+                          child: _buildHospitalCard(
+                            filteredHospitals[index],
+                            screenWidth,
+                            screenHeight,
+                            cardMarginBottom,
+                            cardRadius,
+                            cardShadowBlur,
+                            imageHeight,
+                            cardPadding,
+                            nameFontSize,
+                            distanceFontSize,
+                            addressFontSize,
+                            statusIconSize,
+                            statusFontSize,
+                            bookButtonPaddingV,
+                            bookButtonPaddingH,
+                            bookButtonRadius,
+                            bookButtonFontSize,
+                            bottomSheetRadius,
+                            bottomSheetHeaderFontSize,
+                            bottomSheetSubFontSize,
+                            closeIconSize,
+                            userPosition,
+                            _calculateDistance,
+                            _isOpenNow,
+                          ),
+                        );
+                      },
                     ),
-  
             ),
           ],
         ),
@@ -675,50 +662,59 @@ if (filterNearest && userPosition != null) {
     );
   }
 
-  Widget _buildEmptyState(double screenWidth, double screenHeight) {
+  Widget _buildEmptyState(
+    double screenWidth,
+    double screenHeight,
+    double emptyIconSize,
+    double emptyTitleSize,
+    double emptySubtitleSize,
+    double clearButtonSize,
+    String searchQuery,
+  ) {
+    final double spacing = _clamp(screenHeight * 0.02, 12, 24);
+    final double spacingSmall = _clamp(screenHeight * 0.01, 6, 16);
+    final double spacingLarge = _clamp(screenHeight * 0.02, 12, 24);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: screenWidth * 0.16, color: Colors.grey),
-          SizedBox(height: screenHeight * 0.02),
+          Icon(Icons.search_off, size: emptyIconSize, color: Colors.grey),
+          SizedBox(height: spacing),
           Text(
             "No hospitals found",
             style: TextStyle(
-              fontSize: screenWidth * 0.045,
+              fontSize: emptyTitleSize,
               color: Colors.grey,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: screenHeight * 0.01),
+          SizedBox(height: spacingSmall),
           Text(
             searchQuery.isEmpty
                 ? ""
                 : "No results for \"$searchQuery\"",
             style: TextStyle(
-              fontSize: screenWidth * 0.035,
+              fontSize: emptySubtitleSize,
               color: Colors.grey,
             ),
             textAlign: TextAlign.center,
           ),
           if (searchQuery.isNotEmpty)
             Padding(
-              padding: EdgeInsets.only(top: screenHeight * 0.02),
+              padding: EdgeInsets.only(top: spacingLarge),
               child: TextButton(
                 onPressed: () async {
-                  
-  setState(() {
-    searchQuery = '';
-  });
-
-  await _fetchHospitals();
-},
-              //  onPressed: () => setState(() => searchQuery = ''),
+                  setState(() {
+                    searchQuery = '';
+                  });
+                  await _fetchHospitals();
+                },
                 child: Text(
                   "Clear search",
                   style: TextStyle(
                     color: Colors.green,
-                    fontSize: screenWidth * 0.035,
+                    fontSize: clearButtonSize,
                   ),
                 ),
               ),
@@ -728,13 +724,35 @@ if (filterNearest && userPosition != null) {
     );
   }
 
-  // ========== FIXED HOSPITAL CARD - HANDLES ADDRESS MAP ==========
-  Widget _buildHospitalCard(dynamic hospital, double screenWidth,
-      double screenHeight) {
+  Widget _buildHospitalCard(
+    dynamic hospital,
+    double screenWidth,
+    double screenHeight,
+    double cardMarginBottom,
+    double cardRadius,
+    double cardShadowBlur,
+    double imageHeight,
+    double cardPadding,
+    double nameFontSize,
+    double distanceFontSize,
+    double addressFontSize,
+    double statusIconSize,
+    double statusFontSize,
+    double bookButtonPaddingV,
+    double bookButtonPaddingH,
+    double bookButtonRadius,
+    double bookButtonFontSize,
+    double bottomSheetRadius,
+    double bottomSheetHeaderFontSize,
+    double bottomSheetSubFontSize,
+    double closeIconSize,
+    Position? userPosition,
+    double? Function(double, double) calculateDistance,
+    bool Function(Map<String, dynamic>) isOpenNow,
+  ) {
     final imageUrl = hospital["image"]?["imageUrl"] ?? "";
     final name = hospital["name"] ?? "Unknown Hospital";
 
-    // Convert address (Map or String) to readable String
     String getAddress(dynamic addr) {
       if (addr == null) return "";
       if (addr is String) return addr;
@@ -753,43 +771,39 @@ if (filterNearest && userPosition != null) {
 
     final address = getAddress(hospital["address"]);
     final phone = hospital["phone"] ?? "";
-//     log("LAT: ${hospital["latitude"]}");
-// log("LON: ${hospital["longitude"]}");
-// log("USER LAT: ${userPosition?.latitude}");
-// log("USER LNG: ${userPosition?.longitude}");
-    final lat =
-    double.tryParse(hospital["latitude"].toString()) ?? 0.0;
+    final lat = double.tryParse(hospital["latitude"].toString()) ?? 0.0;
+    final lon = double.tryParse(hospital["longitude"].toString()) ?? 0.0;
+    final distance = calculateDistance(lat, lon);
+    final isOpen = isOpenNow(hospital);
 
-final lon =
-    double.tryParse(hospital["longitude"].toString()) ?? 0.0;
-    // final lat = (hospital["latitude"] ?? 0).toDouble();
-    // final lon = (hospital["longitude"] ?? 0).toDouble();
-    final distance = _calculateDistance(lat, lon);
-    final isOpen = _isOpenNow(hospital);
-print(_calculateDistance(lat, lon));
     return Container(
-      margin: EdgeInsets.only(bottom: screenHeight * 0.015),
+      margin: EdgeInsets.only(bottom: cardMarginBottom),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(screenWidth * 0.035),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 3)],
+        borderRadius: BorderRadius.circular(cardRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: cardShadowBlur,
+          )
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
             borderRadius: BorderRadius.vertical(
-                top: Radius.circular(screenWidth * 0.035)),
+                top: Radius.circular(cardRadius)),
             child: imageUrl.isNotEmpty
                 ? Image.network(
                     imageUrl,
-                    height: screenHeight * 0.22,
+                    height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Image.asset(
                         'images/hospital.jpg',
-                        height: screenHeight * 0.22,
+                        height: imageHeight,
                         width: double.infinity,
                         fit: BoxFit.cover,
                       );
@@ -797,185 +811,167 @@ print(_calculateDistance(lat, lon));
                   )
                 : Image.asset(
                     'images/hospital.jpg',
-                    height: screenHeight * 0.22,
+                    height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
                   ),
           ),
           Padding(
-            padding: EdgeInsets.all(screenWidth * 0.03),
+            padding: EdgeInsets.all(cardPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   name,
                   style: TextStyle(
-                    fontSize: screenWidth * 0.04,
+                    fontSize: nameFontSize,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-    if (distance != null)
-  Text(
-    distance < 1
-        ? "${(distance * 1000).toStringAsFixed(0)} m away"
-        : "${distance.toStringAsFixed(2)} km away",
-    style: TextStyle(
-      fontSize: screenWidth * 0.035,
-      color: Colors.blueGrey,
-    ),
-  ),
-                // if (distance != null)
-                //   Text(
-                //     "${distance.toStringAsFixed(1)} km away",
-                //     style: TextStyle(
-                //       fontSize: screenWidth * 0.035,
-                //       color: Colors.blueGrey,
-                //     ),
-                //   ),
-                SizedBox(height: screenHeight * 0.0075),
+                if (distance != null)
+                  Text(
+                    distance < 1
+                        ? "${(distance * 1000).toStringAsFixed(0)} m away"
+                        : "${distance.toStringAsFixed(2)} km away",
+                    style: TextStyle(
+                      fontSize: distanceFontSize,
+                      color: Colors.blueGrey,
+                    ),
+                  ),
+                SizedBox(height: _clamp(screenHeight * 0.0075, 4, 12)),
                 Text(
                   address,
-                  style: TextStyle(fontSize: screenWidth * 0.035),
+                  style: TextStyle(fontSize: addressFontSize),
                 ),
-                SizedBox(height: screenHeight * 0.0075),
+                SizedBox(height: _clamp(screenHeight * 0.0075, 4, 12)),
                 Row(
                   children: [
                     Icon(
                       Icons.circle,
                       color: isOpen ? Colors.green : Colors.red,
-                      size: screenWidth * 0.025,
+                      size: statusIconSize,
                     ),
-                    SizedBox(width: screenWidth * 0.015),
+                    SizedBox(width: _clamp(screenWidth * 0.015, 4, 12)),
                     Text(
                       isOpen ? "Open Now" : "Closed",
                       style: TextStyle(
                         color: isOpen ? Colors.green : Colors.red,
                         fontWeight: FontWeight.w500,
-                        fontSize: screenWidth * 0.035,
+                        fontSize: statusFontSize,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: screenHeight * 0.01),
-              Align(
-  alignment: Alignment.centerRight,
-  child: ElevatedButton(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.green,
-      padding: EdgeInsets.symmetric(
-        vertical: screenHeight * 0.015,
-         horizontal: screenWidth * 0.06,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(
-          screenWidth * 0.03,
-        ),
-      ),
-    ),
-onPressed: () {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(20),
-      ),
-    ),
-    builder: (context) {
-      return SizedBox(
-        height: MediaQuery.of(context).size.height * 0.8,
-        child: Column(
-          children: [
-
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(20),
+                SizedBox(height: _clamp(screenHeight * 0.01, 4, 12)),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: EdgeInsets.symmetric(
+                        vertical: bookButtonPaddingV,
+                        horizontal: bookButtonPaddingH,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          bookButtonRadius,
+                        ),
+                      ),
+                    ),
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(bottomSheetRadius),
+                          ),
+                        ),
+                        builder: (context) {
+                          return SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.8,
+                            child: Column(
+                              children: [
+                                // Header
+                                Container(
+                                  padding: EdgeInsets.all(_clamp(screenWidth * 0.04, 12, 24)),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(bottomSheetRadius),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              hospital["name"] ?? "",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: bottomSheetHeaderFontSize,
+                                              ),
+                                            ),
+                                            SizedBox(height: _clamp(screenHeight * 0.005, 2, 8)),
+                                            Text(
+                                              "Choose Specialty",
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: bottomSheetSubFontSize,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        icon: Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: closeIconSize,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Specialities
+                                Expanded(
+                                  child: SpecialtiesTab(
+                                    hospital: hospital,
+                                    onSpecialtyTap: (hospitalId, specialtyName) {
+                                      Navigator.pop(context);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => Doctors(
+                                            hospitalId: hospitalId,
+                                            specialty: specialtyName,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    child: Text(
+                      "Book Now",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: bookButtonFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              child:
-             Row(
-  children: [
-    Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            hospital["name"] ?? "",
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: screenWidth * 0.045,
-            ),
-          ),
-
-          SizedBox(height: screenHeight * 0.005),
-
-          Text(
-            "Choose Specialty",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: screenWidth * 0.033,
-            ),
-          ),
-        ],
-      ),
-    ),
-
-    IconButton(
-      onPressed: () => Navigator.pop(context),
-      icon: Icon(
-        Icons.close,
-        color: Colors.white,
-        size: screenWidth * 0.06,
-      ),
-    ),
-  ],
-)
-            ),
-
-            // Specialities
-          Expanded(
-  child: SpecialtiesTab(
-    hospital: hospital,
-    onSpecialtyTap: (hospitalId, specialtyName) {
-
-      // close bottomsheet
-      Navigator.pop(context);
-
-      // navigate to doctor screen
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => Doctors(
-            hospitalId: hospitalId,
-            specialty: specialtyName,
-          ),
-        ),
-      );
-    },
-  ),
-),
-          ],
-        ),
-      );
-    },
-  );
-},
-    child: Text(
-      "Book Now",
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: screenWidth * 0.038,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-  ),
-),
               ],
             ),
           ),

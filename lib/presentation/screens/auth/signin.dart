@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/common/top_snackbar.dart';
@@ -17,11 +16,17 @@ class Signin extends StatefulWidget {
 class _SigninState extends State<Signin> {
   final TextEditingController phoneController = TextEditingController();
   final ApiService _apiService = ApiService();
- @override
+
+  // Helper to clamp responsive values between safe limits
+  double _clamp(double value, double min, double max) =>
+      value.clamp(min, max) as double;
+
+  @override
   void initState() {
     super.initState();
     _apiService.init();
   }
+
   bool isSendingOtp = false;
   String? phoneError;
 
@@ -29,308 +34,141 @@ class _SigninState extends State<Signin> {
   String _cleanPhoneNumber(String phone) {
     // Remove all non-digit characters
     String cleaned = phone.replaceAll(RegExp(r'[^\d]'), '');
-    
+
     // Remove +91 or 91 prefix if present
     if (cleaned.startsWith('91') && cleaned.length > 10) {
       cleaned = cleaned.substring(2);
     }
-    
+
     // Ensure we only have the last 10 digits
     if (cleaned.length > 10) {
       cleaned = cleaned.substring(cleaned.length - 10);
     }
-    
-    log("📱 Cleaned phone number: $cleaned");
+
     return cleaned;
   }
 
   bool _validatePhoneNumber(String phone) {
     String cleaned = _cleanPhoneNumber(phone);
-    
+
     if (cleaned.isEmpty) {
       setState(() {
         phoneError = 'Please enter a phone number';
       });
       return false;
     }
-    
+
     if (cleaned.length != 10) {
       setState(() {
         phoneError = 'Please enter a valid 10-digit mobile number';
       });
       return false;
     }
-    
+
     setState(() {
       phoneError = null;
     });
     return true;
   }
-Future<void> _sendOtp() async {
-  log("Send OTP button tapped");
 
-  String rawPhone = phoneController.text.trim();
-  String cleanPhone = _cleanPhoneNumber(rawPhone);
+  Future<void> _sendOtp() async {
+    String rawPhone = phoneController.text.trim();
+    String cleanPhone = _cleanPhoneNumber(rawPhone);
 
-  log("🚀 Sending OTP for phone: $cleanPhone");
-
-  // Validate phone number
-  if (!_validatePhoneNumber(cleanPhone)) {
-    return;
-  }
-
-  setState(() {
-    isSendingOtp = true;
-    phoneError = null;
-  });
-
-  try {
-    final requestData = {
-      "phone": cleanPhone,
-    };
-
-    log("📤 API Request - Endpoint: /users/login");
-    log("📤 Request data: $requestData");
-
-    final response = await _apiService.loginUser(requestData);
-log("HEADERS => ${response.headers.map}");
-    log("📥 Response status: ${response.statusCode}");
-    log("📥 Response data: ${response.data}");
+    // Validate phone number
+    if (!_validatePhoneNumber(cleanPhone)) {
+      return;
+    }
 
     setState(() {
-      isSendingOtp = false;
+      isSendingOtp = true;
+      phoneError = null;
     });
 
-    if (response.statusCode == 200 ||
-        response.statusCode == 201) {
+    try {
+      final requestData = {
+        "phone": cleanPhone,
+      };
 
-      if (response.data["success"] == true) {
+      final response = await _apiService.loginUser(requestData);
 
-        // ✅ GET OTP FROM RESPONSE
-        final backendOtp =
-           // response.data["data"]?["otp"]?.toString();
-             response.data["otp"]?.toString();
+      setState(() {
+        isSendingOtp = false;
+      });
 
-        log("✅ OTP sent successfully");
-        log("📲 Backend OTP: $backendOtp");
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data["success"] == true) {
+          final backendOtp = response.data["otp"]?.toString();
 
-        // ✅ OPEN OTP SCREEN WITH OTP
-        _showOtpPopup(
-          cleanPhone,
-          backendOtp,
-        );
-
+          // ✅ OPEN OTP SCREEN WITH OTP
+          _showOtpPopup(
+            cleanPhone,
+            backendOtp,
+          );
+        } else {
+          // _showErrorDialog(
+          //   response.data["message"] ??
+          //       "Login failed",
+          // );
+        }
       } else {
+        _showErrorDialog(
+          response.data["message"] ?? "Failed to send OTP",
+        );
+      }
+    } on DioException catch (dioError) {
+      setState(() {
+        isSendingOtp = false;
+      });
 
-        // _showErrorDialog(
-        //   response.data["message"] ??
-        //       "Login failed",
-        // );
+      String errorMessage = "Something went wrong";
+
+      if (dioError.response != null) {
+        try {
+          errorMessage = dioError.response?.data['message'] ??
+              dioError.response?.data['error'] ??
+              errorMessage;
+        } catch (_) {}
+      } else if (dioError.type == DioExceptionType.connectionTimeout) {
+        errorMessage = "Connection timeout. Please check your internet.";
+      } else if (dioError.type == DioExceptionType.receiveTimeout) {
+        // handled
+      } else if (dioError.type == DioExceptionType.connectionError) {
+        errorMessage = "No internet connection. Please check your network.";
+      } else if (dioError.type == DioExceptionType.cancel) {
+        errorMessage = "Request cancelled.";
       }
 
-    } else {
+      _showErrorDialog(errorMessage);
+    } catch (e) {
+      setState(() {
+        isSendingOtp = false;
+      });
 
       _showErrorDialog(
-        response.data["message"] ??
-            "Failed to send OTP",
+        "Failed to send OTP: $e",
       );
     }
+  }
 
-  } on DioException catch (dioError) {
-
-    setState(() {
-      isSendingOtp = false;
-    });
-
-    log("❌ DioException occurred");
-    log("Error type: ${dioError.type}");
-    log("Error message: ${dioError.message}");
-
-    String errorMessage = "Something went wrong";
-
-    if (dioError.response != null) {
-
-      log("Response status: ${dioError.response?.statusCode}");
-      log("Response data: ${dioError.response?.data}");
-
-      try {
-        errorMessage =
-            dioError.response?.data['message'] ??
-            dioError.response?.data['error'] ??
-            errorMessage;
-      } catch (_) {}
-
-    } else if (dioError.type ==
-        DioExceptionType.connectionTimeout) {
-
-      errorMessage =
-          "Connection timeout. Please check your internet.";
-
-    } else if (dioError.type ==
-        DioExceptionType.receiveTimeout) {
-
-      // errorMessage =
-      //     "Server not responding. Please try again.";
-
-    } else if (dioError.type ==
-        DioExceptionType.connectionError) {
-
-      errorMessage =
-          "No internet connection. Please check your network.";
-
-    } else if (dioError.type ==
-        DioExceptionType.cancel) {
-
-      errorMessage = "Request cancelled.";
+  void _showErrorDialog(String message) {
+    if (message.toLowerCase().contains("too many")) {
+      showTopSnackBar(
+        context,
+        "Too many login attempts. Please try again after 15 minutes.",
+        isError: true,
+      );
+      return;
     }
 
-    _showErrorDialog(errorMessage);
-
-  } catch (e) {
-
-    setState(() {
-      isSendingOtp = false;
-    });
-
-    log("❌ Unexpected error: $e");
-
-    _showErrorDialog(
-      "Failed to send OTP: $e",
-    );
+    if (message.toLowerCase().contains('phone') ||
+        message.toLowerCase().contains('number') ||
+        message.toLowerCase().contains('invalid')) {
+      setState(() {
+        phoneError = message;
+      });
+    }
   }
-}
-  // Future<void> _sendOtp() async {
-  //    log("Send OTP button tapped");
-  //   String rawPhone = phoneController.text.trim();
-  //   String cleanPhone = _cleanPhoneNumber(rawPhone);
-    
-  //   log("🚀 Sending OTP for phone: $cleanPhone");
-    
-  //   // Validate phone number
-  //   if (!_validatePhoneNumber(cleanPhone)) {
-  //     return;
-  //   }
-
-  //   setState(() {
-  //     isSendingOtp = true;
-  //     phoneError = null;
-  //   });
-
-  //   try {
-  //     // Try different phone number formats that your backend might expect
-  //     // Format 1: Just 10 digits (most common)
-  //     final requestData = {"phone": cleanPhone};
-      
-  //     // Format 2: With country code (uncomment if above doesn't work)
-  //     // final requestData = {"phone": "+91$cleanPhone"};
-      
-  //     // Format 3: With 91 prefix (uncomment if needed)
-  //     // final requestData = {"phone": "91$cleanPhone"};
-      
-  //     log("📤 API Request - Endpoint: /users/login");
-  //     log("📤 Request data: $requestData");
-      
-  //     final response = await _apiService.loginUser(requestData);
-      
-  //     log("📥 Response status: ${response.statusCode}");
-  //     log("📥 Response data: ${response.data}");
-
-  //     setState(() => isSendingOtp = false);
-
-  //     // Check for successful response
-  //     if (response.statusCode == 200 || response.statusCode == 201) {
-  //       // Check different possible success indicators
-  //       if (response.data["status"] == 200 || 
-  //           response.data["success"] == true ||
-  //           response.data["otp"] != null) {
-          
-  //         final backendOtp = response.data["otp"]?.toString();
-  //         final message = response.data["message"];
-          
-  //         log("✅ OTP sent successfully!");
-  //         log("🔑 Backend OTP: $backendOtp");
-  //         log("💬 Message: $message");
-          
-  //         if (backendOtp != null && backendOtp.length == 6) {
-  //           _showLoadingAndThenOtp(cleanPhone, backendOtp);
-  //         } else {
-  //           // Still show OTP screen even if no OTP in response (user will enter manually)
-  //           _showOtpPopup(cleanPhone, null);
-  //         }
-  //       } else {
-  //         // API returned success status code but indicates failure in response body
-  //         String errorMsg = response.data['message'] ?? 'Failed to send OTP';
-  //         log("❌ API returned error: $errorMsg");
-          
-  //         if (errorMsg.toLowerCase().contains('user') && 
-  //             errorMsg.toLowerCase().contains('not found')) {
-  //           // User not registered - show signup option
-  //           _showUserNotFoundDialog(errorMsg);
-  //         } else {
-  //           _showErrorDialog(errorMsg);
-  //         }
-  //       }
-  //     } else {
-  //       // HTTP error status code
-  //       String errorMsg = response.data['message'] ?? 'Failed to send OTP';
-  //       log("❌ HTTP Error ${response.statusCode}: $errorMsg");
-  //       _showErrorDialog(errorMsg);
-  //     }
-  //   } on DioException catch (dioError) {
-  //     setState(() => isSendingOtp = false);
-      
-  //     log("❌ DioException occurred");
-  //     log("Error type: ${dioError.type}");
-  //     log("Error message: ${dioError.message}");
-      
-  //     String errorMessage = "Something went wrong";
-      
-  //     if (dioError.response != null) {
-  //       log("Response status: ${dioError.response?.statusCode}");
-  //       log("Response data: ${dioError.response?.data}");
-  //       try {
-  //         errorMessage = dioError.response?.data['message'] ?? 
-  //                       dioError.response?.data['error'] ?? 
-  //                       errorMessage;
-  //       } catch (_) {}
-  //     } else if (dioError.type == DioExceptionType.connectionTimeout) {
-  //       errorMessage = "Connection timeout. Please check your internet.";
-  //     } else if (dioError.type == DioExceptionType.receiveTimeout) {
-  //       errorMessage = "Server not responding. Please try again.";
-  //     } else if (dioError.type == DioExceptionType.connectionError) {
-  //       errorMessage = "No internet connection. Please check your network.";
-  //     } else if (dioError.type == DioExceptionType.cancel) {
-  //       errorMessage = "Request cancelled.";
-  //     }
-      
-  //     _showErrorDialog(errorMessage);
-  //   } catch (e) {
-  //     setState(() => isSendingOtp = false);
-  //     log("❌ Unexpected error: $e");
-  //     _showErrorDialog("Failed to send OTP: $e");
-  //   }
-  // }
-  
- void _showErrorDialog(String message) {
-  log("⚠️ Showing error: $message");
-
-  if (message.toLowerCase().contains("too many")) {
-    showTopSnackBar(
-      context,
-      "Too many login attempts. Please try again after 15 minutes.",
-      isError: true,
-    );
-    return;
-  }
-
-  if (message.toLowerCase().contains('phone') ||
-      message.toLowerCase().contains('number') ||
-      message.toLowerCase().contains('invalid')) {
-    setState(() {
-      phoneError = message;
-    });
-  }
-}
 
   void _showUserNotFoundDialog(String message) {
     showDialog(
@@ -364,8 +202,16 @@ log("HEADERS => ${response.headers.map}");
   }
 
   void _showLoadingAndThenOtp(String phone, String backendOtp) {
-    log("📱 Showing loading dialog for phone: +91$phone");
-    
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Responsive values for the loading dialog
+    final double dialogPadding = _clamp(screenWidth * 0.05, 16, 32);
+    final double progressSize = _clamp(screenWidth * 0.12, 60, 100);
+    final double iconSize = _clamp(screenWidth * 0.08, 30, 50);
+    final double titleSize = _clamp(screenWidth * 0.045, 16, 24);
+    final double subtitleSize = _clamp(screenWidth * 0.035, 12, 18);
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -374,10 +220,11 @@ log("HEADERS => ${response.headers.map}");
           backgroundColor: Colors.transparent,
           elevation: 0,
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(dialogPadding),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius:
+                  BorderRadius.circular(_clamp(screenWidth * 0.05, 12, 24)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -391,38 +238,44 @@ log("HEADERS => ${response.headers.map}");
                       alignment: Alignment.center,
                       children: [
                         SizedBox(
-                          width: 80,
-                          height: 80,
+                          width: progressSize,
+                          height: progressSize,
                           child: CircularProgressIndicator(
                             value: value,
-                            strokeWidth: 3,
+                            strokeWidth: _clamp(screenWidth * 0.008, 2, 4),
                             backgroundColor: Colors.grey[200],
                             valueColor: const AlwaysStoppedAnimation<Color>(
                               Colors.green,
                             ),
                           ),
                         ),
-                        const Icon(
+                        Icon(
                           Icons.mark_email_read_rounded,
-                          size: 35,
+                          size: iconSize,
                           color: Colors.green,
                         ),
                       ],
                     );
                   },
                 ),
-                const SizedBox(height: 24),
-                const Text(
+                SizedBox(height: _clamp(screenHeight * 0.025, 16, 32)),
+                Text(
                   "Sending OTP",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: _clamp(screenHeight * 0.01, 6, 12)),
                 Text(
                   "We're sending a 6-digit code to\n+91$phone",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: subtitleSize,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: _clamp(screenHeight * 0.025, 16, 32)),
               ],
             ),
           ),
@@ -438,36 +291,63 @@ log("HEADERS => ${response.headers.map}");
     });
   }
 
-void _showOtpPopup(String phone, String? backendOtp) {
-  log("🔐 Showing OTP dialog for phone: +91$phone");
-  log("🔑 With backend OTP: $backendOtp");
-  
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) {
-      return Dialog(
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: MediaQuery.of(context).size.width * 0.05,
-          vertical: MediaQuery.of(context).size.height * 0.05,
-        ),
-        child: OtpVerification(
-          phone: "+91$phone", // Keep +91 for display only
-          backendOtp: backendOtp,
-          apiService: _apiService,
-          onResendOtp: () {
-            log("🔄 Resend OTP requested");
-            Navigator.pop(dialogContext);
-            _sendOtp();
-          },
-        ),
-      );
-    },
-  );
-}
+  void _showOtpPopup(String phone, String? backendOtp) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Responsive inset padding for the dialog
+    final double horizontalInset = _clamp(screenWidth * 0.05, 16, 48);
+    final double verticalInset = _clamp(screenHeight * 0.05, 20, 64);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: horizontalInset,
+            vertical: verticalInset,
+          ),
+          child: OtpVerification(
+            phone: "+91$phone", // Keep +91 for display only
+            backendOtp: backendOtp,
+            apiService: _apiService,
+            onResendOtp: () {
+              Navigator.pop(dialogContext);
+              _sendOtp();
+            },
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Responsive clamped values
+    final double horizontalPadding = _clamp(screenWidth * 0.06, 16, 48);
+    final double verticalPadding = _clamp(screenHeight * 0.04, 16, 48);
+    final double maxContentWidth =
+        screenWidth > 600 ? _clamp(screenWidth * 0.6, 400, 600) : screenWidth;
+    final double iconContainerSize = _clamp(screenWidth * 0.18, 60, 120);
+    final double iconSize = _clamp(screenWidth * 0.09, 30, 56);
+    final double welcomeFontSize = _clamp(screenWidth * 0.07, 22, 40);
+    final double subtitleFontSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double labelFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double buttonFontSize = _clamp(screenWidth * 0.04, 14, 22);
+    final double buttonHeight = _clamp(screenHeight * 0.06, 48, 64);
+    final double spacing1 = _clamp(screenHeight * 0.02, 12, 28);
+    final double spacing2 = _clamp(screenHeight * 0.035, 20, 48);
+    final double fieldPaddingH = _clamp(screenWidth * 0.04, 12, 24);
+    final double fieldPaddingV = _clamp(screenHeight * 0.015, 10, 18);
+    final double radius = _clamp(screenWidth * 0.04, 12, 24);
+    final double errorFontSize = _clamp(screenWidth * 0.03, 10, 14);
+    final double linkFontSize = _clamp(screenWidth * 0.035, 12, 18);
+    final double circularSize = _clamp(screenWidth * 0.06, 20, 30);
+
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
@@ -477,223 +357,198 @@ void _showOtpPopup(String phone, String? backendOtp) {
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final screenWidth = MediaQuery.of(context).size.width;
-            final isSmallScreen = screenWidth < 360;
-            final isTablet = screenWidth > 768;
-            
-            final horizontalPadding = isTablet ? 48.0 : (isSmallScreen ? 16.0 : 24.0);
-            final verticalPadding = isTablet ? 48.0 : 24.0;
-            final iconContainerSize = isSmallScreen ? 60.0 : (isTablet ? 100.0 : 80.0);
-            final iconSize = isSmallScreen ? 30.0 : (isTablet ? 50.0 : 40.0);
-            final welcomeFontSize = isSmallScreen ? 24.0 : (isTablet ? 36.0 : 28.0);
-            final subtitleFontSize = isSmallScreen ? 14.0 : (isTablet ? 18.0 : 16.0);
-            final buttonFontSize = isSmallScreen ? 14.0 : 16.0;
-            final buttonHeight = isSmallScreen ? 48.0 : (isTablet ? 60.0 : 55.0);
-            final spacing1 = isSmallScreen ? 12.0 : (isTablet ? 24.0 : 20.0);
-            final spacing2 = isSmallScreen ? 24.0 : (isTablet ? 48.0 : 32.0);
-            
-            return Center(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding, 
-                  vertical: verticalPadding
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: isTablet ? 500 : screenWidth,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: maxContentWidth,
+              ),
+              child: Column(
+                children: [
+                  SizedBox(height: _clamp(screenHeight * 0.02, 10, 30)),
+                  Container(
+                    width: iconContainerSize,
+                    height: iconContainerSize,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.phone_android_rounded,
+                      color: Colors.green,
+                      size: iconSize,
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      SizedBox(height: isSmallScreen ? 10 : (isTablet ? 30 : 20)),
-                      
-                      Container(
-                        width: iconContainerSize,
-                        height: iconContainerSize,
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.phone_android_rounded,
-                          color: Colors.green,
-                          size: iconSize,
+                  SizedBox(height: spacing1),
+                  Text(
+                    "Welcome Back",
+                    style: TextStyle(
+                      fontSize: welcomeFontSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: _clamp(screenHeight * 0.01, 4, 12)),
+                  Text(
+                    "Login with your phone number",
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: subtitleFontSize,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: spacing2),
+                  IntlPhoneField(
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      labelStyle: TextStyle(
+                        color:
+                            phoneError != null ? Colors.red : Colors.grey[600],
+                        fontSize: labelFontSize,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(radius),
+                        borderSide: BorderSide(
+                          color: phoneError != null
+                              ? Colors.red
+                              : Colors.grey[300]!,
+                          width: phoneError != null ? 1.5 : 1,
                         ),
                       ),
-                      
-                      SizedBox(height: spacing1),
-                      
-                      Text(
-                        "Welcome Back",
-                        style: TextStyle(
-                          fontSize: welcomeFontSize, 
-                          fontWeight: FontWeight.bold
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      
-                      SizedBox(height: isSmallScreen ? 4 : 8),
-                      
-                      Text(
-                        "Login with your phone number",
-                        style: TextStyle(
-                          color: Colors.grey[600], 
-                          fontSize: subtitleFontSize
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      
-                      SizedBox(height: spacing2),
-
-                      IntlPhoneField(
-                        decoration: InputDecoration(
-                          labelText: 'Phone Number',
-                          labelStyle: TextStyle(
-                            color: phoneError != null ? Colors.red : Colors.grey[600],
-                            fontSize: isSmallScreen ? 12 : 14,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: phoneError != null ? Colors.red : Colors.grey[300]!,
-                              width: phoneError != null ? 1.5 : 1,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: phoneError != null ? Colors.red : Colors.grey[300]!,
-                              width: phoneError != null ? 1.5 : 1,
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(
-                              color: phoneError != null ? Colors.red : Colors.green,
-                              width: 2,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(
-                              color: Colors.red,
-                              width: 1.5,
-                            ),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: Colors.red, width: 2),
-                          ),
-                          errorText: phoneError,
-                          errorStyle: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: isSmallScreen ? 12 : 16,
-                            vertical: isSmallScreen ? 10 : 12,
-                          ),
-                        ),
-                        initialCountryCode: 'IN',
-                        onChanged: (phone) {
-                          phoneController.text = phone.completeNumber;
-                          if (phoneError != null) {
-                            setState(() {
-                              phoneError = null;
-                            });
-                          }
-                        },
-                      ),
-
-                      SizedBox(height: spacing2),
-
-                      Container(
-                        width: double.infinity,
-                        height: buttonHeight,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: const LinearGradient(
-                            colors: [Colors.green, Color(0xFF43A047)],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.green.withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: isSendingOtp ? null : _sendOtp,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                          child: isSendingOtp
-                              ? SizedBox(
-                                  width: isSmallScreen ? 20 : 24,
-                                  height: isSmallScreen ? 20 : 24,
-                                  child: const CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  "Send OTP",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: buttonFontSize,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(radius),
+                        borderSide: BorderSide(
+                          color: phoneError != null
+                              ? Colors.red
+                              : Colors.grey[300]!,
+                          width: phoneError != null ? 1.5 : 1,
                         ),
                       ),
-
-                      SizedBox(height: isSmallScreen ? 20 : 28),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Don't have an account? ",
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: isSmallScreen ? 12 : 14,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const Signup()),
-                              );
-                            },
-                            child: Text(
-                              "Register here",
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(radius),
+                        borderSide: BorderSide(
+                          color: phoneError != null ? Colors.red : Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(radius),
+                        borderSide: const BorderSide(
+                          color: Colors.red,
+                          width: 1.5,
+                        ),
+                      ),
+                      focusedErrorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(radius),
+                        borderSide:
+                            const BorderSide(color: Colors.red, width: 2),
+                      ),
+                      errorText: phoneError,
+                      errorStyle: TextStyle(
+                        color: Colors.red,
+                        fontSize: errorFontSize,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: fieldPaddingH,
+                        vertical: fieldPaddingV,
+                      ),
+                    ),
+                    initialCountryCode: 'IN',
+                    onChanged: (phone) {
+                      phoneController.text = phone.completeNumber;
+                      if (phoneError != null) {
+                        setState(() {
+                          phoneError = null;
+                        });
+                      }
+                    },
+                  ),
+                  SizedBox(height: spacing2),
+                  Container(
+                    width: double.infinity,
+                    height: buttonHeight,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(radius),
+                      gradient: const LinearGradient(
+                        colors: [Colors.green, Color(0xFF43A047)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.3),
+                          blurRadius: _clamp(screenWidth * 0.025, 8, 16),
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: isSendingOtp ? null : _sendOtp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(radius),
+                        ),
+                      ),
+                      child: isSendingOtp
+                          ? SizedBox(
+                              width: circularSize,
+                              height: circularSize,
+                              child: const CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              "Send OTP",
                               style: TextStyle(
-                                color: Colors.green,
+                                color: Colors.white,
+                                fontSize: buttonFontSize,
                                 fontWeight: FontWeight.w600,
-                                decoration: TextDecoration.underline,
-                                fontSize: isSmallScreen ? 12 : 14,
                               ),
                             ),
-                          ),
-                        ],
+                    ),
+                  ),
+                  SizedBox(height: _clamp(screenHeight * 0.025, 16, 32)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account? ",
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: linkFontSize,
+                        ),
                       ),
-                      
-                      SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const Signup()),
+                          );
+                        },
+                        child: Text(
+                          "Register here",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                            fontSize: linkFontSize,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                ),
+                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );

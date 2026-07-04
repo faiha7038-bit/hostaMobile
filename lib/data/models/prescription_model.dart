@@ -45,9 +45,9 @@ class Prescription {
   final String? canvasBg;
   final String? hospitalName;
   final String? patientName;
-  final String? patientAge;      // ✅ ഇത് വേണം
-  final String? patientGender;   // ✅ ഇത് വേണം
-  final String? patientPhone;    // ✅ ഇത് വേണം
+  final String? patientAge;      
+  final String? patientGender;  
+  final String? patientPhone;    
   final List<DesignElement> design;
   final String createdAt;
   final String updatedAt;

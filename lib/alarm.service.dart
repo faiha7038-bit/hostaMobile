@@ -89,7 +89,6 @@ class AlarmService {
       actualSoundPath = await _getSoundFilePath(soundPath);
       print('🎵 Using sound: $actualSoundPath');
     } catch (e) {
-      print('❌ Sound error: $e');
       actualSoundPath = soundPath;
     }
     final settings = AlarmSettings(
@@ -117,7 +116,7 @@ class AlarmService {
     );
 
     await Alarm.set(alarmSettings: settings);
-     print('✅ Alarm scheduled');
+     
   }
 
   static Future<void> cancelAlarm(int id) async {

@@ -17,7 +17,7 @@ class _SignupState extends State<Signup> {
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmController = TextEditingController();
-final formkey=GlobalKey<FormState>();
+  final formkey = GlobalKey<FormState>();
   bool obscurePassword = true;
   bool obscureConfirm = true;
   bool acceptPolicy = false;
@@ -25,37 +25,45 @@ final formkey=GlobalKey<FormState>();
 
   final ApiService _apiService = ApiService();
 
-  // Helper function for responsive sizing
+  // Clamp helper for responsive values
+  double _clamp(double value, double min, double max) =>
+      value.clamp(min, max) as double;
+
+  // Helper function for responsive sizing with clamping
   double getResponsiveWidth(BuildContext context, double percentage) {
-    return MediaQuery.of(context).size.width * percentage;
+    final value = MediaQuery.of(context).size.width * percentage;
+    return _clamp(value, 20, 120); // clamp between 20 and 120
   }
 
   double getResponsiveHeight(BuildContext context, double percentage) {
-    return MediaQuery.of(context).size.height * percentage;
+    final value = MediaQuery.of(context).size.height * percentage;
+    return _clamp(value, 10, 80); // clamp between 10 and 80
   }
 
   double getResponsiveFontSize(BuildContext context, double size) {
-    return MediaQuery.of(context).size.width * (size / 375); // 375 is base width
+    final baseWidth = 375.0;
+    final value = MediaQuery.of(context).size.width * (size / baseWidth);
+    return _clamp(value, 12, 24); // clamp between 12 and 24
   }
 
   // ✅ NEW FUNCTION (fix lag)
-Future<void> _handleSubmit() async {
-  if (!formkey.currentState!.validate()) {
-    return;
-  }
+  Future<void> _handleSubmit() async {
+    if (!formkey.currentState!.validate()) {
+      return;
+    }
 
-  if (!acceptPolicy) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Please accept the privacy policy"),
-      ),
-    );
-    return;
-  }
+    if (!acceptPolicy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please accept the privacy policy"),
+        ),
+      );
+      return;
+    }
 
-  setState(() => isLoading = true);
-  await _submit();
-}
+    setState(() => isLoading = true);
+    await _submit();
+  }
 
   // ✅ CLEANED SUBMIT
   Future<void> _submit() async {
@@ -84,33 +92,29 @@ Future<void> _handleSubmit() async {
           MaterialPageRoute(builder: (_) => const Signin()),
         );
       }
-    } 
-  on DioException catch (dioError) {
-  setState(() => isLoading = false);
+    } on DioException catch (dioError) {
+      setState(() => isLoading = false);
 
-  String errorMessage = "Something went wrong";
+      String errorMessage = "Something went wrong";
 
-  if (dioError.response != null) {
-    final backendMessage =
-        dioError.response?.data['message']
-                ?.toString()
-                .toLowerCase() ??
-            '';
+      if (dioError.response != null) {
+        final backendMessage =
+            dioError.response?.data['message']?.toString().toLowerCase() ?? '';
 
-    if (backendMessage.contains('user already exists')) {
-      errorMessage = 'User already exists';
-    } else if (backendMessage.contains('phone')) {
-      errorMessage = 'This phone number is already registered';
-    } else if (backendMessage.contains('email')) {
-      errorMessage = 'This email is already registered';
-    } else {
-      errorMessage =
-          dioError.response?.data['message'] ?? errorMessage;
+        if (backendMessage.contains('user already exists')) {
+          errorMessage = 'User already exists';
+        } else if (backendMessage.contains('phone')) {
+          errorMessage = 'This phone number is already registered';
+        } else if (backendMessage.contains('email')) {
+          errorMessage = 'This email is already registered';
+        } else {
+          errorMessage =
+              dioError.response?.data['message'] ?? errorMessage;
+        }
+      }
+
+      showTopSnackBar(context, errorMessage, isError: true);
     }
-  }
-
-  showTopSnackBar(context, errorMessage, isError: true);
-}
   }
 
   @override
@@ -119,24 +123,47 @@ Future<void> _handleSubmit() async {
     final screenWidth = MediaQuery.of(context).size.width;
     final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
+    // Clamped dimensions used throughout
+    final double appBarHeight = _clamp(screenHeight * 0.08, 56, 80);
+    final double titleFontSize = getResponsiveFontSize(context, 20);
+    final double backIconSize = getResponsiveFontSize(context, 20);
+    final double labelFontSize = getResponsiveFontSize(context, 16);
+    final double fieldIconSize = getResponsiveFontSize(context, 20);
+    final double checkboxSize = _clamp(screenWidth * 0.07, 24, 48);
+    final double checkboxHeight = _clamp(screenHeight * 0.04, 20, 48);
+    final double buttonHeight = _clamp(screenHeight * 0.065, 48, 64);
+    final double loaderSize = _clamp(screenHeight * 0.025, 20, 32);
+    final double loaderWidth = _clamp(screenWidth * 0.05, 20, 40);
+    final double fieldRadius = _clamp(screenWidth * 0.032, 8, 16);
+    final double horizontalPadding = screenWidth * 0.064;
+    final double verticalPadding = isKeyboardVisible
+        ? screenHeight * 0.02
+        : screenHeight * 0.04;
+    final double contentPaddingH = screenWidth * 0.04;
+    final double contentPaddingV = screenHeight * 0.018;
+    final double spacing = screenHeight * 0.02;
+    final double spacingSmall = screenHeight * 0.025;
+    final double spacingLarge = screenHeight * 0.02;
+
     return Scaffold(
       backgroundColor: const Color(0xFFECFDF5),
       appBar: AppBar(
         backgroundColor: Colors.green,
-        toolbarHeight: screenHeight * 0.08, // Responsive app bar height
+        toolbarHeight: appBarHeight, // Responsive app bar height
         title: Text(
           "Registration",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            fontSize: getResponsiveFontSize(context, 20),
+            fontSize: titleFontSize,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, 
+          icon: Icon(
+            Icons.arrow_back_ios_new,
             color: Colors.white,
-            size: getResponsiveFontSize(context, 20),
+            size: backIconSize,
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -146,8 +173,8 @@ Future<void> _handleSubmit() async {
         child: Center(
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.064, // 24px on 375 width
-              vertical: isKeyboardVisible ? screenHeight * 0.02 : screenHeight * 0.04,
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -158,32 +185,32 @@ Future<void> _handleSubmit() async {
                   decoration: InputDecoration(
                     labelText: "Full Name",
                     labelStyle: TextStyle(
-                      fontSize: getResponsiveFontSize(context, 16),
+                      fontSize: labelFontSize,
                     ),
-                    prefixIcon: Icon(Icons.person, 
-                      size: getResponsiveFontSize(context, 20),
+                    prefixIcon: Icon(
+                      Icons.person,
+                      size: fieldIconSize,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.04,
-                      vertical: screenHeight * 0.018,
+                      horizontal: contentPaddingH,
+                      vertical: contentPaddingV,
                     ),
                   ),
-  
                   style: TextStyle(
-                    fontSize: getResponsiveFontSize(context, 16),
+                    fontSize: labelFontSize,
                   ),
-                                   validator: (value) {
-    if (value == null || value.trim().isEmpty) {
-      return "Please enter your name";
-    }
-    return null;
-  },
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return "Please enter your name";
+                    }
+                    return null;
+                  },
                 ),
-                SizedBox(height: screenHeight * 0.02), // 16px on standard height
-        
+                SizedBox(height: spacing),
+
                 // Email Field
                 TextFormField(
                   controller: emailController,
@@ -191,39 +218,39 @@ Future<void> _handleSubmit() async {
                   decoration: InputDecoration(
                     labelText: "Email",
                     labelStyle: TextStyle(
-                      fontSize: getResponsiveFontSize(context, 16),
+                      fontSize: labelFontSize,
                     ),
-                    prefixIcon: Icon(Icons.email,
-                      size: getResponsiveFontSize(context, 20),
+                    prefixIcon: Icon(
+                      Icons.email,
+                      size: fieldIconSize,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.04,
-                      vertical: screenHeight * 0.018,
+                      horizontal: contentPaddingH,
+                      vertical: contentPaddingV,
                     ),
                   ),
-  
                   style: TextStyle(
-                    fontSize: getResponsiveFontSize(context, 16),
+                    fontSize: labelFontSize,
                   ),
-                                    validator: (value) {
-    if (value == null || value.trim().isEmpty) {
-      return "Please enter email";
-    }
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return "Please enter email";
+                    }
 
-    if (!RegExp(
-      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-    ).hasMatch(value.trim())) {
-      return "Enter a valid email";
-    }
+                    if (!RegExp(
+                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                    ).hasMatch(value.trim())) {
+                      return "Enter a valid email";
+                    }
 
-    return null;
-  },
+                    return null;
+                  },
                 ),
-                SizedBox(height: screenHeight * 0.02),
-        
+                SizedBox(height: spacing),
+
                 // Phone Field
                 TextFormField(
                   controller: phoneController,
@@ -231,37 +258,37 @@ Future<void> _handleSubmit() async {
                   decoration: InputDecoration(
                     labelText: "Phone Number",
                     labelStyle: TextStyle(
-                      fontSize: getResponsiveFontSize(context, 16),
+                      fontSize: labelFontSize,
                     ),
-                    prefixIcon: Icon(Icons.phone,
-                      size: getResponsiveFontSize(context, 20),
+                    prefixIcon: Icon(
+                      Icons.phone,
+                      size: fieldIconSize,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.04,
-                      vertical: screenHeight * 0.018,
+                      horizontal: contentPaddingH,
+                      vertical: contentPaddingV,
                     ),
                   ),
                   style: TextStyle(
-                    fontSize: getResponsiveFontSize(context, 16),
+                    fontSize: labelFontSize,
                   ),
-                   validator: (value) {
-    if (value == null || value.trim().isEmpty) {
-      return "Please enter phone number";
-    }
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return "Please enter phone number";
+                    }
 
-    if (!RegExp(r'^[6-9][0-9]{9}$')
-        .hasMatch(value.trim())) {
-      return "Enter a valid phone number";
-    }
+                    if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(value.trim())) {
+                      return "Enter a valid phone number";
+                    }
 
-    return null;
-  },
+                    return null;
+                  },
                 ),
-                SizedBox(height: screenHeight * 0.02),
-        
+                SizedBox(height: spacing),
+
                 // Password Field
                 TextFormField(
                   controller: passwordController,
@@ -269,44 +296,45 @@ Future<void> _handleSubmit() async {
                   decoration: InputDecoration(
                     labelText: "Password",
                     labelStyle: TextStyle(
-                      fontSize: getResponsiveFontSize(context, 16),
+                      fontSize: labelFontSize,
                     ),
-                    prefixIcon: Icon(Icons.lock,
-                      size: getResponsiveFontSize(context, 20),
+                    prefixIcon: Icon(
+                      Icons.lock,
+                      size: fieldIconSize,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.04,
-                      vertical: screenHeight * 0.018,
+                      horizontal: contentPaddingH,
+                      vertical: contentPaddingV,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        size: getResponsiveFontSize(context, 20),
+                        size: fieldIconSize,
                       ),
                       onPressed: () =>
                           setState(() => obscurePassword = !obscurePassword),
                     ),
                   ),
                   style: TextStyle(
-                    fontSize: getResponsiveFontSize(context, 16),
+                    fontSize: labelFontSize,
                   ),
-                   validator: (value) {
-    if (value == null || value.isEmpty) {
-      return "Please enter password";
-    }
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Please enter password";
+                    }
 
-    if (value.length < 8) {
-      return "Password must be at least 8 characters";
-    }
+                    if (value.length < 8) {
+                      return "Password must be at least 8 characters";
+                    }
 
-    return null;
-  },
+                    return null;
+                  },
                 ),
-                SizedBox(height: screenHeight * 0.02),
-        
+                SizedBox(height: spacing),
+
                 // Confirm Password Field
                 TextFormField(
                   controller: confirmController,
@@ -314,50 +342,51 @@ Future<void> _handleSubmit() async {
                   decoration: InputDecoration(
                     labelText: "Confirm Password",
                     labelStyle: TextStyle(
-                      fontSize: getResponsiveFontSize(context, 16),
+                      fontSize: labelFontSize,
                     ),
-                    prefixIcon: Icon(Icons.lock_outline,
-                      size: getResponsiveFontSize(context, 20),
+                    prefixIcon: Icon(
+                      Icons.lock_outline,
+                      size: fieldIconSize,
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.04,
-                      vertical: screenHeight * 0.018,
+                      horizontal: contentPaddingH,
+                      vertical: contentPaddingV,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                        size: getResponsiveFontSize(context, 20),
+                        size: fieldIconSize,
                       ),
                       onPressed: () =>
                           setState(() => obscureConfirm = !obscureConfirm),
                     ),
                   ),
                   style: TextStyle(
-                    fontSize: getResponsiveFontSize(context, 16),
+                    fontSize: labelFontSize,
                   ),
-                    validator: (value) {
-    if (value == null || value.isEmpty) {
-      return "Please confirm password";
-    }
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Please confirm password";
+                    }
 
-    if (value != passwordController.text) {
-      return "Passwords do not match";
-    }
+                    if (value != passwordController.text) {
+                      return "Passwords do not match";
+                    }
 
-    return null;
-  },
+                    return null;
+                  },
                 ),
-                SizedBox(height: screenHeight * 0.02),
-        
+                SizedBox(height: spacing),
+
                 // Privacy Policy Checkbox
                 Row(
                   children: [
                     SizedBox(
-                      width: getResponsiveWidth(context, 0.07), // Responsive checkbox size
-                      height: getResponsiveHeight(context, 0.04),
+                      width: checkboxSize,
+                      height: checkboxHeight,
                       child: Checkbox(
                         value: acceptPolicy,
                         onChanged: (val) => setState(() => acceptPolicy = val!),
@@ -368,7 +397,7 @@ Future<void> _handleSubmit() async {
                         TextSpan(
                           text: "I accept the ",
                           style: TextStyle(
-                            fontSize: getResponsiveFontSize(context, 14),
+                            fontSize: labelFontSize,
                           ),
                           children: [
                             TextSpan(
@@ -376,7 +405,7 @@ Future<void> _handleSubmit() async {
                               style: TextStyle(
                                 color: Colors.blue,
                                 fontWeight: FontWeight.w500,
-                                fontSize: getResponsiveFontSize(context, 14),
+                                fontSize: labelFontSize,
                               ),
                             ),
                           ],
@@ -385,8 +414,8 @@ Future<void> _handleSubmit() async {
                     ),
                   ],
                 ),
-                SizedBox(height: screenHeight * 0.025),
-        
+                SizedBox(height: spacingSmall),
+
                 // Submit Button
                 ElevatedButton(
                   onPressed: isLoading ? null : _handleSubmit,
@@ -394,16 +423,16 @@ Future<void> _handleSubmit() async {
                     backgroundColor: Colors.green,
                     minimumSize: Size(
                       double.infinity,
-                      screenHeight * 0.065, // Responsive button height
+                      buttonHeight,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(fieldRadius),
                     ),
                   ),
                   child: isLoading
                       ? SizedBox(
-                          height: getResponsiveHeight(context, 0.025),
-                          width: getResponsiveWidth(context, 0.05),
+                          height: loaderSize,
+                          width: loaderWidth,
                           child: const CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2,
@@ -412,22 +441,22 @@ Future<void> _handleSubmit() async {
                       : Text(
                           "Submit",
                           style: TextStyle(
-                            color: Colors.white, 
-                            fontSize: getResponsiveFontSize(context, 16),
+                            color: Colors.white,
+                            fontSize: labelFontSize,
                           ),
                         ),
                 ),
-        
-                SizedBox(height: screenHeight * 0.02),
-        
+
+                SizedBox(height: spacing),
+
                 // Login Link
-                    Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       "Have an account? ",
                       style: TextStyle(
-                        fontSize: getResponsiveFontSize(context, 14),
+                        fontSize: labelFontSize,
                       ),
                     ),
                     GestureDetector(
@@ -440,15 +469,15 @@ Future<void> _handleSubmit() async {
                         style: TextStyle(
                           color: Colors.blue,
                           fontWeight: FontWeight.w600,
-                          fontSize: getResponsiveFontSize(context, 14),
+                          fontSize: labelFontSize,
                         ),
                       ),
                     ),
                   ],
                 ),
-                
+
                 // Add bottom padding when keyboard is visible
-                SizedBox(height: isKeyboardVisible ? screenHeight * 0.02 : 0),
+                SizedBox(height: isKeyboardVisible ? spacing : 0),
               ],
             ),
           ),
