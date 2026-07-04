@@ -92,15 +92,17 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     );
   }
 
+  // ==================== UPLOAD MODAL - FIXED ====================
   void _openUploadModal() {
+    final TextEditingController nameController = TextEditingController();
+    String selectedDate = '';
+    File? selectedFile;
+    bool isLoading = false;
+
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
-        String docName = '';
-        String docDate = '';
-        File? selectedFile;
-        bool isLoading = false;
-
         return StatefulBuilder(
           builder: (context, setModalState) {
             final size = MediaQuery.of(context).size;
@@ -127,27 +129,50 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           child: Icon(Icons.upload_file, color: Colors.green.shade700),
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          'Upload Document',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade800,
+                        Expanded(
+                          child: Text(
+                            'Upload Document',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    _buildInputField(
-                      label: 'Document Name',
-                      hint: 'Enter document name',
-                      icon: Icons.description,
-                      onChanged: (v) => setModalState(() => docName = v),
+                    
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Document Name',
+                        hintText: 'Enter document name',
+                        prefixIcon: Icon(Icons.description, color: Colors.grey.shade600),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.green, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                      onChanged: (value) {
+                        setModalState(() {});
+                      },
                     ),
+                    
                     const SizedBox(height: 16),
-                    _buildDateField(
-                      label: 'Date',
-                      value: docDate,
+                    
+                    GestureDetector(
                       onTap: () async {
                         final date = await showDatePicker(
                           context: context,
@@ -157,14 +182,43 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                         );
                         if (date != null) {
                           setModalState(() {
-                            docDate = DateFormat('yyyy-MM-dd').format(date);
+                            selectedDate = DateFormat('yyyy-MM-dd').format(date);
                           });
                         }
                       },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today, color: Colors.grey.shade600, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                child: Text(
+                                  selectedDate.isEmpty ? 'Date' : selectedDate,
+                                  style: TextStyle(
+                                    color: selectedDate.isEmpty ? Colors.grey.shade500 : Colors.grey.shade800,
+                                    fontSize: 16,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                          ],
+                        ),
+                      ),
                     ),
+                    
                     const SizedBox(height: 16),
-                    _buildFilePicker(
-                      selectedFile: selectedFile,
+                    
+                    GestureDetector(
                       onTap: () async {
                         final result = await FilePicker.platform.pickFiles(
                           type: FileType.custom,
@@ -181,8 +235,45 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           ref.read(documentProvider.notifier).setFile(file);
                         }
                       },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              selectedFile != null ? Icons.check_circle : Icons.cloud_upload,
+                              color: selectedFile != null ? Colors.green : Colors.grey.shade600,
+                              size: 40,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              selectedFile != null
+                                  ? selectedFile!.path.split('/').last
+                                  : 'Tap to select Image or PDF',
+                              style: TextStyle(
+                                color: selectedFile != null ? Colors.green.shade700 : Colors.grey.shade600,
+                                fontWeight: selectedFile != null ? FontWeight.w500 : FontWeight.normal,
+                              ),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Allowed: PNG, JPG, JPEG, WEBP, PDF (Max 10MB)',
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
+                    
                     const SizedBox(height: 24),
+                    
                     Row(
                       children: [
                         Expanded(
@@ -200,7 +291,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: (docName.isEmpty || docDate.isEmpty || selectedFile == null || isLoading)
+                            onPressed: (nameController.text.isEmpty || selectedDate.isEmpty || selectedFile == null || isLoading)
                                 ? null
                                 : () async {
                                     setModalState(() => isLoading = true);
@@ -214,8 +305,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                     }
 
                                     final docId = await notifier.createDocument(
-                                      name: docName,
-                                      date: docDate,
+                                      name: nameController.text,
+                                      date: selectedDate,
                                       patientId: patientId,
                                     );
 
@@ -272,15 +363,17 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     );
   }
 
+  // ==================== EDIT MODAL - FIXED ====================
   void _openEditModal(Document doc) {
+    final TextEditingController nameController = TextEditingController(text: doc.name);
+    String selectedDate = doc.date;
+    File? editFile;
+    bool isLoading = false;
+
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) {
-        String editName = doc.name;
-        String editDate = doc.date;
-        File? editFile;
-        bool isLoading = false;
-
         return StatefulBuilder(
           builder: (context, setModalState) {
             final size = MediaQuery.of(context).size;
@@ -290,163 +383,248 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: SingleChildScrollView(
-                child: Container(
-                  width: isTablet ? size.width * 0.5 : size.width * 0.9,
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.edit, color: Colors.blue.shade700),
+              child: Container(
+                width: isTablet ? size.width * 0.5 : size.width * 0.9,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(width: 12),
-                          Text(
+                          child: Icon(Icons.edit, color: Colors.blue.shade700),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
                             'Edit Document',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Colors.grey.shade800,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Document Name',
+                        hintText: 'Enter document name',
+                        prefixIcon: Icon(Icons.description, color: Colors.grey.shade600),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.blue, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
                       ),
-                      const SizedBox(height: 20),
-                      _buildInputField(
-                        label: 'Document Name',
-                        hint: 'Enter document name',
-                        icon: Icons.description,
-                        initialText: editName,
-                        onChanged: (v) => setModalState(() => editName = v),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildDateField(
-                        label: 'Date',
-                        value: editDate,
-                        onTap: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: editDate.isNotEmpty
-                                ? DateTime.parse(editDate)
-                                : DateTime.now(),
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime.now(),
-                          );
-                          if (date != null) {
-                            setModalState(() {
-                              editDate = DateFormat('yyyy-MM-dd').format(date);
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _buildFilePicker(
-                        selectedFile: editFile,
-                        isOptional: true,
-                        onTap: () async {
-                          final result = await FilePicker.platform.pickFiles(
-                            type: FileType.custom,
-                            allowedExtensions: ['png', 'jpg', 'jpeg', 'webp', 'pdf'],
-                          );
-                          if (result != null) {
-                            final file = File(result.files.single.path!);
-                            final size = await file.length();
-                            if (size > 10 * 1024 * 1024) {
-                              _showToast('File size must be < 10MB', isError: true);
-                              return;
-                            }
-                            setModalState(() => editFile = file);
-                            ref.read(documentProvider.notifier).setFile(file);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextButton(
-                              onPressed: isLoading ? null : () => Navigator.pop(context),
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                      onChanged: (value) {
+                        setModalState(() {});
+                      },
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    GestureDetector(
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate.isNotEmpty
+                              ? DateTime.parse(selectedDate)
+                              : DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+                        if (date != null) {
+                          setModalState(() {
+                            selectedDate = DateFormat('yyyy-MM-dd').format(date);
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.calendar_today, color: Colors.grey.shade600, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                child: Text(
+                                  selectedDate.isEmpty ? 'Date' : selectedDate,
+                                  style: TextStyle(
+                                    color: selectedDate.isEmpty ? Colors.grey.shade500 : Colors.grey.shade800,
+                                    fontSize: 16,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              child: const Text('Cancel'),
                             ),
+                            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    GestureDetector(
+                      onTap: () async {
+                        final result = await FilePicker.platform.pickFiles(
+                          type: FileType.custom,
+                          allowedExtensions: ['png', 'jpg', 'jpeg', 'webp', 'pdf'],
+                        );
+                        if (result != null) {
+                          final file = File(result.files.single.path!);
+                          final size = await file.length();
+                          if (size > 10 * 1024 * 1024) {
+                            _showToast('File size must be < 10MB', isError: true);
+                            return;
+                          }
+                          setModalState(() => editFile = file);
+                          ref.read(documentProvider.notifier).setFile(file);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                          color: Colors.grey.shade50,
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              editFile != null ? Icons.check_circle : Icons.cloud_upload,
+                              color: editFile != null ? Colors.green : Colors.grey.shade600,
+                              size: 40,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              editFile != null
+                                  ? editFile!.path.split('/').last
+                                  : 'Click to select a new file (optional)',
+                              style: TextStyle(
+                                color: editFile != null ? Colors.green.shade700 : Colors.grey.shade600,
+                                fontWeight: editFile != null ? FontWeight.w500 : FontWeight.normal,
+                              ),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Allowed: PNG, JPG, JPEG, WEBP, PDF (Max 10MB)',
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: isLoading ? null : () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text('Cancel'),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: (editName.isEmpty || editDate.isEmpty || isLoading)
-                                  ? null
-                                  : () async {
-                                      setModalState(() => isLoading = true);
-                                      final notifier = ref.read(documentProvider.notifier);
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: (nameController.text.isEmpty || selectedDate.isEmpty || isLoading)
+                                ? null
+                                : () async {
+                                    setModalState(() => isLoading = true);
+                                    final notifier = ref.read(documentProvider.notifier);
 
-                                      await notifier.updateDocument(
-                                        docId: doc.id.toString(),
-                                        name: editName,
-                                        date: editDate,
-                                      );
+                                    await notifier.updateDocument(
+                                      docId: doc.id.toString(),
+                                      name: nameController.text,
+                                      date: selectedDate,
+                                    );
 
-                                      setModalState(() => isLoading = false);
-                                      if (context.mounted) Navigator.pop(context);
+                                    setModalState(() => isLoading = false);
+                                    if (context.mounted) Navigator.pop(context);
 
-                                      if (editFile != null) {
-                                        notifier
-                                            .uploadFileForDocument(
-                                          docId: int.parse(doc.id.toString()),
-                                          file: editFile!,
-                                        )
-                                            .then((_) {
-                                          if (context.mounted) {
-                                            ref.read(documentProvider.notifier).refresh();
-                                            _showToast('Document updated successfully');
-                                          }
-                                        }).catchError((e) {
-                                          if (context.mounted) {
-                                            _showToast('File upload failed: $e', isError: true);
-                                          }
-                                        });
-                                      } else {
+                                    if (editFile != null) {
+                                      notifier
+                                          .uploadFileForDocument(
+                                        docId: int.parse(doc.id.toString()),
+                                        file: editFile!,
+                                      )
+                                          .then((_) {
                                         if (context.mounted) {
                                           ref.read(documentProvider.notifier).refresh();
                                           _showToast('Document updated successfully');
                                         }
+                                      }).catchError((e) {
+                                        if (context.mounted) {
+                                          _showToast('File upload failed: $e', isError: true);
+                                        }
+                                      });
+                                    } else {
+                                      if (context.mounted) {
+                                        ref.read(documentProvider.notifier).refresh();
+                                        _showToast('Document updated successfully');
                                       }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                              child: isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text('Update'),
                             ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text('Update'),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             );
@@ -456,128 +634,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     );
   }
 
-  Widget _buildInputField({
-    required String label,
-    required String hint,
-    required IconData icon,
-    String? initialText,
-    required Function(String) onChanged,
-  }) {
-    final controller = TextEditingController(text: initialText ?? '');
-    
-    return TextField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon, color: Colors.grey.shade600),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.green, width: 2),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade50,
-      ),
-      onChanged: (value) {
-        controller.text = value;
-        controller.selection = TextSelection.fromPosition(
-          TextPosition(offset: controller.text.length),
-        );
-        onChanged(value);
-      },
-    );
-  }
-
-  Widget _buildDateField({
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300),
-          color: Colors.grey.shade50,
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.calendar_today, color: Colors.grey.shade600, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  value.isEmpty ? label : value,
-                  style: TextStyle(
-                    color: value.isEmpty ? Colors.grey.shade500 : Colors.grey.shade800,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-            Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilePicker({
-    required File? selectedFile,
-    bool isOptional = false,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
-          color: Colors.grey.shade50,
-        ),
-        child: Column(
-          children: [
-            Icon(
-              selectedFile != null ? Icons.check_circle : Icons.cloud_upload,
-              color: selectedFile != null ? Colors.green : Colors.grey.shade600,
-              size: 40,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              selectedFile != null
-                  ? selectedFile.path.split('/').last
-                  : isOptional
-                      ? 'Click to select a new file (optional)'
-                      : 'Tap to select Image or PDF',
-              style: TextStyle(
-                color: selectedFile != null ? Colors.green.shade700 : Colors.grey.shade600,
-                fontWeight: selectedFile != null ? FontWeight.w500 : FontWeight.normal,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Allowed: PNG, JPG, JPEG, WEBP, PDF (Max 10MB)',
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+  // ==================== DOCUMENT CARD - FIXED OVERFLOW ====================
   Widget _buildDocumentCard(Document doc, VoidCallback onTap) {
     final hasFile = doc.imageUrl != null && doc.imageUrl!.isNotEmpty;
 
@@ -595,6 +652,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
+              // Icon - Fixed size
               Container(
                 width: 44,
                 height: 44,
@@ -605,6 +663,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                 child: _getFileIcon(doc),
               ),
               const SizedBox(width: 12),
+              // Text - Expanded with overflow protection
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -617,6 +676,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      softWrap: false,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -627,10 +687,13 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                         fontSize: 12,
                         color: Colors.grey.shade600,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              // Menu button - Fixed size
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
                 onSelected: (value) {
@@ -687,11 +750,13 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     );
   }
 
+  // ==================== DELETE - FIXED ====================
   Future<void> _handleDelete(Document doc) async {
     if (doc.id == null) return;
 
     final confirm = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
@@ -705,10 +770,22 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
               child: Icon(Icons.delete_outline, color: Colors.red.shade700),
             ),
             const SizedBox(width: 12),
-            const Text('Delete Document'),
+            Expanded(
+              child: Text(
+                'Delete Document',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
-        content: Text('Are you sure you want to delete "${doc.name}"?'),
+        content: Text(
+          'Are you sure you want to delete "${doc.name}"?',
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -731,10 +808,19 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
     if (confirm != true) return;
 
-    await ref.read(documentProvider.notifier).deleteDocument(
-          id: int.parse(doc.id.toString()),
-        );
-    _showToast('Document deleted successfully');
+    try {
+      await ref.read(documentProvider.notifier).deleteDocument(
+            id: int.parse(doc.id.toString()),
+          );
+      if (mounted) {
+        _showToast('Document deleted successfully');
+        await _fetchDocuments();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showToast('Failed to delete document', isError: true);
+      }
+    }
   }
 
   void _openViewModal(Document doc) {
@@ -793,6 +879,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           fontSize: 13,
                           color: Colors.grey.shade600,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -808,10 +895,55 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
               child: fileUrl.isEmpty
                   ? const Center(child: Text('No file attached'))
                   : isPdf
-                      ? _buildPDFViewer(fileUrl)
+                      ? SfPdfViewer.network(
+                          fileUrl,
+                          canShowScrollStatus: true,
+                          canShowPaginationDialog: true,
+                        )
                       : isImg
-                          ? _buildImageViewer(fileUrl)
-                          : _buildGenericViewer(fileUrl, doc),
+                          ? InteractiveViewer(
+                              minScale: 0.5,
+                              maxScale: 4.0,
+                              child: Image.network(
+                                fileUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.broken_image, size: 64, color: Colors.grey),
+                                      SizedBox(height: 8),
+                                      Text('Unable to load image'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.insert_drive_file, size: 80, color: Colors.blue.shade300),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    doc.fileName ?? 'Document',
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ElevatedButton.icon(
+                                    onPressed: () => _launchURL(fileUrl),
+                                    icon: const Icon(Icons.open_in_new),
+                                    label: const Text('Open Document'),
+                                    style: ElevatedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -835,62 +967,6 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildPDFViewer(String url) {
-    return SfPdfViewer.network(
-      url,
-      canShowScrollStatus: true,
-      canShowPaginationDialog: true,
-    );
-  }
-
-  Widget _buildImageViewer(String url) {
-    return InteractiveViewer(
-      minScale: 0.5,
-      maxScale: 4.0,
-      child: Image.network(
-        url,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.broken_image, size: 64, color: Colors.grey),
-              SizedBox(height: 8),
-              Text('Unable to load image'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGenericViewer(String url, Document doc) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.insert_drive_file, size: 80, color: Colors.blue.shade300),
-          const SizedBox(height: 16),
-          Text(
-            doc.fileName ?? 'Document',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => _launchURL(url),
-            icon: const Icon(Icons.open_in_new),
-            label: const Text('Open Document'),
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -937,7 +1013,6 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
       ),
       body: Column(
         children: [
-          // Header Section
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -1013,8 +1088,6 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
               ],
             ),
           ),
-
-          // Body
           Expanded(
             child: Builder(
               builder: (context) {
@@ -1105,16 +1178,20 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                   );
                 }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: documents.length,
-                  itemBuilder: (context, index) {
-                    final doc = documents[index];
-                    return _buildDocumentCard(
-                      doc,
-                      () => _openViewModal(doc),
-                    );
-                  },
+                return RefreshIndicator(
+                  onRefresh: _fetchDocuments,
+                  color: Colors.green,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: documents.length,
+                    itemBuilder: (context, index) {
+                      final doc = documents[index];
+                      return _buildDocumentCard(
+                        doc,
+                        () => _openViewModal(doc),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -1129,3 +1206,6 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     super.dispose();
   }
 }
+
+
+
