@@ -460,7 +460,10 @@ class DocumentState {
   final int? filterPatientId;
   final String? filterSearchQuery;
   final String? filterDate;
-
+  final int currentPage;
+  final int totalPages;
+  final int totalItems;
+  final int limit;
   DocumentState({
     this.documents = const [],
     this.isLoading = false,
@@ -473,6 +476,10 @@ class DocumentState {
     this.filterPatientId,
     this.filterSearchQuery,
     this.filterDate,
+    this.currentPage = 1,
+    this.totalPages = 1,
+    this.totalItems = 0,
+    this.limit = 10,
   });
 
   DocumentState copyWith({
@@ -488,6 +495,10 @@ class DocumentState {
     int? filterPatientId,
     String? filterSearchQuery,
     String? filterDate,
+    int? currentPage,
+    int? totalPages,
+    int? totalItems,
+    int? limit,
   }) {
     return DocumentState(
       documents: documents ?? this.documents,
@@ -501,6 +512,10 @@ class DocumentState {
       filterPatientId: filterPatientId ?? this.filterPatientId,
       filterSearchQuery: filterSearchQuery ?? this.filterSearchQuery,
       filterDate: filterDate ?? this.filterDate,
+      currentPage: currentPage ?? this.currentPage,
+      totalPages: totalPages ?? this.totalPages,
+      totalItems: totalItems ?? this.totalItems,
+      limit: limit ?? this.limit,
     );
   }
 }
@@ -525,16 +540,50 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
       await fetchDocuments();
     }
   }
+Future<void> loadMore() async {
+  if (state.isLoading) return;
+  if (state.currentPage >= state.totalPages) return;
 
-  // ---------- FETCH DOCUMENTS (BACKEND-ONLY) ----------
+  final nextPage = state.currentPage + 1;
+
+  print("Loading page: $nextPage");
+
+final response = await _api.getDocuments(
+  userId: int.parse(state.userId!),
+  patientId: state.filterPatientId,
+  searchQuery: state.filterSearchQuery,
+  date: state.filterDate,
+  page: nextPage,
+  limit: state.limit,
+);
+print("loadmoreres${response.data}");
+  final documentResponse = DocumentResponse.fromJson(response.data);
+
+  state = state.copyWith(
+    documents: [
+      ...state.documents,
+      ...documentResponse.documents,
+    ],
+    currentPage: documentResponse.currentPage,
+    totalPages: documentResponse.totalPages,
+    totalItems: documentResponse.totalItems,
+    limit: documentResponse.limit,
+  );
+
+  print("Documents: ${state.documents.length}");
+  print("State Current Page Before: ${state.currentPage}");
+print("Response Current Page: ${documentResponse.currentPage}");
+print(response.data['pagination']);
+}
+
   Future<void> fetchDocuments({
     int? patientId,
     String? searchQuery,
     String? date,
+    int page = 1,
+    int limit = 10,
   }) async {
-
-
-    // Save filters for refresh
+    // Save current filters
     state = state.copyWith(
       filterPatientId: patientId,
       filterSearchQuery: searchQuery,
@@ -543,47 +592,45 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
 
     if (state.userId == null) return;
 
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(
+      isLoading: true,
+      error: null,
+    );
 
     try {
-      // 1. Get patients list (for dropdown and currentPatientId)
+      
       final patientResponse = await _api.getPatients(
         userId: int.parse(state.userId!),
       );
+       print("patientresponse$patientResponse");
       final List patients = patientResponse.data['data'];
+
       state = state.copyWith(
         patients: patients,
-        currentPatientId: state.currentPatientId ?? (patients.isNotEmpty ? patients.first['id'] : null),
+        currentPatientId: state.currentPatientId ??
+            (patients.isNotEmpty ? patients.first['id'] : null),
       );
 
-      // 2. Fetch documents – backend is expected to filter by patientId
-      List<Document> documents = [];
-      if (patientId != null) {
-        // Single patient
-        documents = await _api.getDocuments(
-          patientId: patientId,
-          date: date,
-          searchQuery: searchQuery,
-        );
-      } else {
-        // All patients – fetch per patient and combine (backend may return all anyway)
-        for (final patient in patients) {
-          documents.addAll(
-            await _api.getDocuments(
-              patientId: patient['id'],
-              date: date,
-              searchQuery: searchQuery,
-            ),
-          );
-        }
-      }
+      // Fetch documents
+    final response = await _api.getDocuments(
+  userId: int.parse(state.userId!),
+  patientId: patientId,
+  date: date,
+  searchQuery: searchQuery,
+  page: page,
+  limit: limit,
+);
+print(response.data);
+      final documentResponse = DocumentResponse.fromJson(response.data);
 
-
-
-      state = state.copyWith(
-        documents: documents,
-        isLoading: false,
-      );
+   state = state.copyWith(
+  documents: documentResponse.documents,
+  currentPage: documentResponse.currentPage,
+  totalPages: documentResponse.totalPages,
+  totalItems: documentResponse.totalItems,
+  limit: documentResponse.limit,
+  isLoading: false,
+);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -673,20 +720,20 @@ class DocumentNotifier extends StateNotifier<DocumentState> {
   }
 
   // ---------- DELETE DOCUMENT (FIXED) ----------
-Future<void> deleteDocument({required int id}) async {
-  final previousDocs = List<Document>.from(state.documents);
-  final idStr = id.toString(); 
-  final updatedDocs = state.documents.where((d) => d.id != idStr).toList();
-  state = state.copyWith(documents: updatedDocs);
+  Future<void> deleteDocument({required int id}) async {
+    final previousDocs = List<Document>.from(state.documents);
+    final idStr = id.toString();
+    final updatedDocs = state.documents.where((d) => d.id != idStr).toList();
+    state = state.copyWith(documents: updatedDocs);
 
-  try {
-    await _api.deleteDocument(id, {});
-    await fetchDocuments();
-  } catch (e) {
-    state = state.copyWith(documents: previousDocs);
-    rethrow;
+    try {
+      await _api.deleteDocument(id, {});
+      await fetchDocuments();
+    } catch (e) {
+      state = state.copyWith(documents: previousDocs);
+      rethrow;
+    }
   }
-}
 
   // ---------- REFRESH ----------
   Future<void> refresh({

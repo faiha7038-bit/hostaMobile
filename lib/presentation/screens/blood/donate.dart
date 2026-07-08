@@ -351,6 +351,7 @@ class _DonateState extends ConsumerState<Donate> {
     // ✅ USER CHECK
     // ----------------------------
     final userId = await ref.read(userIdProvider.future);
+    
     if (userId == null) {
       showTopSnackBar(context, "User not logged in", isError: true);
       return;

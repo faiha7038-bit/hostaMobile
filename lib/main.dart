@@ -41,7 +41,7 @@ void main() async {
     final firebaseMsg = FirebaseMsg();
     await firebaseMsg.initFCM();
 
-    // ✅ Request notification permissions
+    
     await _requestNotificationPermissions();
 
     runApp(const ProviderScope(child: MyApp()));
