@@ -7,7 +7,7 @@ import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart';
 
-// Helper to clamp responsive values between safe limits
+
 double _clamp(double value, double min, double max) =>
     value.clamp(min, max) as double;
 
@@ -91,7 +91,15 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
       _onReviewEvent,
     );
   }
+String? getDoctorImage(String? imageUrl) {
+  if (imageUrl == null || imageUrl.isEmpty) return null;
 
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+
+  return "https://hostahealthcare.s3.eu-north-1.amazonaws.com/$imageUrl";
+}
   Future<void> _loadUser() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -749,7 +757,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     final double nameSize = _clamp(isSmallScreen ? 16 : 20, 14, 28);
     final double subtitleSize = _clamp(isSmallScreen ? 12 : 14, 10, 18);
     final double smallSize = _clamp(isSmallScreen ? 11 : 13, 10, 16);
-
+    final image = getDoctorImage(doctor.imageUrl);
     return Container(
       padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
@@ -764,25 +772,17 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             decoration: const BoxDecoration(shape: BoxShape.circle),
             child: ClipOval(
               child: doctor.imageUrl != null && doctor.imageUrl!.isNotEmpty
-                  ? Image.network(
-                      doctor.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.green,
-                          child: Center(
-                            child: Text(
-                              firstLetter,
-                              style: TextStyle(
-                                fontSize: avatarSize / 2,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    )
+                  ?
+              Image.network(
+  image ?? "",
+  fit: BoxFit.cover,
+  errorBuilder: (context, error, stackTrace) {
+    return Container(
+      color: Colors.green,
+      child: Center(child: Text(firstLetter)),
+    );
+  },
+)
                   : Container(
                       color: Colors.green,
                       child: Center(

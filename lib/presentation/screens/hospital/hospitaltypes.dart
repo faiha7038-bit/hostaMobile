@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/data/models/hospital-categorymodel.dart';
 import 'package:hosta/presentation/screens/hospital/hospitals.dart';
@@ -51,7 +52,18 @@ class _HospitalTypesState extends State<HospitalTypes> {
       _onCategoryEvent,
     );
   }
+String toTitleCase(String text) {
+  if (text.trim().isEmpty) return text;
 
+  return text
+      .trim()
+      .split(' ')
+      .map((word) {
+        if (word.isEmpty) return word;
+        return word[0].toUpperCase() + word.substring(1).toLowerCase();
+      })
+      .join(' ');
+}
   Future<void> fetchCategories({String? query}) async {
     setState(() {
       isLoading = true;
@@ -67,7 +79,22 @@ class _HospitalTypesState extends State<HospitalTypes> {
       if (body['success'] == true && body['data'] != null) {
         final List data = body['data'];
         setState(() {
-          categories = data.map((e) => Category.fromJson(e)).toList();
+          final List<Category> allCategories =
+    data.map((e) => Category.fromJson(e)).toList();
+
+final Map<String, Category> uniqueCategories = {};
+
+for (final category in allCategories) {
+  final key = category.name.trim().toLowerCase();
+
+  if (!uniqueCategories.containsKey(key)) {
+    uniqueCategories[key] = category;
+  }
+}
+
+setState(() {
+  categories = uniqueCategories.values.toList();
+});
         });
       } else {
         setState(() => categories = []);
@@ -258,19 +285,33 @@ class _HospitalTypesState extends State<HospitalTypes> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: avatarRadius,
-            backgroundImage: imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-            child: imageUrl.isEmpty
-                ? Icon(
-                    Icons.local_hospital_sharp,
-                    size: _clamp(avatarRadius * 0.7, 20, 40),
-                  )
-                : null,
+       CircleAvatar(
+  radius: avatarRadius,
+  backgroundColor: Colors.grey.shade200,
+  child: ClipOval(
+    child: imageUrl.isNotEmpty
+        ? CachedNetworkImage(
+            imageUrl: imageUrl,
+            width: avatarRadius * 2,
+            height: avatarRadius * 2,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            errorWidget: (context, url, error) => Icon(
+              Icons.local_hospital_sharp,
+              size: _clamp(avatarRadius * 0.7, 20, 40),
+            ),
+          )
+        : Icon(
+            Icons.local_hospital_sharp,
+            size: _clamp(avatarRadius * 0.7, 20, 40),
           ),
+  ),
+),
           SizedBox(height: cardSpacingVertical),
           Text(
-            name,
+             toTitleCase(name),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontWeight: FontWeight.w500,

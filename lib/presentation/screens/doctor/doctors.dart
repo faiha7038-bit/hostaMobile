@@ -347,9 +347,11 @@ class _DoctorsState extends ConsumerState<Doctors> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: emptyIconSize, color: Colors.grey),
+            Icon(Icons.error_outline, size: emptyIconSize, color: Colors.grey.shade400),
             const SizedBox(height: 16),
-            Text(errorMessage!),
+            Text("No Doctors Found",style: TextStyle(color:Colors.grey.shade700,fontWeight: FontWeight.bold,
+              fontSize: emptyTitleSize,  
+            ),),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => _fetchDoctors(),
@@ -417,10 +419,10 @@ class _DoctorsState extends ConsumerState<Doctors> {
       child: GridView.builder(
         controller: _scrollController,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+          crossAxisCount: 1,
           mainAxisSpacing: mainAxisSpacing,
           crossAxisSpacing: crossAxisSpacing,
-          childAspectRatio: childAspectRatio,
+           childAspectRatio: 1.4
         ),
         itemCount: doctors.length + (isPaginationLoading ? 1 : 0),
         itemBuilder: (context, index) {
@@ -460,6 +462,7 @@ class _DoctorsState extends ConsumerState<Doctors> {
   }
 
   Widget _buildDoctorCard({
+    
     required Doctor doctor,
     required double screenWidth,
     required double screenHeight,
@@ -482,6 +485,12 @@ class _DoctorsState extends ConsumerState<Doctors> {
     String firstLetter = doctor.displayName.isNotEmpty
         ? doctor.displayName[0].toUpperCase()
         : (doctor.firstName.isNotEmpty ? doctor.firstName[0].toUpperCase() : 'D');
+        final String? imageUrlFull =
+    (doctor.imageUrl != null && doctor.imageUrl!.isNotEmpty)
+        ? (doctor.imageUrl!.startsWith('http')
+            ? doctor.imageUrl
+            : "https://hostahealthcare.s3.eu-north-1.amazonaws.com/${doctor.imageUrl}")
+        : null;
     String consultationInfo = "";
     if (doctor.outDoorConsulting != null) {
       consultationInfo = "🏥 ${doctor.outDoorConsulting!.place}";
@@ -515,24 +524,41 @@ class _DoctorsState extends ConsumerState<Doctors> {
               padding: EdgeInsets.all(cardPadding),
               child: Row(
                 children: [
-                  Container(
-                    width: avatarSize,
-                    height: avatarSize,
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        firstLetter,
-                        style: TextStyle(
-                          fontSize: avatarFontSize,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
+           Container(
+  width: avatarSize,
+  height: avatarSize,
+  decoration: const BoxDecoration(
+    shape: BoxShape.circle,
+    color: Colors.green,
+  ),
+  child: ClipOval(
+    child: imageUrlFull != null
+        ? Image.network(
+            imageUrlFull,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Center(
+              child: Text(
+                firstLetter,
+                style: TextStyle(
+                  fontSize: avatarFontSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          )
+        : Center(
+            child: Text(
+              firstLetter,
+              style: TextStyle(
+                fontSize: avatarFontSize,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+  ),
+),
                   SizedBox(width: _clamp(screenWidth * 0.025, 6, 16)),
                   Expanded(
                     child: Column(
@@ -558,6 +584,16 @@ class _DoctorsState extends ConsumerState<Doctors> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                            Text(
+                          doctor.hospitalName!,
+                          style: TextStyle(
+                            fontSize: specialtyFontSize,
+                            color: Colors.green[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
@@ -568,6 +604,18 @@ class _DoctorsState extends ConsumerState<Doctors> {
               padding: EdgeInsets.symmetric(horizontal: cardPadding),
               child: Text(
                 doctor.qualification,
+                style: TextStyle(
+                  fontSize: qualificationFontSize,
+                  color: Colors.grey[600],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+              Padding(
+              padding: EdgeInsets.symmetric(horizontal: cardPadding),
+              child: Text(
+                "${doctor.experience} Years Experience",
                 style: TextStyle(
                   fontSize: qualificationFontSize,
                   color: Colors.grey[600],
@@ -617,7 +665,7 @@ class _DoctorsState extends ConsumerState<Doctors> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-            const Spacer(),
+           
             Container(
               width: double.infinity,
               margin: EdgeInsets.all(cardPadding),
