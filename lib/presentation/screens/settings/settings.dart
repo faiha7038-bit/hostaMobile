@@ -1,24 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/common/device.dart';
 import 'package:hosta/presentation/screens/auth/signin.dart';
 import 'package:hosta/presentation/screens/settings/accountsettings.dart';
 import 'package:hosta/presentation/screens/settings/passwordManager.dart';
+import 'package:hosta/providers/blood-donateprovider.dart';
+import 'package:hosta/providers/blood_details_provider.dart';
 import 'package:hosta/services/api_service.dart';
+import 'package:hosta/services/socket-service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool isLoggedIn = false;
   final ApiService apiService=ApiService();
   @override
   void initState() {
     
-    // TODO: implement initState
+   
     super.initState();
       _checkLogin();
   }
@@ -30,64 +35,68 @@ class _SettingsPageState extends State<SettingsPage> {
     isLoggedIn = token != null;
   });
 }
-Future<void> logout(BuildContext context) async {
- 
-
+Future<void> logout(BuildContext context, WidgetRef ref) async {
   final navigator = Navigator.of(context, rootNavigator: true);
 
+final deviceId = await getDeviceId();
+
+  // Read the current userId
+  final userId = ref.read(userIdProvider);
+
   try {
-    await apiService.logout();
-  } catch (e) {
+   
+   final userId = ref.read(userIdProvider);
+final deviceId = await getDeviceId();
 
-  }
+await apiService.logout(
+  userId,
+  {
+    "deviceId": deviceId,
+  },
+);
+  } catch (_) {}
 
-  // Clear ALL stored data (optional)
+
+  SocketService().disconnect();
+
   final prefs = await SharedPreferences.getInstance();
-  await prefs.clear(); 
- 
-
-  // If you have other storage like Hive, clear those as well
-  // await Hive.box('donorsBox').clear();
+  await prefs.clear();
 
 
+  ref.invalidate(bloodProvider);
+  ref.invalidate(userIdProvider);
 
-  // Navigate to Signin and remove all history
   navigator.pushAndRemoveUntil(
-    MaterialPageRoute(builder: (_) => Signin()),
+    MaterialPageRoute(builder: (_) => const Signin()),
     (route) => false,
   );
 }
 
-// Future<void> _(BuildContext context) async {
-  void _confirmLogout(BuildContext context) {
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    
- showDialog(
-  context: context,
-  useRootNavigator: true,
-  builder: (context) {
-    return AlertDialog(
-      title: const Text("Logout"),
-      content: const Text("Are you sure you want to logout?"),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel",style: TextStyle(color: Colors.grey),),
-        ),
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            logout(context);
-          },
-          child: const Text("Logout",style: TextStyle(color:Colors.red),),
-        ),
-      ],
-    );
-  },
-);
-  }
+void _confirmLogout(BuildContext context, WidgetRef ref) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text("Logout"),
+        content: const Text("Are you sure you want to logout?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel",style: TextStyle(color: Colors.grey),),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              logout(context, ref);
+            },
+            child: const Text("Logout",style: TextStyle(color: Colors.red),),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -231,10 +240,9 @@ Future<void> logout(BuildContext context) async {
 
             // Logout Button
            InkWell(
-  onTap: () {
-    
-    _confirmLogout(context);
-  },
+ onTap: () {
+  _confirmLogout(context, ref);
+},
               child: Container(
                 width: double.infinity,
                 padding: EdgeInsets.symmetric(
@@ -279,5 +287,3 @@ Future<void> logout(BuildContext context) async {
     );
   }
 }
-
-

@@ -1,4 +1,3 @@
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/common/top_snackbar.dart';
@@ -839,4 +838,3 @@ class _RegisterBookingState extends State<RegisterBooking> {
     );
   }
 }
-

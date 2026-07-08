@@ -1,341 +1,189 @@
-
-
 import 'package:flutter/material.dart';
-import 'package:hosta/services/api_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:hosta/providers/lab_provider.dart';
 
-class LabReport extends StatefulWidget {
+class LabReport extends ConsumerStatefulWidget {
   const LabReport({super.key});
 
   @override
-  State<LabReport> createState() => _LabReportState();
+  ConsumerState<LabReport> createState() => _LabReportState();
 }
 
-class _LabReportState extends State<LabReport> {
-  final ApiService _apiService = ApiService();
-  DateTime? selectedDate;
-  bool isLoading = false;
-  List<dynamic> labReports = [];
-  dynamic selectedReport;
-  String? error;
-  int? currentReportIndex;
-
-  static const String S3_BASE_URL = 
-      "https://hostahealthcare.s3.eu-north-1.amazonaws.com";
+class _LabReportState extends ConsumerState<LabReport> {
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchLabReports();
-  }
-
-  String? getS3ImageUrl(String? key) {
-    if (key == null || key.isEmpty) return null;
-    if (key.startsWith('http://') || key.startsWith('https://')) {
-      return key;
-    }
-    return '$S3_BASE_URL/${Uri.encodeComponent(key)}';
-  }
-
-  Future<String?> _getPatientId() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      String? patientId = prefs.getString('patientId');
-      
-      if (patientId != null && patientId.isNotEmpty) {
-        return patientId;
-      }
-      
-      await prefs.setString('patientId', '85');
-      return "85";
-      
-    } catch (e) {
-      return "85";
-    }
-  }
-
-  Future<void> _fetchLabReports() async {
-    if (!mounted) return;
-    
-    setState(() {
-      isLoading = true;
-      error = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(labProvider.notifier).init();
     });
-
-    try {
-      String? patientId = await _getPatientId();
-      
-      if (patientId == null || patientId.isEmpty) {
-        if (mounted) {
-          setState(() {
-            error = "No patient found";
-            isLoading = false;
-          });
-        }
-        return;
-      }
-
-      String? dateFilter;
-      if (selectedDate != null) {
-        dateFilter = 
-            "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}";
-      }
-
-      dynamic response;
-      
-      try {
-        response = await _apiService.getLabReports(
-          patientId: patientId,
-          date: dateFilter,
-          page: 1,
-          limit: 100,
-        );
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            error = "API Error: $e";
-            isLoading = false;
-          });
-        }
-        return;
-      }
-
-      if (response.data['success'] == true) {
-        final data = response.data['data'];
-        
-        if (data is List) {
-          if (data.isEmpty) {
-            if (mounted) {
-              setState(() {
-                labReports = [];
-                selectedReport = null;
-                currentReportIndex = null;
-                isLoading = false;
-                error = "No lab reports found";
-              });
-            }
-            return;
-          }
-          
-          final filteredReports = data.where((report) {
-            final reportPatientId = report['patientId']?.toString();
-            return reportPatientId == patientId;
-          }).toList();
-          
-          if (filteredReports.isEmpty) {
-            if (mounted) {
-              setState(() {
-                labReports = [];
-                selectedReport = null;
-                currentReportIndex = null;
-                isLoading = false;
-                error = "No lab reports found for this patient";
-              });
-            }
-            return;
-          }
-          
-          final processedData = filteredReports.map((report) {
-            if (report['imageUrl'] != null && report['imageUrl'].toString().isNotEmpty) {
-              report['imageUrl'] = getS3ImageUrl(report['imageUrl']);
-            }
-            return report;
-          }).toList();
-          
-          if (mounted) {
-            setState(() {
-              labReports = processedData;
-              currentReportIndex = 0;
-              selectedReport = processedData[0];
-              isLoading = false;
-              error = null;
-            });
-          }
-          
-        } else if (data is Map) {
-          List<dynamic> reports = [];
-          
-          if (data.containsKey('results') && data['results'] is List) {
-            reports = data['results'] as List;
-          } else if (data.containsKey('data') && data['data'] is List) {
-            reports = data['data'] as List;
-          }
-          
-          if (reports.isEmpty) {
-            if (mounted) {
-              setState(() {
-                labReports = [];
-                selectedReport = null;
-                currentReportIndex = null;
-                isLoading = false;
-                error = "No lab reports found";
-              });
-            }
-            return;
-          }
-          
-          final filteredReports = reports.where((report) {
-            return report['patientId']?.toString() == patientId;
-          }).toList();
-          
-          if (filteredReports.isEmpty) {
-            if (mounted) {
-              setState(() {
-                labReports = [];
-                selectedReport = null;
-                currentReportIndex = null;
-                isLoading = false;
-                error = "No lab reports found for this patient";
-              });
-            }
-            return;
-          }
-          
-          final processedData = filteredReports.map((report) {
-            if (report['imageUrl'] != null && report['imageUrl'].toString().isNotEmpty) {
-              report['imageUrl'] = getS3ImageUrl(report['imageUrl']);
-            }
-            return report;
-          }).toList();
-          
-          if (mounted) {
-            setState(() {
-              labReports = processedData;
-              currentReportIndex = 0;
-              selectedReport = processedData[0];
-              isLoading = false;
-              error = null;
-            });
-          }
-          
-        } else {
-          if (mounted) {
-            setState(() {
-              error = "Unexpected data format";
-              isLoading = false;
-            });
-          }
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            error = response.data['message'] ?? "Failed to fetch reports";
-            isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          error = "Error: ${e.toString()}";
-          isLoading = false;
-        });
-      }
-    }
+    _searchController.addListener(_onSearchChanged);
   }
 
-  Future<void> pickDate() async {
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-
-    if (picked != null && picked != selectedDate) {
-      setState(() {
-        selectedDate = picked;
-      });
-      await _fetchLabReports();
-    }
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
   }
 
-  String _formatDate(String? dateString) {
-    if (dateString == null) return "N/A";
-    try {
-      final date = DateTime.parse(dateString);
-      return "${date.day}${_getDaySuffix(date.day)} ${_getMonthName(date.month)}, ${date.year}";
-    } catch (e) {
-      return dateString;
-    }
+  void _onSearchChanged() {
+    ref.read(labProvider.notifier).setSearchQuery(_searchController.text);
   }
 
-  String _getDaySuffix(int day) {
-    if (day >= 11 && day <= 13) return "th";
-    switch (day % 10) {
-      case 1: return "st";
-      case 2: return "nd";
-      case 3: return "rd";
-      default: return "th";
-    }
-  }
+  @override
+  Widget build(BuildContext context) {
+    final labState = ref.watch(labProvider);
+    final labNotifier = ref.read(labProvider.notifier);
 
-  String _getMonthName(int month) {
-    const months = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-    return months[month - 1];
-  }
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 600;
+    final isMediumScreen = screenWidth >= 600 && screenWidth < 1024;
+    final isLargeScreen = screenWidth >= 1024;
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'completed':
-      case 'final':
-        return Colors.green;
-      case 'pending':
-      case 'received':
-        return Colors.orange;
-      case 'cancelled':
-        return Colors.red;
-      case 'progress':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
-  }
+    final displayReports = labState.filteredReports;
 
-  void _nextReport() {
-    if (currentReportIndex != null && currentReportIndex! < labReports.length - 1) {
-      setState(() {
-        currentReportIndex = currentReportIndex! + 1;
-        selectedReport = labReports[currentReportIndex!];
-      });
-    }
-  }
-
-  void _previousReport() {
-    if (currentReportIndex != null && currentReportIndex! > 0) {
-      setState(() {
-        currentReportIndex = currentReportIndex! - 1;
-        selectedReport = labReports[currentReportIndex!];
-      });
-    }
-  }
-
-  Widget _buildDetailRow(String label, String value, double screenWidth, double screenHeight) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: screenHeight * 0.0025),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: screenWidth * 0.035,
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.green,
+        title: Text(
+          "Lab Details",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: isSmallScreen 
+                ? screenWidth * 0.05 
+                : isMediumScreen 
+                    ? screenWidth * 0.035 
+                    : screenWidth * 0.025,
           ),
-          SizedBox(width: screenWidth * 0.0125),
-          Flexible(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: Colors.blueGrey,
-                fontSize: screenWidth * 0.035,
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: isSmallScreen 
+                ? screenWidth * 0.055 
+                : isMediumScreen 
+                    ? screenWidth * 0.04 
+                    : screenWidth * 0.03,
+          ),
+        ),
+      ),
+      body: Column(
+        children: [
+          _buildSearchBar(screenWidth, screenHeight, isSmallScreen, labState, labNotifier),
+          
+          if (labState.selectedPatientName != null || 
+              labState.searchQuery.isNotEmpty || 
+              labState.selectedDate != null)
+            _buildActiveFilters(screenWidth, screenHeight, isSmallScreen, labState, labNotifier),
+          
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: screenWidth * 0.04,
+                right: screenWidth * 0.04,
+                top: screenHeight * 0.01,
+                bottom: screenHeight * 0.02,
               ),
-              overflow: TextOverflow.ellipsis,
+              child: labState.isLoading
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            color: Colors.green,
+                            strokeWidth: isSmallScreen ? 4 : 6,
+                          ),
+                          SizedBox(height: screenHeight * 0.025),
+                          Text(
+                            "Loading reports...",
+                            style: TextStyle(
+                              fontSize: isSmallScreen 
+                                  ? screenWidth * 0.04 
+                                  : screenWidth * 0.03,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : labState.error != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.red,
+                                size: isSmallScreen ? 60 : 80,
+                              ),
+                              SizedBox(height: screenHeight * 0.0125),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                                child: Text(
+                                  labState.error!,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: isSmallScreen ? 16 : 18,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.025),
+                              ElevatedButton(
+                                onPressed: () {
+                                  labNotifier.refresh();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: screenWidth * 0.06,
+                                    vertical: screenHeight * 0.015,
+                                  ),
+                                ),
+                                child: Text(
+                                  "Retry",
+                                  style: TextStyle(
+                                    fontSize: isSmallScreen ? 14 : 16,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : displayReports.isEmpty
+                          ? _buildEmptyState(screenWidth, screenHeight, isSmallScreen, labState, labNotifier)
+                          : SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (displayReports.length != labState.labReports.length)
+                                    Padding(
+                                      padding: EdgeInsets.only(bottom: screenHeight * 0.01),
+                                      child: Text(
+                                        "Showing ${displayReports.length} of ${labState.labReports.length} reports",
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: screenWidth * 0.03,
+                                        ),
+                                      ),
+                                    ),
+                                  isLargeScreen
+                                      ? _buildLargeScreenLayout(
+                                          screenWidth, screenHeight, labState, labNotifier, displayReports)
+                                      : _buildSmallMediumScreenLayout(
+                                          screenWidth, screenHeight, labState, labNotifier, displayReports),
+                                ],
+                              ),
+                            ),
             ),
           ),
         ],
@@ -343,14 +191,912 @@ class _LabReportState extends State<LabReport> {
     );
   }
 
-  Widget _buildReportImage(double screenWidth, double screenHeight) {
-    final imageUrl = selectedReport?['imageUrl'];
+  Widget _buildEmptyState(
+    double screenWidth,
+    double screenHeight,
+    bool isSmallScreen,
+    LabState labState,
+    LabNotifier labNotifier,
+  ) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.assignment_outlined,
+            color: Colors.grey,
+            size: isSmallScreen ? 80 : 100,
+          ),
+          SizedBox(height: screenHeight * 0.0125),
+          Text(
+            labState.searchQuery.isNotEmpty || labState.selectedPatientName != null
+                ? "No matching reports found"
+                : labState.selectedDate != null
+                    ? "No reports for ${labState.selectedDate!.day}/${labState.selectedDate!.month}/${labState.selectedDate!.year}"
+                    : "No lab reports found",
+            style: TextStyle(
+              color: Colors.grey,
+              fontSize: isSmallScreen ? 18 : 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (labState.searchQuery.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: screenHeight * 0.0125),
+              child: Text(
+                "No results for \"${labState.searchQuery}\"",
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: isSmallScreen ? 14 : 16,
+                ),
+              ),
+            ),
+          SizedBox(height: screenHeight * 0.025),
+          Wrap(
+            spacing: screenWidth * 0.02,
+            runSpacing: screenHeight * 0.01,
+            alignment: WrapAlignment.center,
+            children: [
+              if (labState.searchQuery.isNotEmpty || labState.selectedPatientName != null)
+                ElevatedButton(
+                  onPressed: () {
+                    labNotifier.clearAllFilters();
+                    _searchController.clear();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.06,
+                      vertical: screenHeight * 0.015,
+                    ),
+                  ),
+                  child: Text(
+                    "Clear Filters",
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 14 : 16,
+                    ),
+                  ),
+                ),
+              if (labState.selectedDate != null)
+                ElevatedButton(
+                  onPressed: () {
+                    labNotifier.clearDateFilter();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.06,
+                      vertical: screenHeight * 0.015,
+                    ),
+                  ),
+                  child: Text(
+                    "Clear Date Filter",
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 14 : 16,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(
+    double screenWidth,
+    double screenHeight,
+    bool isSmallScreen,
+    LabState labState,
+    LabNotifier labNotifier,
+  ) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.04,
+        vertical: screenHeight * 0.008,
+      ),
+      color: Colors.green.shade50,
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: screenHeight * 0.055,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(left: screenWidth * 0.02),
+                    child: Icon(
+                      Icons.search,
+                      color: Colors.green,
+                      size: isSmallScreen ? 20 : 24,
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      textAlignVertical: TextAlignVertical.center,
+                      decoration: InputDecoration(
+                        hintText: 'Search reports...',
+                        hintStyle: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: isSmallScreen ? 13 : 15,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.015,
+                          vertical: 0,
+                        ),
+                        isDense: true,
+                      ),
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                        height: 1.0,
+                      ),
+                      onChanged: (value) {
+                        labNotifier.setSearchQuery(value);
+                      },
+                    ),
+                  ),
+                  if (_searchController.text.isNotEmpty)
+                    IconButton(
+                      icon: Icon(Icons.clear, color: Colors.grey),
+                      onPressed: () {
+                        _searchController.clear();
+                        labNotifier.clearSearch();
+                        setState(() {});
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                      iconSize: isSmallScreen ? 18 : 22,
+                    ),
+                  Container(
+                    height: screenHeight * 0.035,
+                    width: 1,
+                    color: Colors.grey.shade300,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      if (labState.selectedDate != null) {
+                        labNotifier.clearDateFilter();
+                        setState(() {});
+                      } else {
+                        showDatePicker(
+                          context: context,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
+                        ).then((picked) {
+                          if (picked != null) {
+                            labNotifier.setDateFilter(picked);
+                            setState(() {});
+                          }
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.015,
+                        vertical: screenHeight * 0.01,
+                      ),
+                      child: Icon(
+                        Icons.calendar_month,
+                        color: labState.selectedDate != null ? Colors.green : Colors.grey,
+                        size: isSmallScreen ? 20 : 24,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: screenWidth * 0.01),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(width: screenWidth * 0.015),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'All') {
+                labNotifier.setPatientNameFilter(null);
+                setState(() {});
+              } else {
+                labNotifier.setPatientNameFilter(value);
+                setState(() {});
+              }
+            },
+            child: Container(
+              height: screenHeight * 0.055,
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.03,
+              ),
+              decoration: BoxDecoration(
+                color: labState.selectedPatientName != null 
+                    ? Colors.green 
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(screenWidth * 0.025),
+                border: Border.all(
+                  color: labState.selectedPatientName != null 
+                      ? Colors.green 
+                      : Colors.grey.shade300,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.person,
+                    color: labState.selectedPatientName != null 
+                        ? Colors.white 
+                        : Colors.grey.shade600,
+                    size: isSmallScreen ? 22 : 26,
+                  ),
+                  if (labState.selectedPatientName != null) ...[
+                    SizedBox(width: screenWidth * 0.01),
+                    Container(
+                      constraints: BoxConstraints(maxWidth: screenWidth * 0.15),
+                      child: Text(
+                        labState.selectedPatientName!,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isSmallScreen ? 12 : 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    SizedBox(width: screenWidth * 0.005),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      color: Colors.white,
+                      size: isSmallScreen ? 20 : 24,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            tooltip: 'Filter by Patient',
+            offset: Offset(0, screenHeight * 0.06),
+            itemBuilder: (context) {
+              final patientNames = labNotifier.getUniquePatientNames();
+              final items = <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'All',
+                  child: Row(
+                    children: [
+                      Icon(Icons.people, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('All Patients'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+              ];
+              
+              if (patientNames.isEmpty) {
+                items.add(
+                  const PopupMenuItem<String>(
+                    value: 'NoPatients',
+                    child: Text('No patients available'),
+                    enabled: false,
+                  ),
+                );
+              } else {
+                for (final name in patientNames) {
+                  items.add(
+                    PopupMenuItem<String>(
+                      value: name,
+                      child: Row(
+                        children: [
+                          Icon(
+                            labState.selectedPatientName == name 
+                                ? Icons.check_circle 
+                                : Icons.person_outline,
+                            color: labState.selectedPatientName == name 
+                                ? Colors.green 
+                                : Colors.grey,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: TextStyle(
+                                fontWeight: labState.selectedPatientName == name 
+                                    ? FontWeight.bold 
+                                    : FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              }
+              return items;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveFilters(
+    double screenWidth,
+    double screenHeight,
+    bool isSmallScreen,
+    LabState labState,
+    LabNotifier labNotifier,
+  ) {
+    final hasFilters = labState.selectedPatientName != null || 
+                    labState.searchQuery.isNotEmpty || 
+                    labState.selectedDate != null;
+    
+    if (!hasFilters) return const SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.04,
+        vertical: screenHeight * 0.005,
+      ),
+      color: Colors.green.shade100,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Text(
+              "Active Filters: ",
+              style: TextStyle(
+                fontSize: screenWidth * 0.03,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade800,
+              ),
+            ),
+            if (labState.selectedPatientName != null)
+              _buildFilterChip(
+                label: labState.selectedPatientName!,
+                icon: Icons.person,
+                color: Colors.green,
+                onTap: () {
+                  labNotifier.setPatientNameFilter(null);
+                  setState(() {});
+                },
+                screenWidth: screenWidth,
+                screenHeight: screenHeight,
+              ),
+            if (labState.searchQuery.isNotEmpty)
+              _buildFilterChip(
+                label: labState.searchQuery,
+                icon: Icons.search,
+                color: Colors.blue,
+                onTap: () {
+                  labNotifier.clearSearch();
+                  _searchController.clear();
+                  setState(() {});
+                },
+                screenWidth: screenWidth,
+                screenHeight: screenHeight,
+              ),
+            if (labState.selectedDate != null)
+              _buildFilterChip(
+                label: "${labState.selectedDate!.day}/${labState.selectedDate!.month}/${labState.selectedDate!.year}",
+                icon: Icons.calendar_today,
+                color: Colors.orange,
+                onTap: () {
+                  labNotifier.clearDateFilter();
+                  setState(() {});
+                },
+                screenWidth: screenWidth,
+                screenHeight: screenHeight,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    required double screenWidth,
+    required double screenHeight,
+  }) {
+    final Color darkColor = _getDarkerColor(color);
+    
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.015,
+        vertical: screenHeight * 0.003,
+      ),
+      margin: EdgeInsets.only(right: screenWidth * 0.01),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: screenWidth * 0.03,
+            color: color,
+          ),
+          SizedBox(width: screenWidth * 0.008),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: screenWidth * 0.025,
+              color: darkColor,
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          SizedBox(width: screenWidth * 0.008),
+          InkWell(
+            onTap: () {
+              onTap();
+              setState(() {});
+            },
+            borderRadius: BorderRadius.circular(screenWidth * 0.05),
+            child: Container(
+              padding: EdgeInsets.all(screenWidth * 0.005),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.close,
+                size: screenWidth * 0.025,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getDarkerColor(Color color) {
+    if (color == Colors.green) return Colors.green.shade700;
+    if (color == Colors.blue) return Colors.blue.shade700;
+    if (color == Colors.orange) return Colors.orange.shade700;
+    if (color == Colors.red) return Colors.red.shade700;
+    if (color == Colors.purple) return Colors.purple.shade700;
+    if (color == Colors.pink) return Colors.pink.shade700;
+    if (color == Colors.teal) return Colors.teal.shade700;
+    if (color == Colors.indigo) return Colors.indigo.shade700;
+    return color.withOpacity(0.8);
+  }
+
+  Widget _buildSmallMediumScreenLayout(
+    double screenWidth,
+    double screenHeight,
+    LabState labState,
+    LabNotifier labNotifier,
+    List<dynamic> displayReports,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (displayReports.length > 1) ...[
+          _buildReportNavigator(screenWidth, screenHeight, labState, labNotifier, displayReports),
+          SizedBox(height: screenHeight * 0.0125),
+        ],
+        Divider(
+          color: Colors.grey,
+          thickness: screenWidth * 0.0025,
+        ),
+        SizedBox(height: screenHeight * 0.0125),
+
+        if (labState.selectedReport != null) ...[
+          _buildReportHeader(screenWidth, screenHeight, labState),
+          _buildReportDetails(screenWidth, screenHeight, labState),
+          _buildPatientInfo(screenWidth, screenHeight, labState),
+          _buildReportImage(screenWidth, screenHeight, labState),
+        ],
+        
+        SizedBox(height: screenHeight * 0.02),
+      ],
+    );
+  }
+
+  Widget _buildLargeScreenLayout(
+    double screenWidth,
+    double screenHeight,
+    LabState labState,
+    LabNotifier labNotifier,
+    List<dynamic> displayReports,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (displayReports.length > 1) ...[
+                _buildReportNavigator(screenWidth, screenHeight, labState, labNotifier, displayReports),
+              ],
+            ],
+          ),
+        ),
+        SizedBox(width: screenWidth * 0.03),
+        Expanded(
+          flex: 2,
+          child: labState.selectedReport != null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildReportHeader(screenWidth, screenHeight, labState),
+                    _buildReportDetails(screenWidth, screenHeight, labState),
+                    _buildPatientInfo(screenWidth, screenHeight, labState),
+                    _buildReportImage(screenWidth, screenHeight, labState),
+                  ],
+                )
+              : Center(
+                  child: Text(
+                    "Select a report to view details",
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.02,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReportNavigator(
+    double screenWidth,
+    double screenHeight,
+    LabState labState,
+    LabNotifier labNotifier,
+    List<dynamic> displayReports,
+  ) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.02,
+        vertical: screenHeight * 0.01,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(screenWidth * 0.02),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "Showing: ${displayReports.length} report${displayReports.length > 1 ? 's' : ''}",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: screenWidth * 0.035,
+              color: Colors.green.shade800,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                onPressed: labState.currentReportIndex != null && 
+                          labState.currentReportIndex! > 0
+                    ? labNotifier.previousReport
+                    : null,
+                icon: Icon(
+                  Icons.arrow_back_ios,
+                  size: screenWidth * 0.04,
+                  color: labState.currentReportIndex != null && 
+                          labState.currentReportIndex! > 0
+                      ? Colors.green
+                      : Colors.grey,
+                ),
+              ),
+              Text(
+                "${(labState.currentReportIndex ?? 0) + 1} of ${displayReports.length}",
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: screenWidth * 0.035,
+                ),
+              ),
+              IconButton(
+                onPressed: labState.currentReportIndex != null && 
+                          labState.currentReportIndex! < displayReports.length - 1
+                    ? labNotifier.nextReport
+                    : null,
+                icon: Icon(
+                  Icons.arrow_forward_ios,
+                  size: screenWidth * 0.04,
+                  color: labState.currentReportIndex != null && 
+                          labState.currentReportIndex! < displayReports.length - 1
+                      ? Colors.green
+                      : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReportHeader(
+    double screenWidth,
+    double screenHeight,
+    LabState labState,
+  ) {
+    final hospitalName = labState.selectedReport?['hospitalName']?.toString() ?? '';
+    final hospitalId = labState.selectedReport?['hospitalId']?.toString() ?? '';
+    
+    String displayTitle = "Lab Report";
+    if (hospitalName.isNotEmpty) {
+      displayTitle = hospitalName;
+    } else if (hospitalId.isNotEmpty) {
+      displayTitle = "Hospital #$hospitalId";
+    }
+    
+    return Column(
+      children: [
+        Center(
+          child: Text(
+            displayTitle,
+            style: TextStyle(
+              color: Colors.green,
+              fontSize: screenWidth * 0.055,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        
+        if (labState.selectedReport?['labName']?.toString()?.isNotEmpty == true)
+          Center(
+            child: Text(
+              labState.selectedReport?['labName'].toString() ?? '',
+              style: TextStyle(
+                color: Colors.blueGrey.shade600,
+                fontSize: screenWidth * 0.035,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        
+        SizedBox(height: screenHeight * 0.005),
+        
+        if (labState.selectedReport?['patientName']?.toString()?.isNotEmpty == true) ...[
+          Center(
+            child: Text(
+              "Patient: ${labState.selectedReport?['patientName']}",
+              style: TextStyle(
+                color: Colors.blueGrey,
+                fontSize: screenWidth * 0.04,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+        
+        if (labState.selectedReport?['department']?.toString()?.isNotEmpty == true) ...[
+          Center(
+            child: Text(
+              labState.selectedReport?['department'].toString().toUpperCase() ?? '',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: screenWidth * 0.035,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+        
+        Divider(
+          indent: screenWidth * 0.075,
+          endIndent: screenWidth * 0.075,
+          color: Colors.grey,
+          thickness: screenWidth * 0.0025,
+        ),
+        SizedBox(height: screenHeight * 0.0125),
+        
+        Center(
+          child: Text(
+            "Pathology Laboratory Report",
+            style: TextStyle(
+              fontSize: screenWidth * 0.05,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+        SizedBox(height: screenHeight * 0.01875),
+      ],
+    );
+  }
+
+  Widget _buildReportDetails(
+    double screenWidth,
+    double screenHeight,
+    LabState labState,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (labState.selectedReport?['department']?.toString()?.isNotEmpty == true)
+                _buildDetailRow(
+                  "Department:", 
+                  labState.selectedReport?['department'].toString().toUpperCase() ?? '',
+                  screenWidth,
+                  screenHeight
+                ),
+              if (labState.selectedReport?['testName']?.toString()?.isNotEmpty == true)
+                _buildDetailRow(
+                  "Test Name:", 
+                  labState.selectedReport?['testName'].toString() ?? '',
+                  screenWidth,
+                  screenHeight
+                ),
+              _buildDetailRow(
+                "Report ID:", 
+                "#${labState.selectedReport?['id'] ?? ''}",
+                screenWidth,
+                screenHeight
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: screenWidth * 0.02),
+        
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildDetailRow(
+                "Collected on:", 
+                _formatDate(labState.selectedReport?['createdAt']),
+                screenWidth,
+                screenHeight
+              ),
+              _buildDetailRow(
+                "Reported on:", 
+                _formatDate(labState.selectedReport?['updatedAt']),
+                screenWidth,
+                screenHeight
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    "Status:",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: screenWidth * 0.035,
+                    ),
+                  ),
+                  SizedBox(width: screenWidth * 0.0125),
+                  Text(
+                    labState.selectedReport?['status']?.toString().toUpperCase() ?? '',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: screenWidth * 0.035,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPatientInfo(
+    double screenWidth,
+    double screenHeight,
+    LabState labState,
+  ) {
+    return Column(
+      children: [
+        SizedBox(height: screenHeight * 0.01875),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.green.shade50,
+            borderRadius: BorderRadius.circular(screenWidth * 0.025),
+            border: Border.all(
+              color: Colors.green,
+              width: screenWidth * 0.0025,
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(screenWidth * 0.02),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Patient Information",
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: screenWidth * 0.035,
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.005),
+                Wrap(
+                  spacing: screenWidth * 0.025,
+                  runSpacing: screenHeight * 0.005,
+                  children: [
+                    if (labState.selectedReport?['patientId']?.toString()?.isNotEmpty == true)
+                      _buildPatientInfoWrap(
+                        "Patient ID:", 
+                        "PT${labState.selectedReport?['patientId'].toString().padLeft(3, '0')}",
+                        screenWidth,
+                        screenHeight
+                      ),
+                    if (labState.selectedReport?['patientName']?.toString()?.isNotEmpty == true)
+                      _buildPatientInfoWrap(
+                        "Patient Name:", 
+                        labState.selectedReport?['patientName'].toString() ?? '',
+                        screenWidth,
+                        screenHeight
+                      ),
+                    if (labState.selectedReport?['patientEmail']?.toString()?.isNotEmpty == true)
+                      _buildPatientInfoWrap(
+                        "Email:", 
+                        labState.selectedReport?['patientEmail'].toString() ?? '',
+                        screenWidth,
+                        screenHeight
+                      ),
+                    if (labState.selectedReport?['testName']?.toString()?.isNotEmpty == true)
+                      _buildPatientInfoWrap(
+                        "Test Name:", 
+                        labState.selectedReport?['testName'].toString() ?? '',
+                        screenWidth,
+                        screenHeight
+                      ),
+                    if (labState.selectedReport?['department']?.toString()?.isNotEmpty == true)
+                      _buildPatientInfoWrap(
+                        "Department:", 
+                        labState.selectedReport?['department'].toString().toUpperCase() ?? '',
+                        screenWidth,
+                        screenHeight
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: screenHeight * 0.0125),
+      ],
+    );
+  }
+
+  Widget _buildReportImage(
+    double screenWidth,
+    double screenHeight,
+    LabState labState,
+  ) {
+    final imageUrl = labState.selectedReport?['imageUrl'];
     
     final hasImage = (imageUrl != null && imageUrl.toString().isNotEmpty);
     
     if (!hasImage) {
       return Container(
-        height: screenHeight * 0.12,
+        height: screenHeight * 0.15,
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(screenWidth * 0.025),
@@ -387,7 +1133,8 @@ class _LabReportState extends State<LabReport> {
         _showFullScreenImage(context, imageUrl);
       },
       child: Container(
-        height: screenHeight * 0.15,
+        height: screenHeight * 0.35,
+        width: double.infinity,
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(screenWidth * 0.025),
@@ -401,43 +1148,47 @@ class _LabReportState extends State<LabReport> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.contain,
-                placeholder: (context, url) => Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.green,
-                  ),
-                ),
-                errorWidget: (context, url, error) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.broken_image,
-                          color: Colors.grey.shade400,
-                          size: screenWidth * 0.1,
-                        ),
-                        SizedBox(height: screenHeight * 0.01),
-                        Text(
-                          "Failed to load image",
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: screenWidth * 0.03,
-                          ),
-                        ),
-                        Text(
-                          "Tap to retry",
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontSize: screenWidth * 0.025,
-                          ),
-                        ),
-                      ],
+              InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.green,
                     ),
-                  );
-                },
+                  ),
+                  errorWidget: (context, url, error) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.broken_image,
+                            color: Colors.grey.shade400,
+                            size: screenWidth * 0.1,
+                          ),
+                          SizedBox(height: screenHeight * 0.01),
+                          Text(
+                            "Failed to load image",
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: screenWidth * 0.03,
+                            ),
+                          ),
+                          Text(
+                            "Tap to retry",
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: screenWidth * 0.025,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
               Positioned(
                 bottom: screenHeight * 0.01,
@@ -582,6 +1333,34 @@ class _LabReportState extends State<LabReport> {
     );
   }
 
+  Widget _buildDetailRow(String label, String value, double screenWidth, double screenHeight) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: screenHeight * 0.0025),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: screenWidth * 0.035,
+            ),
+          ),
+          SizedBox(width: screenWidth * 0.0125),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Colors.blueGrey,
+                fontSize: screenWidth * 0.035,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPatientInfoWrap(String label, String value, double screenWidth, double screenHeight) {
     return Container(
       constraints: BoxConstraints(
@@ -612,595 +1391,31 @@ class _LabReportState extends State<LabReport> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final isSmallScreen = screenWidth < 600;
-    final isMediumScreen = screenWidth >= 600 && screenWidth < 1024;
-    final isLargeScreen = screenWidth >= 1024;
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.green,
-        title: Text(
-          "Lab Details",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: isSmallScreen 
-                ? screenWidth * 0.05 
-                : isMediumScreen 
-                    ? screenWidth * 0.035 
-                    : screenWidth * 0.025,
-          ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.white,
-            size: isSmallScreen 
-                ? screenWidth * 0.055 
-                : isMediumScreen 
-                    ? screenWidth * 0.04 
-                    : screenWidth * 0.03,
-          ),
-        ),
-        toolbarHeight: isSmallScreen 
-            ? kToolbarHeight 
-            : isMediumScreen 
-                ? kToolbarHeight * 1.1 
-                : kToolbarHeight * 1.2,
-      ),
-      body: Padding(
-        padding: EdgeInsets.only(
-          left: screenWidth * 0.04,
-          right: screenWidth * 0.04,
-          top: screenHeight * 0.02,
-          bottom: screenHeight * 0.02,   
-        ),
-        child: isLoading
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      color: Colors.green,
-                      strokeWidth: isSmallScreen ? 4 : 6,
-                    ),
-                    SizedBox(height: screenHeight * 0.025),
-                    Text(
-                      "Loading reports...",
-                      style: TextStyle(
-                        fontSize: isSmallScreen 
-                            ? screenWidth * 0.04 
-                            : screenWidth * 0.03,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : error != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: isSmallScreen ? 60 : 80,
-                        ),
-                        SizedBox(height: screenHeight * 0.0125),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-                          child: Text(
-                            error!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: isSmallScreen ? 16 : 18,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: screenHeight * 0.025),
-                        ElevatedButton(
-                          onPressed: _fetchLabReports,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.06,
-                              vertical: screenHeight * 0.015,
-                            ),
-                          ),
-                          child: Text(
-                            "Retry",
-                            style: TextStyle(
-                              fontSize: isSmallScreen ? 14 : 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : labReports.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.assignment_outlined,
-                              color: Colors.grey,
-                              size: isSmallScreen ? 80 : 100,
-                            ),
-                            SizedBox(height: screenHeight * 0.0125),
-                            Text(
-                              "No lab reports found",
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: isSmallScreen ? 18 : 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (selectedDate != null)
-                              Padding(
-                                padding: EdgeInsets.only(top: screenHeight * 0.0125),
-                                child: Text(
-                                  "No reports for ${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: isSmallScreen ? 14 : 16,
-                                  ),
-                                ),
-                              ),
-                            SizedBox(height: screenHeight * 0.025),
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  selectedDate = null;
-                                });
-                                _fetchLabReports();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenWidth * 0.06,
-                                  vertical: screenHeight * 0.015,
-                                ),
-                              ),
-                              child: Text(
-                                "Clear Filter",
-                                style: TextStyle(
-                                  fontSize: isSmallScreen ? 14 : 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : SingleChildScrollView(
-                        child: isLargeScreen
-                            ? _buildLargeScreenLayout(screenWidth, screenHeight)
-                            : _buildSmallMediumScreenLayout(screenWidth, screenHeight),
-                      ),
-      ),
-    );
+  String _formatDate(String? dateString) {
+    if (dateString == null) return "N/A";
+    try {
+      final date = DateTime.parse(dateString);
+      return "${date.day}${_getDaySuffix(date.day)} ${_getMonthName(date.month)}, ${date.year}";
+    } catch (e) {
+      return dateString;
+    }
   }
 
-  Widget _buildSmallMediumScreenLayout(double screenWidth, double screenHeight) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildDatePicker(screenWidth, screenHeight),
-        
-        if (labReports.length > 1) ...[
-          SizedBox(height: screenHeight * 0.0125),
-          _buildReportNavigator(screenWidth, screenHeight),
-        ],
-
-        SizedBox(height: screenHeight * 0.0125),
-        Divider(
-          color: Colors.grey,
-          thickness: screenWidth * 0.0025,
-        ),
-        SizedBox(height: screenHeight * 0.0125),
-
-        if (selectedReport != null) ...[
-          _buildReportHeader(screenWidth, screenHeight),
-          _buildReportDetails(screenWidth, screenHeight),
-          _buildPatientInfo(screenWidth, screenHeight),
-          _buildReportImage(screenWidth, screenHeight),
-        ],
-        
-        SizedBox(height: screenHeight * 0.02),
-      ],
-    );
+  String _getDaySuffix(int day) {
+    if (day >= 11 && day <= 13) return "th";
+    switch (day % 10) {
+      case 1: return "st";
+      case 2: return "nd";
+      case 3: return "rd";
+      default: return "th";
+    }
   }
 
-  Widget _buildLargeScreenLayout(double screenWidth, double screenHeight) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDatePicker(screenWidth, screenHeight),
-              
-              if (labReports.length > 1) ...[
-                SizedBox(height: screenHeight * 0.0125),
-                _buildReportNavigator(screenWidth, screenHeight),
-              ],
-            ],
-          ),
-        ),
-        SizedBox(width: screenWidth * 0.03),
-        Expanded(
-          flex: 2,
-          child: selectedReport != null
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildReportHeader(screenWidth, screenHeight),
-                    _buildReportDetails(screenWidth, screenHeight),
-                    _buildPatientInfo(screenWidth, screenHeight),
-                    _buildReportImage(screenWidth, screenHeight),
-                  ],
-                )
-              : Center(
-                  child: Text(
-                    "Select a report to view details",
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.02,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDatePicker(double screenWidth, double screenHeight) {
-    return GestureDetector(
-      onTap: pickDate,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: screenWidth * 0.03,
-          vertical: screenHeight * 0.0125,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(screenWidth * 0.03),
-          border: Border.all(color: Colors.grey, width: screenWidth * 0.0025),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.calendar_today,
-              color: Colors.green,
-              size: screenWidth * 0.05,
-            ),
-            SizedBox(width: screenWidth * 0.025),
-            Expanded(
-              child: Text(
-                selectedDate == null
-                    ? "All reports"
-                    : "${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}",
-                style: TextStyle(
-                  fontSize: screenWidth * 0.035,
-                  color: selectedDate == null ? Colors.grey : Colors.black87,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            if (selectedDate != null)
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedDate = null;
-                  });
-                  _fetchLabReports();
-                },
-                child: Icon(
-                  Icons.close,
-                  size: screenWidth * 0.045,
-                  color: Colors.grey,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReportNavigator(double screenWidth, double screenHeight) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.02,
-        vertical: screenHeight * 0.01,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.green.shade50,
-        borderRadius: BorderRadius.circular(screenWidth * 0.02),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            "Total Reports: ${labReports.length}",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: screenWidth * 0.035,
-              color: Colors.green.shade800,
-            ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: currentReportIndex != null && currentReportIndex! > 0
-                    ? _previousReport
-                    : null,
-                icon: Icon(
-                  Icons.arrow_back_ios,
-                  size: screenWidth * 0.04,
-                  color: currentReportIndex != null && currentReportIndex! > 0
-                      ? Colors.green
-                      : Colors.grey,
-                ),
-              ),
-              Text(
-                "${(currentReportIndex ?? 0) + 1} of ${labReports.length}",
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: screenWidth * 0.035,
-                ),
-              ),
-              IconButton(
-                onPressed: currentReportIndex != null && currentReportIndex! < labReports.length - 1
-                    ? _nextReport
-                    : null,
-                icon: Icon(
-                  Icons.arrow_forward_ios,
-                  size: screenWidth * 0.04,
-                  color: currentReportIndex != null && currentReportIndex! < labReports.length - 1
-                      ? Colors.green
-                      : Colors.grey,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReportHeader(double screenWidth, double screenHeight) {
-    return Column(
-      children: [
-        Center(
-          child: Text(
-            selectedReport['hospitalId'] != null 
-                ? "Hospital #${selectedReport['hospitalId']}" 
-                : "Lab Report",
-            style: TextStyle(
-              color: Colors.green,
-              fontSize: screenWidth * 0.055,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        
-        if (selectedReport['department'] != null) ...[
-          Center(
-            child: Text(
-              selectedReport['department'].toString().toUpperCase(),
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: screenWidth * 0.035,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-        
-        Divider(
-          indent: screenWidth * 0.075,
-          endIndent: screenWidth * 0.075,
-          color: Colors.grey,
-          thickness: screenWidth * 0.0025,
-        ),
-        SizedBox(height: screenHeight * 0.0125),
-        
-        Center(
-          child: Text(
-            "Pathology Laboratory Report",
-            style: TextStyle(
-              fontSize: screenWidth * 0.05,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-        SizedBox(height: screenHeight * 0.01875),
-      ],
-    );
-  }
-
-  Widget _buildReportDetails(double screenWidth, double screenHeight) {
-    final isSmallScreen = screenWidth < 600;
-    
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (selectedReport['doctorId'] != null)
-                _buildDetailRow(
-                  "Doctor ID:", 
-                  "DR${selectedReport['doctorId'].toString().padLeft(3, '0')}",
-                  screenWidth,
-                  screenHeight
-                ),
-              if (selectedReport['department'] != null)
-                _buildDetailRow(
-                  "Department:", 
-                  selectedReport['department'].toString().toUpperCase(),
-                  screenWidth,
-                  screenHeight
-                ),
-              if (selectedReport['testName'] != null)
-                _buildDetailRow(
-                  "Test Name:", 
-                  selectedReport['testName'],
-                  screenWidth,
-                  screenHeight
-                ),
-              _buildDetailRow(
-                "Report ID:", 
-                "#${selectedReport['id'] ?? ''}",
-                screenWidth,
-                screenHeight
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: isSmallScreen ? 10 : 20),
-        
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _buildDetailRow(
-                "Collected on:", 
-                _formatDate(selectedReport['createdAt']),
-                screenWidth,
-                screenHeight
-              ),
-              _buildDetailRow(
-                "Reported on:", 
-                _formatDate(selectedReport['updatedAt']),
-                screenWidth,
-                screenHeight
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    "Status:",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: screenWidth * 0.035,
-                    ),
-                  ),
-                  SizedBox(width: screenWidth * 0.0125),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.02,
-                      vertical: screenHeight * 0.005,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(selectedReport['status'] ?? '').withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                      border: Border.all(
-                        color: _getStatusColor(selectedReport['status'] ?? ''),
-                        width: screenWidth * 0.0025,
-                      ),
-                    ),
-                    child: Text(
-                      selectedReport['status']?.toString().toUpperCase() ?? '',
-                      style: TextStyle(
-                        color: _getStatusColor(selectedReport['status'] ?? ''),
-                        fontSize: screenWidth * 0.032,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPatientInfo(double screenWidth, double screenHeight) {
-    return Column(
-      children: [
-        SizedBox(height: screenHeight * 0.01875),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            borderRadius: BorderRadius.circular(screenWidth * 0.025),
-            border: Border.all(
-              color: Colors.green,
-              width: screenWidth * 0.0025,
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(screenWidth * 0.02),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Patient Information",
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: screenWidth * 0.035,
-                  ),
-                ),
-                SizedBox(height: screenHeight * 0.005),
-                Wrap(
-                  spacing: screenWidth * 0.025,
-                  runSpacing: screenHeight * 0.005,
-                  children: [
-                    if (selectedReport['patientId'] != null &&
-                        selectedReport['patientId'].toString().isNotEmpty)
-                      _buildPatientInfoWrap(
-                        "Patient ID:", 
-                        "PT${selectedReport['patientId'].toString().padLeft(3, '0')}",
-                        screenWidth,
-                        screenHeight
-                      ),
-                    if (selectedReport['testName'] != null &&
-                        selectedReport['testName'].toString().isNotEmpty)
-                      _buildPatientInfoWrap(
-                        "Test Name:", 
-                        selectedReport['testName'].toString(),
-                        screenWidth,
-                        screenHeight
-                      ),
-                    if (selectedReport['department'] != null &&
-                        selectedReport['department'].toString().isNotEmpty)
-                      _buildPatientInfoWrap(
-                        "Department:", 
-                        selectedReport['department'].toString().toUpperCase(),
-                        screenWidth,
-                        screenHeight
-                      ),
-                    if (selectedReport['status'] != null &&
-                        selectedReport['status'].toString().isNotEmpty)
-                      _buildPatientInfoWrap(
-                        "Status:", 
-                        selectedReport['status'].toString().toUpperCase(),
-                        screenWidth,
-                        screenHeight
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: screenHeight * 0.0125),
-      ],
-    );
+  String _getMonthName(int month) {
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    return months[month - 1];
   }
 }
