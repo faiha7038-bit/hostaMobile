@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hosta/common/device.dart';
 import 'package:hosta/common/top_snackbar.dart';
 import 'package:hosta/firebase_msg.dart';
 import 'package:hosta/presentation/widgets/bottomnav.dart';
@@ -8,6 +9,9 @@ import 'package:hosta/services/api_service.dart';
 import 'package:hosta/services/socket-service.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+
+
 
 class OtpVerification extends ConsumerStatefulWidget {
   final String phone;
@@ -105,13 +109,23 @@ class _OtpVerificationState extends ConsumerState<OtpVerification> {
       otpError = null;
     });
 
+
+final deviceId = await getDeviceId();
+
+
     try {
       String? token = await FirebaseMsg().token;
 
-      final response = await widget.apiService.otpUser({
+  final deviceInfo = {
+  "deviceId": deviceId,
+  "fcmToken": token,
+  "platform": Platform.isAndroid ? "android" : "ios",
+};
+
+ final response = await widget.apiService.otpUser({
         "phone": cleanPhone,
         "otp": otp,
-        "fcmToken": token,
+        "fcmToken": token != null ? deviceInfo : null,
       });
 
       if (response.statusCode == 200 || response.statusCode == 201) {

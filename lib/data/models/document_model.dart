@@ -100,5 +100,37 @@ class Document {
       type: type ?? this.type,
       isActive: isActive ?? this.isActive,
     );
+    
   }
+  
+}
+class DocumentResponse {
+  final List<Document> documents;
+  final int totalItems;
+  final int totalPages;
+  final int currentPage;
+  final int limit;
+
+  DocumentResponse({
+    required this.documents,
+    required this.totalItems,
+    required this.totalPages,
+    required this.currentPage,
+    required this.limit,
+  });
+
+factory DocumentResponse.fromJson(Map<String, dynamic> json) {
+  final List<dynamic> data = json['data'] ?? [];
+  final Map<String, dynamic> pagination = json['pagination'] ?? {};
+
+  return DocumentResponse(
+    documents: data
+        .map((e) => Document.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    totalItems: pagination['totalItems'] ?? 0,
+    totalPages: pagination['totalPages'] ?? 1,
+    currentPage: pagination['currentPage'] ?? 1,
+    limit: pagination['limit'] ?? 10,
+  );
+}
 }

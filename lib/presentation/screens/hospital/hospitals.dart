@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:hosta/presentation/screens/doctor/doctors.dart';
 import 'package:hosta/presentation/screens/hospital/hospital_details.dart';
@@ -750,7 +751,13 @@ class _HospitalsState extends State<Hospitals> {
     double? Function(double, double) calculateDistance,
     bool Function(Map<String, dynamic>) isOpenNow,
   ) {
-    final imageUrl = hospital["image"]?["imageUrl"] ?? "";
+  const s3BaseUrl =
+     "https://hostahealthcare.s3.eu-north-1.amazonaws.com/";
+
+
+final imageUrl = hospital["imageUrl"] != null
+    ? "$s3BaseUrl${hospital["imageUrl"]}"
+    : "";
     final name = hospital["name"] ?? "Unknown Hospital";
 
     String getAddress(dynamic addr) {
@@ -795,20 +802,28 @@ class _HospitalsState extends State<Hospitals> {
             borderRadius: BorderRadius.vertical(
                 top: Radius.circular(cardRadius)),
             child: imageUrl.isNotEmpty
-                ? Image.network(
-                    imageUrl,
-                    height: imageHeight,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'images/hospital.jpg',
-                        height: imageHeight,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                      );
-                    },
-                  )
+                ?
+     CachedNetworkImage(
+  imageUrl: imageUrl,
+  height: imageHeight,
+  width: double.infinity,
+  fit: BoxFit.cover,
+  placeholder: (context, url) => const Center(
+    child: CircularProgressIndicator(),
+  ),
+  errorWidget: (context, url, error) => Container(
+    height: imageHeight,
+    width: double.infinity,
+    color: Colors.grey.shade200,
+    child: const Center(
+      child: Icon(
+        Icons.local_hospital,
+        size: 60,
+        color: Colors.grey,
+      ),
+    ),
+  ),
+)
                 : Image.asset(
                     'images/hospital.jpg',
                     height: imageHeight,

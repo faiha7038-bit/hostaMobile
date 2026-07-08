@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/providers/specialities-provider.dart';
@@ -47,6 +48,30 @@ class _SpecialitesState extends ConsumerState<Specialties> {
     SocketService().removeListener("SPECIALITY_UPDATED", _onSpecialityEvent);
     SocketService().removeListener("SPECIALITY_DELETED", _onSpecialityEvent);
     super.dispose();
+  }
+
+  String toTitleCase(String text) {
+    if (text.trim().isEmpty) return text;
+
+    return text.trim().split(' ').map((word) {
+      if (word.isEmpty) return word;
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    }).join(' ');
+  }
+
+  List<Map<String, dynamic>> removeDuplicateSpecialties(
+      List<Map<String, dynamic>> specialties) {
+    final Map<String, Map<String, dynamic>> unique = {};
+
+    for (final specialty in specialties) {
+      final name = (specialty['name'] ?? '').toString().trim().toLowerCase();
+
+      if (!unique.containsKey(name)) {
+        unique[name] = specialty;
+      }
+    }
+
+    return unique.values.toList();
   }
 
   void _refreshSpecialties() {
@@ -112,7 +137,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
     final double hospitalAvatarSize = _clamp(screenWidth * 0.15, 40, 80);
     final double hospitalNameFontSize = _clamp(screenWidth * 0.04, 14, 22);
     final double hospitalDetailFontSize = _clamp(screenWidth * 0.0325, 11, 18);
-    final double hospitalDetailSmallFontSize = _clamp(screenWidth * 0.03, 10, 16);
+    final double hospitalDetailSmallFontSize =
+        _clamp(screenWidth * 0.03, 10, 16);
     final double hospitalIconSize = _clamp(screenWidth * 0.035, 12, 20);
     final double arrowIconSize = _clamp(screenWidth * 0.04, 14, 22);
 
@@ -181,17 +207,24 @@ class _SpecialitesState extends ConsumerState<Specialties> {
             // ===== Grid =====
             specialtiesAsync.when(
               data: (specialties) {
-                if (specialties.isEmpty) {
+                final uniqueSpecialties = removeDuplicateSpecialties(
+                    List<Map<String, dynamic>>.from(specialties));
+
+                if (uniqueSpecialties.isEmpty) {
                   return Expanded(
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.search_off, size: emptyIconSize, color: Colors.grey),
+                          Icon(Icons.search_off,
+                              size: emptyIconSize, color: Colors.grey),
                           SizedBox(height: _clamp(screenHeight * 0.02, 12, 24)),
                           Text(
-                            searchQuery.isEmpty ? "No specialties found" : "No matching specialties",
-                            style: TextStyle(fontSize: emptyTextSize, color: Colors.grey),
+                            searchQuery.isEmpty
+                                ? "No specialties found"
+                                : "No matching specialties",
+                            style: TextStyle(
+                                fontSize: emptyTextSize, color: Colors.grey),
                           ),
                         ],
                       ),
@@ -215,20 +248,33 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                           crossAxisSpacing: gridCrossSpacing,
                           childAspectRatio: 1.1,
                         ),
-                        itemCount: specialties.length,
+                        itemCount: uniqueSpecialties.length,
                         itemBuilder: (context, index) {
-                          final specialty = specialties[index];
-                          final name = specialty['name']?.toString() ?? 'Unknown';
-                          final picture = specialty['picture'] ?? {};
-                          final imageUrl = picture['imageUrl']?.toString() ?? '';
+                          final specialty = uniqueSpecialties[index];
+                          final name =
+                              specialty['name']?.toString() ?? 'Unknown';
+                          const s3BaseUrl =
+                              "https://hostahealthcare.s3.eu-north-1.amazonaws.com/";
+
+                          String imageUrl =
+                              specialty["imageUrl"]?.toString().trim() ?? "";
+
+                          if (imageUrl.isNotEmpty &&
+                              imageUrl != "null" &&
+                              !imageUrl.startsWith("http")) {
+                            imageUrl = "$s3BaseUrl$imageUrl";
+                          }
 
                           return GestureDetector(
                             onTap: () async {
-                              final originalSpecialtyName = specialty['name']?.toString() ?? '';
+                              final originalSpecialtyName =
+                                  specialty['name']?.toString() ?? '';
                               try {
-                                await hospitalOps.fetchHospitalsForSpecialty(originalSpecialtyName);
+                                await hospitalOps.fetchHospitalsForSpecialty(
+                                    originalSpecialtyName);
                                 if (mounted) {
-                                  _showHospitalPopup(context, originalSpecialtyName);
+                                  _showHospitalPopup(
+                                      context, originalSpecialtyName);
                                 }
                               } catch (e) {
                                 // error handling
@@ -358,32 +404,21 @@ class _SpecialitesState extends ConsumerState<Specialties> {
               height: avatarSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey[300]!, width: avatarBorderWidth),
+                border: Border.all(
+                    color: Colors.grey[300]!, width: avatarBorderWidth),
               ),
               child: ClipOval(
-                child: Image.network(
-                  imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
                   fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
-                        color: Colors.green,
-                        strokeWidth: progressValueStroke,
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.medical_services,
-                      size: specialtyIconSize,
-                      color: Colors.green,
-                    );
-                  },
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  errorWidget: (context, url, error) => Icon(
+                    Icons.medical_services,
+                    size: specialtyIconSize,
+                    color: Colors.green,
+                  ),
                 ),
               ),
             )
@@ -394,7 +429,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
               decoration: BoxDecoration(
                 color: Colors.green[50],
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.grey[300]!, width: avatarBorderWidth),
+                border: Border.all(
+                    color: Colors.grey[300]!, width: avatarBorderWidth),
               ),
               child: Icon(
                 Icons.medical_services,
@@ -402,13 +438,12 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                 color: Colors.green,
               ),
             ),
-
           SizedBox(height: _clamp(screenHeight * 0.01, 4, 12)),
-
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: _clamp(screenWidth * 0.015, 4, 10)),
+            padding: EdgeInsets.symmetric(
+                horizontal: _clamp(screenWidth * 0.015, 4, 10)),
             child: Text(
-              name[0].toUpperCase() + name.substring(1),
+              toTitleCase(name),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: specialtyNameFontSize,
@@ -446,7 +481,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(bottomSheetRadius)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(bottomSheetRadius)),
       ),
       builder: (context) {
         return DraggableScrollableSheet(
@@ -492,11 +528,14 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                     ),
                   ),
 
-                  Divider(height: _clamp(screenHeight * 0.001, 0.5, 2), thickness: dividerThickness),
+                  Divider(
+                      height: _clamp(screenHeight * 0.001, 0.5, 2),
+                      thickness: dividerThickness),
 
                   // --- Hospital Count ---
                   Padding(
-                    padding: EdgeInsets.symmetric(vertical: _clamp(screenHeight * 0.015, 8, 20)),
+                    padding: EdgeInsets.symmetric(
+                        vertical: _clamp(screenHeight * 0.015, 8, 20)),
                     child: Text(
                       "Found ${hospitalsList.length} hospitals",
                       style: TextStyle(
@@ -510,7 +549,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                   // --- Loading Indicator ---
                   if (isLoading)
                     Padding(
-                      padding: EdgeInsets.all(_clamp(screenWidth * 0.04, 12, 24)),
+                      padding:
+                          EdgeInsets.all(_clamp(screenWidth * 0.04, 12, 24)),
                       child: CircularProgressIndicator(
                         color: Colors.green,
                         strokeWidth: loadingStrokeWidth,
@@ -528,7 +568,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
                               size: emptyIconSize,
                               color: Colors.grey,
                             ),
-                            SizedBox(height: _clamp(screenHeight * 0.02, 12, 24)),
+                            SizedBox(
+                                height: _clamp(screenHeight * 0.02, 12, 24)),
                             Text(
                               "No hospitals found",
                               style: TextStyle(
@@ -607,7 +648,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
       imageUrl = image;
     }
 
-    final hospitalName = hospital['name']?.toString() ?? 'Hospital ${hospital['hospitalId']}';
+    final hospitalName =
+        hospital['name']?.toString() ?? 'Hospital ${hospital['hospitalId']}';
 
     String addressText = '';
     final address = hospital['address'];
@@ -636,7 +678,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
       }
     }
 
-    final specialtyDoctorsCount = hospitalOps.getDoctorsCountForSpecialty(hospital, specialtyName);
+    final specialtyDoctorsCount =
+        hospitalOps.getDoctorsCountForSpecialty(hospital, specialtyName);
     final totalDoctorsCount = hospitalOps.getTotalDoctorsCount(hospital);
 
     return Card(
@@ -645,11 +688,13 @@ class _SpecialitesState extends ConsumerState<Specialties> {
         vertical: cardMarginV,
       ),
       elevation: cardElevation,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(cardRadius)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(cardRadius)),
       child: InkWell(
         onTap: () {
           if (hospitalId.isNotEmpty) {
-            hospitalOps.navigateToDoctorsPage(context, hospitalId, specialtyName, hospitalName);
+            hospitalOps.navigateToDoctorsPage(
+                context, hospitalId, specialtyName, hospitalName);
           } else {
             _showErrorSnackbar("Hospital ID not available");
           }
@@ -660,7 +705,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHospitalAvatar(imageUrl, screenWidth, avatarSize, avatarBorderWidth),
+              _buildHospitalAvatar(
+                  imageUrl, screenWidth, avatarSize, avatarBorderWidth),
               SizedBox(width: _clamp(screenWidth * 0.03, 6, 16)),
               Expanded(
                 child: Column(
@@ -790,7 +836,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
         height: avatarSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.grey[300]!, width: avatarBorderWidth),
+          border:
+              Border.all(color: Colors.grey[300]!, width: avatarBorderWidth),
         ),
         child: ClipOval(
           child: Image.network(
@@ -830,7 +877,8 @@ class _SpecialitesState extends ConsumerState<Specialties> {
         decoration: BoxDecoration(
           color: Colors.green[100],
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.grey[300]!, width: avatarBorderWidth),
+          border:
+              Border.all(color: Colors.grey[300]!, width: avatarBorderWidth),
         ),
         child: Center(
           child: Icon(

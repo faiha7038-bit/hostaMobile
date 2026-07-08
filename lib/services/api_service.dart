@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
-import 'package:hosta/data/models/document_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -666,7 +665,7 @@ class ApiService {
     }
 
     // ✅ pagination params
-    queryParams['page'] = page;
+    queryParams['page']  = page;
     queryParams['limit'] = limit;
 
     return await dio.get('/api/doctor', queryParameters: queryParams);
@@ -859,35 +858,64 @@ class ApiService {
   Future<Response> getPatients({
     required int userId,
     int? hospitalId,
+    
   }) async {
+    
     return await dio.get(
       '/api/patients',
       queryParameters: {
+        
         'userId': userId,
         if (hospitalId != null) 'hospitalId': hospitalId,
+        
       },
+      
     );
+    
   }
 
 //..........Documents...................
-  Future<List<Document>> getDocuments({required int patientId}) async {
-    final response = await dio.get(
-      '/api/documents',
-      queryParameters: {
-        'patientId': patientId,
-      },
-    );
+Future<Response> getDocuments({
+  int? userId,
+  int? patientId,
+  String? date,
+  String? searchQuery,
+  int page = 1,
+  int limit = 10,
+}) async {
+  final Map<String, dynamic> queryParams = {};
 
-    final data = response.data['data'];
+  if (userId != null) queryParams['userId'] = userId;
+  if (patientId != null) queryParams['patientId'] = patientId;
+  if (date != null) queryParams['date'] = date;
 
-    if (data is! List) return [];
-
-    return data.map((e) => Document.fromJson(e)).toList();
+  if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+    queryParams['search_query'] = searchQuery;
   }
 
-  Future<Response> createDocument(Map<String, dynamic> data) async {
-    return await dio.post('/api/documents', data: data);
-  }
+  queryParams['page'] = page;
+  queryParams['limit'] = limit;
+
+  print(queryParams);
+
+  return dio.get(
+    '/api/documents',
+    queryParameters: queryParams,
+  );
+}
+
+Future<Response> createDocument({
+  required int userId,
+  required Map<String, dynamic> data,
+}) async {
+  return await dio.post(
+    '/api/documents',
+    queryParameters: {
+      'userId': userId,
+    },
+    data: data,
+  );
+}
 
   Future<Response> updateDocument(String id, Map<String, dynamic> data) {
     return dio.put('/api/documents/$id', data: data);
@@ -917,7 +945,8 @@ class ApiService {
   }
 
 //logout
-  Future<Response> logout() async {
-    return await dio.post('/api/users/logout');
+Future<Response> logout(id, data) async {
+    return await dio.post('/api/users/logout/$id', data: data);
   }
 }
+

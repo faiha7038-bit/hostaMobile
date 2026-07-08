@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:hosta/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,7 +21,7 @@ class _LabReportState extends State<LabReport> {
 
   static const String S3_BASE_URL = 
       "https://hostahealthcare.s3.eu-north-1.amazonaws.com";
-
+      
   @override
   void initState() {
     super.initState();
@@ -719,10 +717,13 @@ class _LabReportState extends State<LabReport> {
                           child: Text(
                             "Retry",
                             style: TextStyle(
+                              color: Colors.white,
                               fontSize: isSmallScreen ? 14 : 16,
                             ),
                           ),
                         ),
+
+                        
                       ],
                     ),
                   )

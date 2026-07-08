@@ -373,10 +373,13 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
         final double tabUnselectedSize = _clamp(screenWidth * 0.035, 11, 18);
         final double spacing = _clamp(screenHeight * 0.01, 4, 16);
 
-        final imageUrl = hospitalData["image"] != null 
-            ? (hospitalData["image"]["imageUrl"] ?? "")
-            : "";
+  const s3BaseUrl =
+    "https://hostahealthcare.s3.eu-north-1.amazonaws.com/";
 
+final imageUrl = hospitalData["imageUrl"] != null &&
+        hospitalData["imageUrl"].toString().isNotEmpty
+    ? "$s3BaseUrl${hospitalData["imageUrl"]}"
+    : "";
         return DefaultTabController(
           length: 5,
           child: Scaffold(
@@ -396,21 +399,36 @@ class _HospitalDetailsPageState extends ConsumerState<HospitalDetailsPage> {
                                 height: imageHeight,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Image.asset(
-                                    'images/hospital.jpg',
-                                    height: imageHeight,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  );
-                                },
+errorBuilder: (context, error, stackTrace) {
+  print("Image Error: $error");
+  print("Image URL: $imageUrl");
+
+  return Container(
+    height: imageHeight,
+    width: double.infinity,
+    color: Colors.grey.shade200,
+    child: const Center(
+      child: Icon(
+        Icons.local_hospital,
+        size: 70,
+        color: Colors.grey,
+      ),
+    ),
+  );
+},
                               )
-                            : Image.asset(
-                                'images/hospital.jpg',
-                                height: imageHeight,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
+                          : Container(
+    height: imageHeight,
+    width: double.infinity,
+    color: Colors.green.shade50,
+    child: const Center(
+      child: Icon(
+        Icons.local_hospital,
+        size: 70,
+        color: Colors.green,
+      ),
+    ),
+  ),
                       ),
                       Positioned(
                         top: topPadding,

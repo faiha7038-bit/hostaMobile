@@ -1,13 +1,34 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hosta/data/models/document_model.dart';
 import 'package:hosta/providers/document_provider.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
+// ---------- RESPONSIVE HELPERS ----------
+class Responsive {
+  static double screenWidth(BuildContext context) =>
+      MediaQuery.of(context).size.width;
+  static double screenHeight(BuildContext context) =>
+      MediaQuery.of(context).size.height;
+
+  // Scale factor relative to a design baseline (e.g., 375 width)
+  static double scaleW(BuildContext context, double size) =>
+      size * (screenWidth(context) / 375);
+  static double scaleH(BuildContext context, double size) =>
+      size * (screenHeight(context) / 812);
+
+  // For consistent spacing
+  static double spacing(BuildContext context) => scaleW(context, 8);
+  static double spacingL(BuildContext context) => scaleW(context, 16);
+  static double spacingXL(BuildContext context) => scaleW(context, 24);
+}
+
+// ---------- TAB WIDGET ----------
 class DocumentsTab extends ConsumerStatefulWidget {
   const DocumentsTab({Key? key}) : super(key: key);
 
@@ -18,13 +39,49 @@ class DocumentsTab extends ConsumerStatefulWidget {
 class _DocumentsTabState extends ConsumerState<DocumentsTab> {
   static const String s3BaseUrl =
       "https://hostahealthcare.s3.eu-north-1.amazonaws.com/";
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _isFetchingMore = false;
+  String _searchQuery = '';
+  Timer? _debounce;
+  String? _selectedDate;
+  int? _selectedPatientId;
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       ref.read(documentProvider.notifier).init();
+_scrollController.addListener(() async {
+  if (_isFetchingMore) return;
+ 
+  if (_scrollController.position.pixels >=
+      _scrollController.position.maxScrollExtent - 150) {
+    final state = ref.read(documentProvider);
+    if (state.currentPage >= state.totalPages) return;
+    if (state.isLoading) return;
+
+    _isFetchingMore = true;
+    await ref.read(documentProvider.notifier).loadMore();
+    _isFetchingMore = false;
+  }
+});
     });
+    Future.microtask(() {
+      ref.read(documentProvider.notifier).fetchDocuments(
+        patientId: _selectedPatientId,
+        searchQuery: _searchQuery,
+        date: _selectedDate,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+        _scrollController.dispose();
+    super.dispose();
   }
 
   String getS3Url(String? key) {
@@ -44,7 +101,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
     final fileName = doc.fileName ?? '';
     const imageExts = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
-    if (imageExts.any((ext) => fileName.toLowerCase().endsWith(ext))) return true;
+    if (imageExts.any((ext) => fileName.toLowerCase().endsWith(ext)))
+      return true;
 
     final url = doc.imageUrl ?? '';
     if (url.isNotEmpty) {
@@ -86,17 +144,22 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
         content: Text(message),
         backgroundColor: isError ? Colors.red : Colors.green,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Responsive.scaleW(context, 10))),
       ),
     );
   }
 
-  // ==================== UPLOAD MODAL ====================
   void _openUploadModal() {
     final TextEditingController nameController = TextEditingController();
+    final patients = ref.read(documentProvider).patients;
+
     String selectedDate = '';
     File? selectedFile;
     bool isLoading = false;
+
+    int? selectedPatientId =
+        ref.read(documentProvider).currentPatientId;
 
     showDialog(
       context: context,
@@ -109,7 +172,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius:
+                    BorderRadius.circular(Responsive.scaleW(context, 20)),
               ),
               child: Container(
                 width: isTablet ? size.width * 0.5 : size.width * 0.9,
@@ -118,10 +182,11 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                 ),
                 child: SingleChildScrollView(
                   padding: EdgeInsets.only(
-                    left: 24,
-                    right: 24,
-                    top: 24,
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                    left: Responsive.spacingXL(context),
+                    right: Responsive.spacingXL(context),
+                    top: Responsive.spacingXL(context),
+                    bottom: MediaQuery.of(context).viewInsets.bottom +
+                        Responsive.spacingXL(context),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -129,33 +194,35 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: EdgeInsets.all(Responsive.spacing(context) *
+                                1.25),
                             decoration: BoxDecoration(
                               color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                  Responsive.scaleW(context, 12)),
                             ),
                             child: Icon(
                               Icons.upload_file,
                               color: Colors.green.shade700,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(
+                              width: Responsive.spacingL(context) * 0.75),
                           Expanded(
                             child: Text(
                               'Upload Document',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: Responsive.scaleW(context, 20),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey.shade800,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
 
-                      /// Name Field
+                      SizedBox(height: Responsive.spacingL(context) * 1.25),
+
                       TextField(
                         controller: nameController,
                         decoration: InputDecoration(
@@ -163,15 +230,40 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           hintText: 'Enter document name',
                           prefixIcon: const Icon(Icons.description),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                                Responsive.scaleW(context, 12)),
                           ),
                         ),
                         onChanged: (_) => setModalState(() {}),
                       ),
 
-                      const SizedBox(height: 16),
+                      SizedBox(height: Responsive.spacingL(context)),
 
-                      /// Date Picker
+                      DropdownButtonFormField<int?>(
+                        value: selectedPatientId,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: "Patient",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(
+                                Responsive.scaleW(context, 12)),
+                          ),
+                        ),
+                        items: patients.map<DropdownMenuItem<int?>>((patient) {
+                          return DropdownMenuItem<int?>(
+                            value: patient['id'],
+                            child: Text(patient['name']),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setModalState(() {
+                            selectedPatientId = value;
+                          });
+                        },
+                      ),
+
+                      SizedBox(height: Responsive.spacingL(context)),
+
                       GestureDetector(
                         onTap: () async {
                           final date = await showDatePicker(
@@ -189,21 +281,24 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(Responsive.spacingL(context)),
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                                Responsive.scaleW(context, 12)),
                           ),
                           child: Row(
                             children: [
                               const Icon(Icons.calendar_today),
-                              const SizedBox(width: 12),
+                              SizedBox(
+                                  width: Responsive.spacingL(context) * 0.75),
                               Expanded(
                                 child: Text(
                                   selectedDate.isEmpty
                                       ? 'Select Date'
-                                      : selectedDate,
-                                  overflow: TextOverflow.ellipsis,
+                                      : DateFormat('dd/MM/yyyy').format(
+                                          DateTime.parse(selectedDate),
+                                        ),
                                 ),
                               ),
                             ],
@@ -211,29 +306,30 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                         ),
                       ),
 
-                      const SizedBox(height: 16),
+                      SizedBox(height: Responsive.spacingL(context)),
 
-                      /// File Picker
                       GestureDetector(
                         onTap: () async {
-                          final result = await FilePicker.platform.pickFiles(
+                          final result =
+                              await FilePicker.platform.pickFiles(
                             type: FileType.custom,
                             allowedExtensions: [
                               'png',
                               'jpg',
                               'jpeg',
                               'webp',
-                              'pdf'
+                              'pdf',
                             ],
                           );
 
                           if (result != null) {
                             final file = File(result.files.single.path!);
+
                             final size = await file.length();
 
                             if (size > 10 * 1024 * 1024) {
                               _showToast(
-                                'File size must be < 10MB',
+                                'File size must be less than 10MB',
                                 isError: true,
                               );
                               return;
@@ -243,15 +339,19 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                               selectedFile = file;
                             });
 
-                            ref.read(documentProvider.notifier).setFile(file);
+                            ref
+                                .read(documentProvider.notifier)
+                                .setFile(file);
                           }
                         },
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(Responsive.spacingL(context) *
+                              1.25),
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                                Responsive.scaleW(context, 12)),
                           ),
                           child: Column(
                             children: [
@@ -259,40 +359,33 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                 selectedFile != null
                                     ? Icons.check_circle
                                     : Icons.cloud_upload,
-                                size: 40,
+                                size: Responsive.scaleW(context, 40),
                                 color: selectedFile != null
                                     ? Colors.green
                                     : Colors.grey,
                               ),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                width: double.infinity,
-                                child: Text(
-                                  selectedFile != null
-                                      ? selectedFile!.path.split('/').last
-                                      : 'Tap to select Image or PDF',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                ),
+                              SizedBox(height: Responsive.spacing(context)),
+                              Text(
+                                selectedFile != null
+                                    ? selectedFile!.path.split('/').last
+                                    : 'Tap to select Image or PDF',
+                                textAlign: TextAlign.center,
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: Responsive.spacing(context) * 0.5),
                               Text(
                                 'Allowed: PNG, JPG, JPEG, WEBP, PDF',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: Responsive.scaleW(context, 11),
                                   color: Colors.grey.shade500,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: Responsive.spacingXL(context)),
 
-                      /// Buttons
                       Row(
                         children: [
                           Expanded(
@@ -300,15 +393,18 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                               onPressed: isLoading
                                   ? null
                                   : () => Navigator.pop(context),
-                              child: const Text('Cancel'),
+                              child: const Text("Cancel"),
                             ),
                           ),
-                          const SizedBox(width: 12),
+
+                          SizedBox(width: Responsive.spacingL(context) * 0.75),
+
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: (nameController.text.isEmpty ||
+                              onPressed: (nameController.text.trim().isEmpty ||
                                       selectedDate.isEmpty ||
                                       selectedFile == null ||
+                                      selectedPatientId == null ||
                                       isLoading)
                                   ? null
                                   : () async {
@@ -317,71 +413,59 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                       });
 
                                       try {
-                                        final patientId = ref
-                                            .read(documentProvider)
-                                            .currentPatientId;
-
-                                        if (patientId == null) {
-                                          _showToast(
-                                            'Please ensure consultation is completed before uploading',
-                                            isError: true,
-                                          );
-                                          setModalState(() {
-                                            isLoading = false;
-                                          });
-                                          return;
-                                        }
-
-                                        // Step 1: Create document metadata
                                         final docId = await ref
-                                            .read(documentProvider.notifier)
+                                            .read(
+                                                documentProvider.notifier)
                                             .createDocument(
-                                              name: nameController.text.trim(),
+                                              name: nameController.text
+                                                  .trim(),
                                               date: selectedDate,
-                                              patientId: patientId,
+                                              patientId:
+                                                  selectedPatientId!,
                                             );
 
                                         if (docId == null) {
                                           throw Exception(
-                                              'Failed to create document');
+                                              "Failed to create document");
                                         }
 
-                                        // Step 2: Upload file for the document
                                         await ref
-                                            .read(documentProvider.notifier)
+                                            .read(
+                                                documentProvider.notifier)
                                             .uploadFileForDocument(
                                               docId: docId,
                                               file: selectedFile!,
                                             );
 
                                         if (mounted) {
-                                          _showToast(
-                                              'Document uploaded successfully!');
                                           Navigator.pop(context);
+
+                                          _showToast(
+                                              "Document uploaded successfully");
+
                                           await _fetchDocuments();
                                         }
                                       } catch (e) {
-                                        if (mounted) {
-                                          _showToast(
-                                            'Failed to upload document: ${e.toString()}',
-                                            isError: true,
-                                          );
-                                        }
                                         setModalState(() {
                                           isLoading = false;
                                         });
+
+                                        _showToast(
+                                          e.toString(),
+                                          isError: true,
+                                        );
                                       }
                                     },
                               child: isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
+                                  ? SizedBox(
+                                      width: Responsive.scaleW(context, 20),
+                                      height: Responsive.scaleW(context, 20),
+                                      child: const CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text('Upload'),
+                                  : const Text("Upload"),
                             ),
                           ),
                         ],
@@ -416,7 +500,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius:
+                    BorderRadius.circular(Responsive.scaleW(context, 20)),
               ),
               child: Container(
                 width: isTablet ? size.width * 0.5 : size.width * 0.9,
@@ -425,10 +510,11 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                 ),
                 child: SingleChildScrollView(
                   padding: EdgeInsets.only(
-                    left: 24,
-                    right: 24,
-                    top: 24,
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                    left: Responsive.spacingXL(context),
+                    right: Responsive.spacingXL(context),
+                    top: Responsive.spacingXL(context),
+                    bottom: MediaQuery.of(context).viewInsets.bottom +
+                        Responsive.spacingXL(context),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -436,22 +522,25 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: EdgeInsets.all(Responsive.spacing(context) *
+                                1.25),
                             decoration: BoxDecoration(
                               color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                  Responsive.scaleW(context, 12)),
                             ),
                             child: Icon(
                               Icons.edit,
                               color: Colors.blue.shade700,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(
+                              width: Responsive.spacingL(context) * 0.75),
                           Expanded(
                             child: Text(
                               'Edit Document',
                               style: TextStyle(
-                                fontSize: 20,
+                                fontSize: Responsive.scaleW(context, 20),
                                 fontWeight: FontWeight.bold,
                                 color: Colors.grey.shade800,
                               ),
@@ -460,8 +549,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-
+                      SizedBox(height: Responsive.spacingL(context) * 1.25),
                       TextField(
                         controller: nameController,
                         decoration: InputDecoration(
@@ -469,14 +557,13 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           hintText: 'Enter document name',
                           prefixIcon: const Icon(Icons.description),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                                Responsive.scaleW(context, 12)),
                           ),
                         ),
                         onChanged: (_) => setModalState(() {}),
                       ),
-
-                      const SizedBox(height: 16),
-
+                      SizedBox(height: Responsive.spacingL(context)),
                       GestureDetector(
                         onTap: () async {
                           final date = await showDatePicker(
@@ -496,15 +583,17 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(Responsive.spacingL(context)),
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                                Responsive.scaleW(context, 12)),
                           ),
                           child: Row(
                             children: [
                               const Icon(Icons.calendar_today),
-                              const SizedBox(width: 12),
+                              SizedBox(
+                                  width: Responsive.spacingL(context) * 0.75),
                               Expanded(
                                 child: Text(
                                   selectedDate.isEmpty
@@ -517,9 +606,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 16),
-
+                      SizedBox(height: Responsive.spacingL(context)),
                       GestureDetector(
                         onTap: () async {
                           final result = await FilePicker.platform.pickFiles(
@@ -554,10 +641,12 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                         },
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(20),
+                          padding: EdgeInsets.all(Responsive.spacingL(context) *
+                              1.25),
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(
+                                Responsive.scaleW(context, 12)),
                           ),
                           child: Column(
                             children: [
@@ -565,12 +654,12 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                 editFile != null
                                     ? Icons.check_circle
                                     : Icons.cloud_upload,
-                                size: 40,
+                                size: Responsive.scaleW(context, 40),
                                 color: editFile != null
                                     ? Colors.green
                                     : Colors.grey,
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: Responsive.spacing(context)),
                               SizedBox(
                                 width: double.infinity,
                                 child: Text(
@@ -582,11 +671,11 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                   textAlign: TextAlign.center,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: Responsive.spacing(context) * 0.5),
                               Text(
                                 'Allowed: PNG, JPG, JPEG, WEBP, PDF',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: Responsive.scaleW(context, 11),
                                   color: Colors.grey.shade500,
                                 ),
                                 textAlign: TextAlign.center,
@@ -595,9 +684,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 24),
-
+                      SizedBox(height: Responsive.spacingXL(context)),
                       Row(
                         children: [
                           Expanded(
@@ -608,7 +695,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                               child: const Text('Cancel'),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: Responsive.spacingL(context) * 0.75),
                           Expanded(
                             child: ElevatedButton(
                               onPressed: (nameController.text.isEmpty ||
@@ -621,7 +708,6 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                       });
 
                                       try {
-                                        // Update document metadata
                                         await ref
                                             .read(documentProvider.notifier)
                                             .updateDocument(
@@ -630,7 +716,6 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                               date: selectedDate,
                                             );
 
-                                        // If a new file was selected, upload it
                                         if (editFile != null) {
                                           await ref
                                               .read(documentProvider.notifier)
@@ -660,10 +745,10 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                       }
                                     },
                               child: isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
+                                  ? SizedBox(
+                                      width: Responsive.scaleW(context, 20),
+                                      height: Responsive.scaleW(context, 20),
+                                      child: const CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: Colors.white,
                                       ),
@@ -689,51 +774,55 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     final hasFile = doc.imageUrl != null && doc.imageUrl!.isNotEmpty;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: EdgeInsets.symmetric(
+        horizontal: Responsive.spacingL(context),
+        vertical: Responsive.spacing(context) * 0.5,
+      ),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(Responsive.scaleW(context, 12)),
         side: BorderSide(color: Colors.grey.shade200),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(Responsive.scaleW(context, 12)),
         onTap: hasFile ? onTap : null,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(Responsive.spacingL(context) * 0.75),
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: Responsive.scaleW(context, 44),
+                height: Responsive.scaleW(context, 44),
                 decoration: BoxDecoration(
                   color: _getFileColor(doc),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(
+                      Responsive.scaleW(context, 10)),
                 ),
                 child: _getFileIcon(doc),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: Responsive.spacingL(context) * 0.75),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       doc.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: Responsive.scaleW(context, 14),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: Responsive.spacing(context) * 0.25),
                     Text(
                       doc.date.isNotEmpty
                           ? DateFormat('yyyy-MM-dd')
                               .format(DateTime.parse(doc.date))
                           : 'N/A',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: Responsive.scaleW(context, 12),
                         color: Colors.grey.shade600,
                       ),
                       maxLines: 1,
@@ -764,8 +853,9 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                     child: Row(
                       children: [
                         Icon(Icons.visibility,
-                            size: 18, color: hasFile ? null : Colors.grey),
-                        const SizedBox(width: 8),
+                            size: Responsive.scaleW(context, 18),
+                            color: hasFile ? null : Colors.grey),
+                        SizedBox(width: Responsive.spacing(context)),
                         Text('View',
                             style: TextStyle(
                                 color: hasFile ? null : Colors.grey)),
@@ -786,8 +876,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete_outline,
-                            size: 18, color: Colors.red),
+                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
                         SizedBox(width: 8),
                         Text('Delete', style: TextStyle(color: Colors.red)),
                       ],
@@ -810,18 +899,21 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+                Responsive.scaleW(context, 16))),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(Responsive.spacing(context)),
               decoration: BoxDecoration(
                 color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(
+                    Responsive.scaleW(context, 8)),
               ),
               child: Icon(Icons.delete_outline, color: Colors.red.shade700),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: Responsive.spacingL(context) * 0.75),
             Expanded(
               child: Text(
                 'Delete Document',
@@ -849,7 +941,8 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(
+                    Responsive.scaleW(context, 8)),
               ),
             ),
             child: const Text('Delete'),
@@ -870,7 +963,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
       }
     } catch (e) {
       if (mounted) {
-        _showToast('Failed to delete document', isError: true);
+       // _showToast('Failed to delete document', isError: true);
       }
     }
   }
@@ -889,35 +982,39 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     final isImg = _isImage(doc);
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+      insetPadding: EdgeInsets.symmetric(
+          horizontal: Responsive.scaleW(context, 10),
+          vertical: Responsive.scaleH(context, 20)),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(
+            Responsive.scaleW(context, 20)),
       ),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.95,
         height: MediaQuery.of(context).size.height * 0.9,
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(Responsive.spacingL(context)),
         child: Column(
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(Responsive.spacing(context)),
                   decoration: BoxDecoration(
                     color: _getFileColor(doc),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(
+                        Responsive.scaleW(context, 10)),
                   ),
                   child: _getFileIcon(doc),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: Responsive.spacingL(context) * 0.75),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         doc.name,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: Responsive.scaleW(context, 16),
                           fontWeight: FontWeight.bold,
                         ),
                         maxLines: 1,
@@ -929,7 +1026,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                                 .format(DateTime.parse(doc.date))
                             : 'N/A',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: Responsive.scaleW(context, 13),
                           color: Colors.grey.shade600,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -943,7 +1040,7 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                 ),
               ],
             ),
-            const Divider(height: 16),
+            Divider(height: Responsive.spacingL(context)),
             Expanded(
               child: fileUrl.isEmpty
                   ? const Center(child: Text('No file attached'))
@@ -954,69 +1051,53 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           canShowPaginationDialog: true,
                         )
                       : isImg
-                          ? InteractiveViewer(
-                              minScale: 0.5,
-                              maxScale: 4.0,
-                              child: Image.network(
-                                fileUrl,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.broken_image,
-                                          size: 64, color: Colors.grey),
-                                      SizedBox(height: 8),
-                                      Text('Unable to load image'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            )
+                          ? 
+                       InteractiveViewer(
+  minScale: 0.5,
+  maxScale: 4.0,
+  child: CachedNetworkImage(
+    imageUrl: fileUrl,
+    fit: BoxFit.contain,
+    placeholder: (context, url) =>
+        const Center(child: CircularProgressIndicator()),
+    errorWidget: (context, url, error) => const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.broken_image, size: 64, color: Colors.grey),
+        SizedBox(height: 8),
+        Text('Unable to load image'),
+      ],
+    ),
+  ),
+)
                           : Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.insert_drive_file,
-                                      size: 80, color: Colors.blue.shade300),
-                                  const SizedBox(height: 16),
+                                      size: Responsive.scaleW(context, 80),
+                                      color: Colors.blue.shade300),
+                                  SizedBox(height: Responsive.spacingL(context)),
                                   Text(
                                     doc.fileName ?? 'Document',
-                                    style: const TextStyle(
-                                        fontSize: 16,
+                                    style: TextStyle(
+                                        fontSize: Responsive.scaleW(context, 16),
                                         fontWeight: FontWeight.w500),
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 16),
-                                  ElevatedButton.icon(
-                                    onPressed: () => _launchURL(fileUrl),
-                                    icon: const Icon(Icons.open_in_new),
-                                    label: const Text('Open Document'),
-                                    style: ElevatedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                  ),
+                                  SizedBox(height: Responsive.spacingL(context)),
+                              
                                 ],
                               ),
                             ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: Responsive.spacing(context)),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (fileUrl.isNotEmpty && !isPdf)
-                  TextButton.icon(
-                    onPressed: () => _launchURL(fileUrl),
-                    icon: const Icon(Icons.open_in_new, size: 18),
-                    label: const Text('Open in Browser'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.blue,
-                    ),
-                  ),
-                const SizedBox(width: 8),
+              
+                SizedBox(width: Responsive.spacing(context)),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Close'),
@@ -1029,38 +1110,48 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
     );
   }
 
-  void _launchURL(String url) async {
-    final Uri uri = Uri.parse(url);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-      } else {
-        _showToast('Cannot open link', isError: true);
-      }
-    } catch (e) {
-      _showToast('Error: $e', isError: true);
-    }
-  }
+  // void _launchURL(String url) async {
+  //   final Uri uri = Uri.parse(url);
+  //   try {
+  //     if (await canLaunchUrl(uri)) {
+  //       await launchUrl(
+  //         uri,
+  //         mode: LaunchMode.externalApplication,
+  //       );
+  //     } else {
+  //       _showToast('Cannot open link', isError: true);
+  //     }
+  //   } catch (e) {
+  //     _showToast('Error: $e', isError: true);
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
     final documents =
         ref.watch(documentProvider.select((state) => state.documents));
+        final currentPage =
+    ref.watch(documentProvider.select((state) => state.currentPage));
+
+final totalPages =
+    ref.watch(documentProvider.select((state) => state.totalPages));
     final isLoading =
         ref.watch(documentProvider.select((state) => state.isLoading));
     final error = ref.watch(documentProvider.select((state) => state.error));
+    final patients =
+        ref.watch(documentProvider.select((s) => s.patients));
+
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "My Documents",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
+            fontSize: Responsive.scaleW(context, 18),
           ),
         ),
         backgroundColor: Colors.green,
@@ -1074,13 +1165,15 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
       body: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(
+                horizontal: Responsive.spacingL(context),
+                vertical: Responsive.spacingL(context) * 0.75),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.shade200,
-                  blurRadius: 4,
+                  blurRadius: Responsive.scaleW(context, 4),
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -1091,14 +1184,15 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: EdgeInsets.all(Responsive.spacing(context)),
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(
+                            Responsive.scaleW(context, 10)),
                       ),
                       child: Icon(Icons.folder, color: Colors.green.shade700),
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: Responsive.spacingL(context) * 0.75),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1107,13 +1201,14 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
                             color: Colors.grey.shade600,
+                            fontSize: Responsive.scaleW(context, 14),
                           ),
                         ),
                         Text(
                           '${documents.length} files',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: Responsive.scaleW(context, 16),
                             color: Colors.grey.shade800,
                           ),
                         ),
@@ -1135,19 +1230,215 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                     }
                     _openUploadModal();
                   },
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: const Text("Upload"),
+                  icon: Icon(Icons.upload_file,
+                      size: Responsive.scaleW(context, 18)),
+                  label: Text(
+                    "Upload",
+                    style: TextStyle(fontSize: Responsive.scaleW(context, 14)),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(
+                          Responsive.scaleW(context, 10)),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: Responsive.spacingL(context),
+                        vertical: Responsive.spacingL(context) * 0.625),
                   ),
                 ),
               ],
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                Responsive.spacingL(context),
+                Responsive.spacingL(context) * 0.75,
+                Responsive.spacingL(context),
+                Responsive.spacing(context) * 0.5),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+
+                      _debounce?.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 500), () {
+                        ref.read(documentProvider.notifier).fetchDocuments(
+                          patientId: _selectedPatientId,
+                          searchQuery: value,
+                          date: _selectedDate,
+                        );
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search documents...",
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+
+                                setState(() {
+                                  _searchQuery = '';
+                                });
+
+                                ref.read(documentProvider.notifier)
+                                    .fetchDocuments(
+                                      patientId: _selectedPatientId,
+                                      searchQuery: '',
+                                      date: _selectedDate,
+                                    );
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(
+                            Responsive.scaleW(context, 12)),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                          horizontal: Responsive.spacingL(context) * 0.75,
+                          vertical: Responsive.spacingL(context) * 0.875),
+                    ),
+                  ),
+                ),
+                SizedBox(width: Responsive.spacingL(context) * 0.625),
+                Expanded(
+                  flex: 2,
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                        initialDate: DateTime.now(),
+                      );
+
+                      if (picked != null) {
+                        setState(() {
+                          _selectedDate =
+                              DateFormat('yyyy-MM-dd').format(picked);
+                        });
+
+                        ref.read(documentProvider.notifier).fetchDocuments(
+                          patientId: _selectedPatientId,
+                          searchQuery: _searchQuery,
+                          date: _selectedDate,
+                        );
+                      }
+                    },
+                    child: Container(
+                      height: Responsive.scaleH(context, 56),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: Responsive.spacingL(context) * 0.75),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(
+                            Responsive.scaleW(context, 12)),
+                        color: Colors.white,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.calendar_today,
+                              size: Responsive.scaleW(context, 18)),
+                          SizedBox(width: Responsive.spacing(context) * 0.5),
+                          Expanded(
+                            child: Text(
+                              _selectedDate == null
+                                  ? "Date"
+                                  : DateFormat('dd/MM/yyyy')
+                                      .format(DateTime.parse(_selectedDate!)),
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: Responsive.scaleW(context, 14)),
+                            ),
+                          ),
+                          if (_selectedDate != null)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedDate = null;
+                                });
+
+                                ref.read(documentProvider.notifier)
+                                    .fetchDocuments(
+                                      patientId: _selectedPatientId,
+                                      searchQuery: _searchQuery,
+                                      date: null,
+                                    );
+                              },
+                              child: Icon(Icons.close,
+                                  size: Responsive.scaleW(context, 18)),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+              padding: EdgeInsets.fromLTRB(
+                Responsive.spacingL(context),
+                Responsive.spacingL(context) * 0.75,
+                Responsive.spacingL(context),
+                Responsive.spacing(context) * 0.5),
+            child: DropdownButtonFormField<int?>(
+              value: _selectedPatientId,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: "Patient",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                      Responsive.scaleW(context, 12)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                      Responsive.scaleW(context, 12)),
+                  borderSide: BorderSide(color: Colors.grey.shade400),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(
+                    color: Colors.green,
+                    width: 2,
+                  ),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                    horizontal: Responsive.spacingL(context) * 0.75,
+                    vertical: Responsive.spacingL(context) * 0.875),
+              ),
+              items: [
+                const DropdownMenuItem<int?>(
+                  value: null,
+                  child: Text("All Patients"),
+                ),
+                ...patients.map<DropdownMenuItem<int?>>((patient) {
+                  return DropdownMenuItem<int?>(
+                    value: patient['id'],
+                    child: Text(patient['name']),
+                  );
+                }).toList(),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedPatientId = value;
+                });
+            
+                ref.read(documentProvider.notifier).fetchDocuments(
+                  patientId: value,
+                  searchQuery: _searchQuery,
+                  date: _selectedDate,
+                );
+              },
             ),
           ),
           Expanded(
@@ -1173,22 +1464,20 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.error_outline,
-                            size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 16),
+                            size: Responsive.scaleW(context, 64),
+                            color: Colors.grey.shade400),
+                        SizedBox(height: Responsive.spacingL(context)),
                         Text(
-                          'Error loading documents',
+                          'No Documents Found',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.grey.shade700,
+                            fontSize: Responsive.scaleW(context, 16),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          error,
-                          style: TextStyle(color: Colors.grey.shade500),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: Responsive.spacing(context)),
+                     
+                        SizedBox(height: Responsive.spacingL(context)),
                         ElevatedButton.icon(
                           onPressed: _fetchDocuments,
                           icon: const Icon(Icons.refresh),
@@ -1205,56 +1494,78 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
 
                 if (documents.isEmpty) {
                   return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            shape: BoxShape.circle,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(Responsive.spacingXL(
+                                context)),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.folder_open,
+                              size: Responsive.scaleW(context, 64),
+                              color: Colors.grey.shade400,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.folder_open,
-                            size: 64,
-                            color: Colors.grey.shade400,
+                          SizedBox(height: Responsive.spacingL(context)),
+                          Text(
+                            'No Documents',
+                            style: TextStyle(
+                              fontSize: Responsive.scaleW(context, 20),
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No Documents',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade700,
+                          SizedBox(height: Responsive.spacing(context)),
+                          Text(
+                            'Click "Upload" to add your first document',
+                            style: TextStyle(
+                              fontSize: Responsive.scaleW(context, 14),
+                              color: Colors.grey.shade500,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Click "Upload" to add your first document',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 }
-
                 return RefreshIndicator(
-                  onRefresh: _fetchDocuments,
+                  
+                  onRefresh: () async {
+                    await ref.read(documentProvider.notifier).fetchDocuments(
+                      patientId: _selectedPatientId,
+                      searchQuery: _searchQuery,
+                      date: _selectedDate,
+                    );
+                  },
                   color: Colors.green,
+                  
                   child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: documents.length,
-                    itemBuilder: (context, index) {
-                      final doc = documents[index];
-                      return _buildDocumentCard(
-                        doc,
-                        () => _openViewModal(doc),
-                      );
-                    },
+                     controller: _scrollController,
+                    padding: EdgeInsets.symmetric(
+                        vertical: Responsive.spacing(context)),
+                   itemCount: documents.length + (currentPage < totalPages ? 1 : 0),
+   itemBuilder: (context, index) {
+  if (index >= documents.length) {
+    return const Padding(
+      padding: EdgeInsets.all(16),
+      child: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  final doc = documents[index];
+
+  return _buildDocumentCard(
+    doc,
+    () => _openViewModal(doc),
+  );
+}
                   ),
                 );
               },
@@ -1263,10 +1574,5 @@ class _DocumentsTabState extends ConsumerState<DocumentsTab> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }

@@ -125,4 +125,13 @@ socket!.on("system_event", (payload) {
     }
   }
 }
+void disconnect() {
+  _currentUserId = null;
+
+  socket?.disconnect();
+  socket?.dispose();
+  socket = null;
+
+  _listeners.clear();
+}
 }
